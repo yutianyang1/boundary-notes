@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" width="760" height="400" font-family="ui-sans-serif,system-ui,-apple-system,'Segoe UI','Noto Sans SC',sans-serif">
+  <style>
+    .card{fill:#ffffff}
+    .t{fill:#0f172a}
+    .m{fill:#64748b}
+    .arrow{fill:#94a3b8}
+    .aline{stroke:#94a3b8;stroke-width:1.6}
+    .box{fill:#f8fafc;stroke:#e2e8f0}
+    @media (prefers-color-scheme:dark){
+      .card{fill:#0b1120}
+      .t{fill:#e5e9f0}
+      .m{fill:#93a1b8}
+      .box{fill:#111a2e;stroke:#243149}
+    }
+  </style>
+  <defs>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+      <path class="arrow" d="M0,0 L8,4 L0,8 Z"/>
+    </marker>
+  </defs>
+  <rect class="card" width="760" height="400"/>
+
+  <text x="30" y="36" class="t" font-size="18" font-weight="700">标准注意力 vs FlashAttention</text>
+  <text x="30" y="58" class="m" font-size="13">注意力是访存瓶颈，不是算力瓶颈</text>
+
+  <!-- Lane A: standard -->
+  <text x="30" y="92" class="t" font-size="14" font-weight="600">标准注意力</text>
+  <rect x="30" y="102" width="700" height="70" rx="10" fill="#f43f5e" fill-opacity="0.06" stroke="#f43f5e" stroke-opacity="0.35"/>
+  <rect class="box" x="46" y="118" width="86" height="42" rx="7"/>
+  <text x="89" y="144" class="t" font-size="13" text-anchor="middle">Q, Kᵀ, V</text>
+  <line class="aline" x1="134" y1="139" x2="200" y2="139" marker-end="url(#ah)"/>
+  <rect x="204" y="118" width="150" height="42" rx="7" fill="#f43f5e" fill-opacity="0.12" stroke="#f43f5e"/>
+  <text x="279" y="135" class="t" font-size="13" text-anchor="middle">S = Q·Kᵀ</text>
+  <text x="279" y="151" class="m" font-size="12" text-anchor="middle">N×N，写回 HBM</text>
+  <line class="aline" x1="356" y1="139" x2="410" y2="139" marker-end="url(#ah)"/>
+  <rect x="414" y="118" width="160" height="42" rx="7" fill="#f43f5e" fill-opacity="0.12" stroke="#f43f5e"/>
+  <text x="494" y="135" class="t" font-size="13" text-anchor="middle">P = softmax(S)</text>
+  <text x="494" y="151" class="m" font-size="12" text-anchor="middle">N×N，再次落地</text>
+  <line class="aline" x1="576" y1="139" x2="630" y2="139" marker-end="url(#ah)"/>
+  <rect class="box" x="634" y="118" width="82" height="42" rx="7"/>
+  <text x="675" y="144" class="t" font-size="13" text-anchor="middle">O = P·V</text>
+  <text x="46" y="192" class="m" font-size="12.5">N×N 中间矩阵反复读写显存 → 访存受限，算力大量空转</text>
+
+  <!-- Lane B: flash -->
+  <text x="30" y="248" class="t" font-size="14" font-weight="600">FlashAttention</text>
+  <rect x="30" y="258" width="700" height="70" rx="10" fill="#10b981" fill-opacity="0.07" stroke="#10b981" stroke-opacity="0.4"/>
+  <rect class="box" x="46" y="274" width="110" height="42" rx="7"/>
+  <text x="101" y="300" class="t" font-size="13" text-anchor="middle">Q,K,V 分块</text>
+  <line class="aline" x1="158" y1="295" x2="212" y2="295" marker-end="url(#ah)"/>
+  <rect x="216" y="274" width="356" height="42" rx="7" fill="#10b981" fill-opacity="0.13" stroke="#10b981"/>
+  <text x="394" y="291" class="t" font-size="13" text-anchor="middle">SRAM 内逐块计算 · 在线 softmax(m, l) · 累加 O</text>
+  <text x="394" y="307" class="m" font-size="12" text-anchor="middle">N×N 从不落地 HBM</text>
+  <line class="aline" x1="574" y1="295" x2="628" y2="295" marker-end="url(#ah)"/>
+  <rect class="box" x="632" y="274" width="84" height="42" rx="7"/>
+  <text x="674" y="300" class="t" font-size="13" text-anchor="middle">O（精确）</text>
+  <text x="46" y="348" class="m" font-size="12.5">结果与标准注意力逐位相等（非近似）；反向传播时重算 P，显存降到 O(N)</text>
+
+  <text x="30" y="386" class="m" font-size="12.5" font-style="italic">减少 HBM 往返次数，即使多算一点 FLOPs，墙钟时间反而更短。</text>
+</svg>

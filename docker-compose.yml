@@ -1,0 +1,168 @@
+name: blog-platform
+
+services:
+  nginx:
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    depends_on:
+      next:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - media_data:/srv/media:ro
+    networks: [edge, backend]
+
+  uploads-init:
+    image: alpine:3.22
+    restart: "no"
+    command: ["sh", "-c", "mkdir -p /uploads/avatars /uploads/covers /uploads/library && chown -R 1001:1001 /uploads"]
+    volumes:
+      - media_data:/uploads
+    networks: [backend]
+
+  next:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+      DATABASE_URL: postgresql://${POSTGRES_USER:-blog}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-blog}
+      REDIS_URL: redis://redis:6379
+      JOB_SECRET: ${JOB_SECRET:?set JOB_SECRET}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
+      AUTH_URL: ${AUTH_URL:-http://localhost}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
+      AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
+      AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
+      PUBLIC_REGISTRATION_ENABLED: ${PUBLIC_REGISTRATION_ENABLED:-false}
+      COMMENTS_ENABLED: ${COMMENTS_ENABLED:-false}
+      STAFF_MFA_ENFORCED: ${STAFF_MFA_ENFORCED:-false}
+      MFA_SECRET_KEY: ${MFA_SECRET_KEY:-}
+      SUBSCRIPTIONS_ENABLED: ${SUBSCRIPTIONS_ENABLED:-false}
+      SUBSCRIBE_TOKEN_SECRET: ${SUBSCRIBE_TOKEN_SECRET:-}
+      MAIL_OUTBOX_KEY: ${MAIL_OUTBOX_KEY:-}
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-smtp}
+      TENCENT_SECRET_ID: ${TENCENT_SECRET_ID:-}
+      TENCENT_SECRET_KEY: ${TENCENT_SECRET_KEY:-}
+      TENCENT_SES_REGION: ${TENCENT_SES_REGION:-ap-guangzhou}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@mail.xiudou.site}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-边界笔记}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO:-}
+      SES_TEMPLATE_VERIFY_EMAIL: ${SES_TEMPLATE_VERIFY_EMAIL:-}
+      SES_TEMPLATE_SUBSCRIBE_CONFIRM: ${SES_TEMPLATE_SUBSCRIBE_CONFIRM:-}
+      SES_TEMPLATE_POST_PUBLISHED: ${SES_TEMPLATE_POST_PUBLISHED:-}
+      SES_TEMPLATE_PASSWORD_RESET: ${SES_TEMPLATE_PASSWORD_RESET:-}
+      SES_TEMPLATE_SECURITY_ALERT: ${SES_TEMPLATE_SECURITY_ALERT:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost}
+      UPLOADS_DIR: /app/uploads
+      NEXT_PUBLIC_SITE_NAME: ${NEXT_PUBLIC_SITE_NAME:-边界笔记}
+      NEXT_PUBLIC_COPYRIGHT_YEAR: ${NEXT_PUBLIC_COPYRIGHT_YEAR:-2026}
+      NEXT_PUBLIC_ICP_BEIAN: ${NEXT_PUBLIC_ICP_BEIAN:-}
+      NEXT_PUBLIC_MPS_BEIAN: ${NEXT_PUBLIC_MPS_BEIAN:-}
+      NEXT_PUBLIC_CONTACT_EMAIL: ${NEXT_PUBLIC_CONTACT_EMAIL:-}
+      NEXT_PUBLIC_GITHUB_URL: ${NEXT_PUBLIC_GITHUB_URL:-}
+    depends_on:
+      uploads-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - media_data:/app/uploads
+    networks: [backend]
+
+  scheduler:
+    build:
+      context: ./infra/scheduler
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+      JOB_SECRET: ${JOB_SECRET:?set JOB_SECRET}
+    depends_on:
+      next:
+        condition: service_healthy
+    networks: [backend]
+
+  migrate:
+    build:
+      context: .
+      target: tools
+    profiles: [tools]
+    command: ["npm", "run", "db:migrate"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-blog}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-blog}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  seed:
+    build:
+      context: .
+      target: tools
+    profiles: [tools]
+    command: ["npm", "run", "db:seed"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-blog}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-blog}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?set ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+
+  postgres:
+    image: groonga/pgroonga:4.0.6-alpine-17
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+      POSTGRES_DB: ${POSTGRES_DB:-blog}
+      POSTGRES_USER: ${POSTGRES_USER:-blog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [backend]
+
+  redis:
+    image: redis:8.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [backend]
+
+networks:
+  edge:
+  backend:
+    internal: true
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:

@@ -1,0 +1,317 @@
+<title>边界笔记 · 首页改版方向</title>
+<style>
+  :root {
+    /* —— 沿用现有 globals.css 的 oklch token（亮色） —— */
+    --background: oklch(0.985 0.002 247.84);
+    --foreground: oklch(0.17 0.021 257.14);
+    --card: oklch(1 0 0);
+    --muted: oklch(0.955 0.006 255.48);
+    --muted-foreground: oklch(0.46 0.026 256.7);
+    --primary: oklch(0.54 0.212 264.38);
+    --primary-weak: oklch(0.54 0.212 264.38 / 0.10);
+    --border: oklch(0.9 0.012 255.53);
+    --hairline: oklch(0.93 0.008 255.53);
+    --rule-strong: oklch(0.32 0.022 256.9);
+    /* 新增：一个克制的暖色，只用在头条标记/少量 hover，打破全站的冷 */
+    --warm: oklch(0.70 0.16 52);
+    --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16);
+
+    --font-sans: "Inter", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --shell: 90rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: oklch(0.155 0.016 257.34);
+      --foreground: oklch(0.95 0.008 255.58);
+      --card: oklch(0.2 0.019 257.01);
+      --muted: oklch(0.25 0.019 255.38);
+      --muted-foreground: oklch(0.71 0.021 255.89);
+      --primary: oklch(0.72 0.17 263.82);
+      --primary-weak: oklch(0.72 0.17 263.82 / 0.14);
+      --border: oklch(0.3 0.02 255.77);
+      --hairline: oklch(0.26 0.018 255.77);
+      --rule-strong: oklch(0.72 0.016 255.9);
+      --warm: oklch(0.78 0.14 58);
+      --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --background: oklch(0.985 0.002 247.84); --foreground: oklch(0.17 0.021 257.14);
+    --card: oklch(1 0 0); --muted: oklch(0.955 0.006 255.48); --muted-foreground: oklch(0.46 0.026 256.7);
+    --primary: oklch(0.54 0.212 264.38); --primary-weak: oklch(0.54 0.212 264.38 / 0.10);
+    --border: oklch(0.9 0.012 255.53); --hairline: oklch(0.93 0.008 255.53); --rule-strong: oklch(0.32 0.022 256.9);
+    --warm: oklch(0.70 0.16 52); --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16);
+  }
+  :root[data-theme="dark"] {
+    --background: oklch(0.155 0.016 257.34); --foreground: oklch(0.95 0.008 255.58);
+    --card: oklch(0.2 0.019 257.01); --muted: oklch(0.25 0.019 255.38); --muted-foreground: oklch(0.71 0.021 255.89);
+    --primary: oklch(0.72 0.17 263.82); --primary-weak: oklch(0.72 0.17 263.82 / 0.14);
+    --border: oklch(0.3 0.02 255.77); --hairline: oklch(0.26 0.018 255.77); --rule-strong: oklch(0.72 0.016 255.9);
+    --warm: oklch(0.78 0.14 58); --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6);
+  }
+
+  * { box-sizing: border-box; border-color: var(--border); }
+  body {
+    margin: 0; background: var(--background); color: var(--foreground);
+    font-family: var(--font-sans); font-synthesis-weight: none;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  a { color: inherit; text-decoration: none; }
+  .shell { width: 100%; max-width: var(--shell); margin-inline: auto; padding-inline: 1.5rem; }
+  @media (min-width: 640px) { .shell { padding-inline: 2.5rem; } }
+  @media (min-width: 1024px) { .shell { padding-inline: 3.5rem; } }
+
+  .eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.16em; line-height: 1.4; text-transform: none; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .headline { font-weight: 800; letter-spacing: 0; line-height: 1.12; text-wrap: balance; }
+
+  /* —— 顶栏 —— */
+  header.site {
+    position: sticky; top: 0; z-index: 20;
+    backdrop-filter: saturate(1.4) blur(8px);
+    background: color-mix(in oklch, var(--background) 82%, transparent);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .bar { display: flex; align-items: center; justify-content: space-between; height: 4rem; }
+  .wordmark { display: flex; align-items: center; gap: 0.6rem; font-weight: 800; font-size: 1.05rem; letter-spacing: 0.01em; }
+  .wordmark .mk { width: 1.1rem; height: 1.1rem; border-radius: 4px; background:
+      conic-gradient(from 210deg, var(--primary), color-mix(in oklch, var(--primary) 55%, var(--warm))); }
+  .left { display: flex; align-items: center; gap: 2rem; }
+  nav.top { display: none; gap: 1.7rem; font-size: 0.92rem; color: var(--muted-foreground); font-weight: 500; }
+  @media (min-width: 860px) { nav.top { display: flex; } }
+  nav.top a { position: relative; padding-block: 0.2rem; transition: color .16s; }
+  nav.top a:hover { color: var(--foreground); }
+  nav.top a::after { content: ""; position: absolute; left: 0; bottom: -2px; height: 2px; width: 0; background: var(--primary); transition: width .2s ease; }
+  nav.top a:hover::after { width: 100%; }
+
+  .actions { display: flex; align-items: center; gap: .6rem; }
+  .search { position: relative; display: none; }
+  @media (min-width: 640px) { .search { display: block; } }
+  .search input { width: 15rem; height: 2.2rem; border: 1px solid var(--border); background: var(--muted);
+    border-radius: 999px; padding: 0 .9rem 0 2.1rem; font: inherit; font-size: .85rem; color: var(--foreground);
+    transition: width .2s ease, border-color .16s, background .16s; }
+  .search input::placeholder { color: var(--muted-foreground); }
+  .search input:focus { outline: none; width: 17rem; background: var(--card);
+    border-color: color-mix(in oklch, var(--primary) 55%, var(--border)); }
+  .search .mag { position: absolute; left: .8rem; top: 50%; transform: translateY(-50%);
+    color: var(--muted-foreground); font-size: .95rem; pointer-events: none; }
+  .icobtn { display: inline-flex; align-items: center; justify-content: center;
+    width: 2.2rem; height: 2.2rem; border: 1px solid var(--border); background: var(--card); border-radius: 999px;
+    font-size: .9rem; color: var(--muted-foreground); cursor: pointer; font-weight: 600; transition: color .16s, border-color .16s; }
+  .icobtn:hover { color: var(--foreground); border-color: color-mix(in oklch, var(--primary) 40%, var(--border)); }
+
+  /* —— Hero 主张 —— */
+  .thesis { padding-top: 3.5rem; padding-bottom: 2rem; }
+  .thesis .eyebrow { color: var(--primary); }
+  .thesis h1 { margin: 1.1rem 0 0; font-size: clamp(2.2rem, 6vw, 3.9rem); }
+  .thesis p { margin: 1.3rem 0 0; max-width: 40em; font-size: 1.12rem; line-height: 1.8; color: var(--muted-foreground); }
+
+  /* —— 头条大卡 —— */
+  .featured {
+    display: grid; grid-template-columns: 1fr; gap: 0; margin-top: 2rem;
+    border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--card); box-shadow: var(--shadow);
+  }
+  @media (min-width: 820px) { .featured { grid-template-columns: 1.05fr 1fr; } }
+  .featured .art { min-height: 15rem; position: relative; }
+  .featured .body { padding: 1.8rem clamp(1.5rem, 3vw, 2.6rem); display: flex; flex-direction: column; justify-content: center; }
+  .kicker { display: inline-flex; align-items: center; gap: .5rem; align-self: flex-start;
+    font-size: .72rem; font-weight: 700; letter-spacing: .12em; color: var(--warm); }
+  .kicker::before { content: ""; width: 1.4rem; height: 3px; border-radius: 2px; background: var(--warm); }
+  .featured h2 { margin: 1rem 0 0; font-size: clamp(1.6rem, 3.4vw, 2.4rem); font-weight: 800; line-height: 1.15; text-wrap: balance; }
+  .featured h2 a { background-image: linear-gradient(var(--primary), var(--primary)); background-size: 0% 2px;
+    background-position: 0 100%; background-repeat: no-repeat; transition: background-size .25s ease; }
+  .featured:hover h2 a { background-size: 100% 2px; }
+  .featured .sum { margin: 1rem 0 0; color: var(--muted-foreground); line-height: 1.8; max-width: 34em; }
+  .meta { display: flex; align-items: center; gap: .9rem; margin-top: 1.5rem; font-size: .82rem; color: var(--muted-foreground); }
+  .chip { display: inline-flex; align-items: center; padding: .25rem .6rem; border-radius: 999px;
+    background: var(--primary-weak); color: var(--primary); font-weight: 600; font-size: .76rem; }
+  .dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .5; }
+
+  /* —— 主体两栏 —— */
+  .row { display: grid; grid-template-columns: 1fr; gap: 2.5rem; margin-top: 3.5rem; padding-bottom: 4rem; }
+  @media (min-width: 1000px) { .row { grid-template-columns: minmax(0,1fr) 17rem; gap: 3.5rem; } }
+
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; border-top: 2px solid var(--rule-strong); padding-top: 1rem; }
+  .sec-head h3 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+  .more { display: inline-flex; align-items: center; gap: .35rem; font-size: .85rem; font-weight: 600; color: var(--muted-foreground); transition: color .16s, gap .16s; }
+  .more:hover { color: var(--primary); gap: .6rem; }
+
+  .cards { display: grid; grid-template-columns: 1fr; gap: 1.4rem; margin-top: 1.6rem; }
+  @media (min-width: 560px) { .cards { grid-template-columns: 1fr 1fr; } }
+  .card { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: var(--card); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in oklch, var(--primary) 40%, var(--border)); }
+  .card .art { aspect-ratio: 16/9; position: relative; }
+  .card .cbody { padding: 1.1rem 1.2rem 1.3rem; display: flex; flex-direction: column; gap: .6rem; flex: 1; }
+  .card h4 { margin: 0; font-size: 1.12rem; font-weight: 700; line-height: 1.3; text-wrap: balance; }
+  .card .csum { margin: 0; font-size: .9rem; line-height: 1.7; color: var(--muted-foreground);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .cmeta { margin-top: auto; display: flex; align-items: center; gap: .7rem; font-size: .78rem; color: var(--muted-foreground); }
+
+  /* —— 兜底封面：把 OG 图那套“深底 + 网格 + 靛蓝光环”做成图案系统 —— */
+  .art { background: oklch(0.22 0.03 264); overflow: hidden; }
+  .art::before { content: ""; position: absolute; inset: 0; opacity: .5;
+    background-image:
+      linear-gradient(oklch(0.7 0.05 264 / .14) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.7 0.05 264 / .14) 1px, transparent 1px);
+    background-size: 34px 34px; }
+  .art::after { content: ""; position: absolute; width: 60%; aspect-ratio: 1; border-radius: 50%;
+    top: -30%; right: -14%; border: 26px solid oklch(0.55 0.2 264 / .28); }
+  .art .rune { position: absolute; left: clamp(1rem,4%,2rem); bottom: clamp(1rem,8%,1.6rem);
+    color: oklch(0.92 0.03 264); font-weight: 800; letter-spacing: .01em; font-size: clamp(1.1rem,2.4vw,1.7rem); line-height: 1.2; text-wrap: balance; max-width: 78%; }
+  .art .rune small { display: block; font-weight: 600; font-size: .62em; letter-spacing: .14em; color: oklch(0.78 0.09 264); margin-bottom: .5rem; }
+  /* 图案变体：换光环位置/色相，制造差异但不出画 */
+  .art.v2 { background: oklch(0.24 0.035 286); }
+  .art.v2::after { top: auto; bottom: -34%; right: 8%; border-color: oklch(0.6 0.16 300 / .28); }
+  .art.v3 { background: oklch(0.23 0.04 208); }
+  .art.v3::after { top: -36%; right: 30%; border-color: oklch(0.62 0.13 200 / .3); }
+
+  /* —— 热门 rail：编号是真实排名，不是装饰 —— */
+  aside .sec-head { border-top-width: 2px; }
+  ol.pop { list-style: none; margin: 1.4rem 0 0; padding: 0; display: flex; flex-direction: column; }
+  ol.pop li { display: grid; grid-template-columns: 1.8rem 1fr; gap: .8rem; padding: .95rem 0; border-bottom: 1px solid var(--hairline); }
+  ol.pop li:first-child { padding-top: 0; }
+  ol.pop .rk { font-weight: 800; font-size: 1.05rem; color: var(--primary); font-variant-numeric: tabular-nums; line-height: 1.4; }
+  ol.pop li:nth-child(1) .rk { color: var(--warm); }
+  ol.pop .pt { font-weight: 600; font-size: .92rem; line-height: 1.4; transition: color .16s; }
+  ol.pop a:hover .pt { color: var(--primary); }
+  ol.pop .pv { display: block; margin-top: .3rem; font-size: .76rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+
+  footer.site { border-top: 1px solid var(--hairline); }
+  footer.site .in { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: center; justify-content: space-between;
+    padding-block: 2rem; color: var(--muted-foreground); font-size: .85rem; }
+
+  .note { margin: 0 auto; padding: .6rem 1.5rem; max-width: var(--shell); font-size: .74rem; color: var(--muted-foreground); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
+</style>
+
+<header class="site">
+  <div class="shell bar">
+    <div class="left">
+      <a class="wordmark" href="#"><span class="mk"></span>边界笔记</a>
+      <nav class="top">
+        <a href="#">最新</a>
+        <a href="#">归档</a>
+        <a href="#">分类</a>
+        <a href="#">标签</a>
+        <a href="#">系列</a>
+      </nav>
+    </div>
+    <div class="actions">
+      <div class="search">
+        <span class="mag" aria-hidden="true">⌕</span>
+        <input type="search" placeholder="搜索文章…" aria-label="搜索文章">
+      </div>
+      <button class="icobtn" id="tg" type="button" aria-label="切换主题">◑</button>
+    </div>
+  </div>
+</header>
+
+<p class="note">这是首页改版方向的静态 mock ——沿用你现有的 oklch 配色与排版 token，仅演示布局与图面。可切换右上角主题看亮/暗两版。</p>
+
+<main class="shell">
+  <section class="thesis">
+    <p class="eyebrow">软件 · 系统 · 长期主义</p>
+    <h1 class="headline">在复杂系统中，<br>寻找清晰的边界。</h1>
+    <p>记录软件架构、工程实践，和那些值得反复推敲的设计决定。少一点捷径，多一点可以解释的取舍。</p>
+  </section>
+
+  <!-- 头条大卡 -->
+  <article class="featured">
+    <div class="art">
+      <div class="rune"><small>系列 · 实时语音</small>Barge-in 架构全景</div>
+    </div>
+    <div class="body">
+      <span class="kicker">头条</span>
+      <h2><a href="#">让数字人真正“听得见”：我的 Barge-in 实时语音架构</a></h2>
+      <p class="sum">从本地麦克风、WebRTC AEC3 到唤醒、双 VAD、双 ASR 与响应撤销——拆解一套纯 CPU 数字人实时语音打断系统如何围绕同一个会话状态机协作。</p>
+      <div class="meta">
+        <span class="chip">语音识别</span>
+        <span class="tnum">07.24</span><span class="dot"></span>
+        <span class="tnum">18 分钟</span><span class="dot"></span>
+        <span class="tnum">1.2k 阅读</span>
+      </div>
+    </div>
+  </article>
+
+  <div class="row">
+    <section>
+      <div class="sec-head">
+        <h3>最新文章</h3>
+        <a class="more" href="#">查看全部 →</a>
+      </div>
+      <div class="cards">
+
+        <a class="card" href="#">
+          <div class="art"><div class="rune"><small>语音识别</small>AEC3 → 标点补全</div></div>
+          <div class="cbody">
+            <h4>纯 CPU 上的实时语音前端：从 AEC3 到标点补全</h4>
+            <p class="csum">回声消除、状态化降噪、唤醒、端点检测、流式与整句识别——五个阶段如何在一台没有 GPU 的机器上串成可观测的事件管线。</p>
+            <div class="cmeta"><span class="chip">语音识别</span><span class="tnum">07.19</span><span class="dot"></span><span class="tnum">14 分钟</span></div>
+          </div>
+        </a>
+
+        <a class="card" href="#">
+          <div class="art v2"><div class="rune"><small>语音识别</small>SeACo 热词</div></div>
+          <div class="cbody">
+            <h4>热词为什么要放在最终识别：SeACo 的取舍</h4>
+            <p class="csum">“接口返回成功但热词毫无效果”，本质常是字符被静默替换成 &lt;unk&gt;。把不可用字符和上下文状态直接暴露，比盲目加权可靠。</p>
+            <div class="cmeta"><span class="chip">语音识别</span><span class="tnum">07.11</span><span class="dot"></span><span class="tnum">9 分钟</span></div>
+          </div>
+        </a>
+
+        <a class="card" href="#">
+          <div class="art v3"><div class="rune"><small>工程实践</small>Markdown → SVG</div></div>
+          <div class="cbody">
+            <h4>把 Markdown 烘成 SVG：服务端渲染 mermaid 的安全边界</h4>
+            <p class="csum">在纯 CPU、无 Chromium 的前提下把图表预渲染成双主题内联 SVG，并守住 sanitize 之后那道被绕过的安全线。</p>
+            <div class="cmeta"><span class="chip">工程实践</span><span class="tnum">07.06</span><span class="dot"></span><span class="tnum">11 分钟</span></div>
+          </div>
+        </a>
+
+        <a class="card" href="#">
+          <div class="art"><div class="rune"><small>系统设计</small>会话状态机</div></div>
+          <div class="cbody">
+            <h4>一次唤醒，多轮对话：会话状态机的四个阶段</h4>
+            <p class="csum">把“检测到声音”“确认有效输入”“撤销一次响应”拆成三个阶段，让空闲计时在播报中暂停——细节决定它是否显得迟钝。</p>
+            <div class="cmeta"><span class="chip">系统设计</span><span class="tnum">06.28</span><span class="dot"></span><span class="tnum">10 分钟</span></div>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <aside>
+      <div class="sec-head"><h3>热门</h3></div>
+      <ol class="pop">
+        <li><span class="rk">1</span><a href="#"><span class="pt">让数字人真正“听得见”：Barge-in 实时语音架构</span><span class="pv tnum">1,240 阅读</span></a></li>
+        <li><span class="rk">2</span><a href="#"><span class="pt">纯 CPU 上的实时语音前端：从 AEC3 到标点补全</span><span class="pv tnum">876 阅读</span></a></li>
+        <li><span class="rk">3</span><a href="#"><span class="pt">把 Markdown 烘成 SVG：mermaid 的安全边界</span><span class="pv tnum">613 阅读</span></a></li>
+        <li><span class="rk">4</span><a href="#"><span class="pt">热词为什么要放在最终识别</span><span class="pv tnum">508 阅读</span></a></li>
+        <li><span class="rk">5</span><a href="#"><span class="pt">一次唤醒，多轮对话：会话状态机</span><span class="pv tnum">402 阅读</span></a></li>
+      </ol>
+    </aside>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="shell in">
+    <span>© 2026 边界笔记 · 软件与系统笔记</span>
+    <span class="tnum">RSS · 备案中 · 由 Next.js 驱动</span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var btn = document.getElementById("tg");
+    btn.addEventListener("click", function () {
+      var root = document.documentElement;
+      var now = root.getAttribute("data-theme");
+      if (!now) { now = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
+      root.setAttribute("data-theme", now === "dark" ? "light" : "dark");
+    });
+  })();
+</script>

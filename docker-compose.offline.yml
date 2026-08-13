@@ -1,0 +1,14 @@
+# 本机无法访问 Docker Hub 时使用：仅用于功能开发，不提供 PGroonga。
+# 独立卷避免 PostgreSQL 15 数据污染正式 PostgreSQL 17 数据卷。
+services:
+  postgres:
+    image: postgres:15-alpine
+
+  redis:
+    image: redis:6-alpine
+
+volumes:
+  postgres_data:
+    name: blog-platform-postgres-offline
+  redis_data:
+    name: blog-platform-redis-offline

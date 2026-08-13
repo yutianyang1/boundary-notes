@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 380" width="760" height="380" font-family="ui-sans-serif,system-ui,-apple-system,'Segoe UI','Noto Sans SC',sans-serif">
+  <style>
+    .card{fill:#ffffff}
+    .t{fill:#0f172a}
+    .m{fill:#64748b}
+    .slot{fill:#f8fafc;stroke:#e2e8f0}
+    @media (prefers-color-scheme:dark){
+      .card{fill:#0b1120}
+      .t{fill:#e5e9f0}
+      .m{fill:#93a1b8}
+      .slot{fill:#0f1830;stroke:#243149}
+    }
+  </style>
+  <defs>
+    <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="7" height="7" fill="#f43f5e" fill-opacity="0.07"/>
+      <line x1="0" y1="0" x2="0" y2="7" stroke="#f43f5e" stroke-opacity="0.5" stroke-width="1.4"/>
+    </pattern>
+  </defs>
+  <rect class="card" width="760" height="380"/>
+
+  <text x="30" y="36" class="t" font-size="18" font-weight="700">连续预分配下的 KV 缓存浪费</text>
+  <text x="30" y="58" class="m" font-size="13">传统服务按「最大长度」为每个请求预留一整段连续显存</text>
+
+  <!-- rows -->
+  <!-- Request A -->
+  <text x="40" y="100" class="t" font-size="13">请求 A</text>
+  <rect class="slot" x="110" y="82" width="610" height="30" rx="5"/>
+  <rect x="112" y="84" width="150" height="26" rx="3" fill="#10b981" fill-opacity="0.85"/>
+  <rect x="264" y="84" width="454" height="26" rx="3" fill="url(#hatch)"/>
+  <text x="491" y="101" class="m" font-size="11.5" text-anchor="middle">预留但未使用</text>
+
+  <!-- Request B -->
+  <text x="40" y="148" class="t" font-size="13">请求 B</text>
+  <rect class="slot" x="110" y="130" width="610" height="30" rx="5"/>
+  <rect x="112" y="132" width="86" height="26" rx="3" fill="#10b981" fill-opacity="0.85"/>
+  <rect x="200" y="132" width="518" height="26" rx="3" fill="url(#hatch)"/>
+  <text x="459" y="149" class="m" font-size="11.5" text-anchor="middle">预留但未使用</text>
+
+  <!-- Request C -->
+  <text x="40" y="196" class="t" font-size="13">请求 C</text>
+  <rect class="slot" x="110" y="178" width="610" height="30" rx="5"/>
+  <rect x="112" y="180" width="250" height="26" rx="3" fill="#10b981" fill-opacity="0.85"/>
+  <rect x="364" y="180" width="354" height="26" rx="3" fill="url(#hatch)"/>
+
+  <!-- external fragment -->
+  <text x="40" y="248" class="t" font-size="13">空闲</text>
+  <rect class="slot" x="110" y="230" width="180" height="30" rx="5"/>
+  <text x="200" y="250" class="m" font-size="11.5" text-anchor="middle">零散空洞</text>
+  <rect x="304" y="230" width="416" height="30" rx="5" fill="none" stroke="#f43f5e" stroke-opacity="0.5" stroke-dasharray="5 4"/>
+  <text x="512" y="250" fill="#f43f5e" font-size="11.5" text-anchor="middle">新请求装不进这些碎片</text>
+
+  <!-- legend -->
+  <rect x="110" y="292" width="16" height="14" rx="3" fill="#10b981" fill-opacity="0.85"/>
+  <text x="134" y="304" class="m" font-size="12.5">已使用 KV</text>
+  <rect x="238" y="292" width="16" height="14" rx="3" fill="url(#hatch)"/>
+  <text x="262" y="304" class="m" font-size="12.5">内部碎片（预留未用）</text>
+  <rect x="470" y="292" width="16" height="14" rx="3" fill="none" stroke="#f43f5e" stroke-opacity="0.5" stroke-dasharray="5 4"/>
+  <text x="494" y="304" class="m" font-size="12.5">外部碎片（零散空洞）</text>
+
+  <text x="30" y="344" class="t" font-size="12.5"><tspan font-weight="600">后果：</tspan><tspan class="m">大量显存被浪费 → 能并发的请求数受限 → 吞吐量受限。这正是 PagedAttention 要解决的问题。</tspan></text>
+</svg>

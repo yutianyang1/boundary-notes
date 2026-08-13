@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 390" width="760" height="390" font-family="ui-sans-serif,system-ui,-apple-system,'Segoe UI','Noto Sans SC',sans-serif">
+  <style>
+    .card{fill:#ffffff}
+    .t{fill:#0f172a}
+    .m{fill:#64748b}
+    .box{fill:#f8fafc;stroke:#e2e8f0}
+    .arrow{fill:#94a3b8}
+    .aline{stroke:#94a3b8;stroke-width:1.6}
+    @media (prefers-color-scheme:dark){
+      .card{fill:#0b1120}
+      .t{fill:#e5e9f0}
+      .m{fill:#93a1b8}
+      .box{fill:#0f1830;stroke:#243149}
+    }
+  </style>
+  <defs>
+    <marker id="ah4" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path class="arrow" d="M0,0 L8,4 L0,8 Z"/></marker>
+  </defs>
+  <rect class="card" width="760" height="390"/>
+
+  <text x="30" y="34" class="t" font-size="18" font-weight="700">热词版 Paraformer：让定制词被认出来</text>
+  <text x="30" y="55" class="m" font-size="13">推理时传入词表，用一条热词分支给匹配的词加偏置，无需重训模型</text>
+
+  <!-- hotword branch -->
+  <text x="30" y="82" class="m" font-size="12.5">热词表（推理传入）</text>
+  <rect class="box" x="30" y="90" width="180" height="86" rx="8"/>
+  <rect x="44" y="102" width="80" height="22" rx="6" fill="#6366f1" fill-opacity="0.13" stroke="#6366f1"/><text x="84" y="118" class="t" font-size="12" text-anchor="middle">周杰伦</text>
+  <rect x="44" y="130" width="96" height="22" rx="6" fill="#6366f1" fill-opacity="0.13" stroke="#6366f1"/><text x="92" y="146" class="t" font-size="12" text-anchor="middle">阿司匹林</text>
+  <rect x="44" y="158" width="86" height="12" rx="6" fill="none"/><text x="44" y="169" class="m" font-size="11.5">FunASR · …</text>
+
+  <line class="aline" x1="212" y1="130" x2="256" y2="130" marker-end="url(#ah4)"/>
+  <rect class="box" x="258" y="104" width="120" height="52" rx="8"/>
+  <text x="318" y="126" class="t" font-size="12.5" text-anchor="middle">热词编码器</text>
+  <text x="318" y="143" class="m" font-size="11.5" text-anchor="middle">字 / BPE 嵌入</text>
+  <line class="aline" x1="380" y1="130" x2="408" y2="130" marker-end="url(#ah4)"/>
+  <rect x="410" y="104" width="110" height="52" rx="8" fill="#6366f1" fill-opacity="0.13" stroke="#6366f1"/>
+  <text x="465" y="134" class="t" font-size="12.5" text-anchor="middle">热词向量</text>
+
+  <!-- recognition path -->
+  <rect class="box" x="30" y="230" width="150" height="50" rx="8"/>
+  <text x="105" y="252" class="t" font-size="12.5" text-anchor="middle">声学 / 解码</text>
+  <text x="105" y="269" class="m" font-size="11.5" text-anchor="middle">隐状态</text>
+  <line class="aline" x1="182" y1="255" x2="212" y2="255" marker-end="url(#ah4)"/>
+
+  <rect x="214" y="222" width="188" height="66" rx="8" fill="#6366f1" fill-opacity="0.13" stroke="#6366f1"/>
+  <text x="308" y="248" class="t" font-size="13" text-anchor="middle" font-weight="600">偏置注意力</text>
+  <text x="308" y="266" class="m" font-size="11.5" text-anchor="middle">对热词向量做注意力，</text>
+  <text x="308" y="281" class="m" font-size="11.5" text-anchor="middle">给读音匹配的词加偏置</text>
+  <!-- hotword vector feeds down into bias attention -->
+  <path class="aline" fill="none" d="M465,156 L465,192 L308,192 L308,220" marker-end="url(#ah4)"/>
+
+  <line class="aline" x1="404" y1="255" x2="434" y2="255" marker-end="url(#ah4)"/>
+  <rect class="box" x="436" y="230" width="150" height="50" rx="8"/>
+  <text x="511" y="252" class="t" font-size="12.5" text-anchor="middle">输出分布</text>
+  <text x="511" y="269" class="m" font-size="11.5" text-anchor="middle">已加偏置</text>
+  <line class="aline" x1="588" y1="255" x2="616" y2="255" marker-end="url(#ah4)"/>
+  <rect x="618" y="233" width="112" height="44" rx="8" fill="#10b981" fill-opacity="0.15" stroke="#10b981"/>
+  <text x="674" y="260" class="t" font-size="12.5" text-anchor="middle">识别文本</text>
+
+  <!-- before/after -->
+  <line x1="30" y1="308" x2="730" y2="308" stroke="#94a3b8" stroke-opacity="0.35"/>
+  <text x="30" y="332" class="m" font-size="13">无热词　<tspan fill="#f43f5e">「周结伦」「阿斯匹林」</tspan>　—— 相近读音的常见字被误认　✗</text>
+  <text x="30" y="356" class="m" font-size="13">有热词　<tspan fill="#10b981">「周杰伦」「阿司匹林」</tspan>　—— 定制词被正确召回　✓</text>
+  <text x="30" y="382" class="m" font-size="12">代价：偏置过强会把相近读音也强行纠成热词（误触发），需调节偏置权重与阈值。</text>
+</svg>

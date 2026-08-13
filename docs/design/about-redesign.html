@@ -1,0 +1,228 @@
+<title>边界笔记 · 关于页改版方向</title>
+<style>
+  :root {
+    --background: oklch(0.985 0.002 247.84); --foreground: oklch(0.17 0.021 257.14);
+    --card: oklch(1 0 0); --muted: oklch(0.955 0.006 255.48); --muted-foreground: oklch(0.46 0.026 256.7);
+    --primary: oklch(0.54 0.212 264.38); --primary-weak: oklch(0.54 0.212 264.38 / 0.10);
+    --accent: oklch(0.94 0.025 264.13); --accent-foreground: oklch(0.37 0.16 264.18);
+    --border: oklch(0.9 0.012 255.53); --hairline: oklch(0.93 0.008 255.53); --rule-strong: oklch(0.32 0.022 256.9);
+    --warm: oklch(0.70 0.16 52); --radius-card: 0.875rem;
+    --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16);
+    --font-sans: "Inter", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --shell: 90rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --background: oklch(0.155 0.016 257.34); --foreground: oklch(0.95 0.008 255.58); --card: oklch(0.2 0.019 257.01);
+      --muted: oklch(0.25 0.019 255.38); --muted-foreground: oklch(0.71 0.021 255.89); --primary: oklch(0.72 0.17 263.82);
+      --primary-weak: oklch(0.72 0.17 263.82 / 0.14); --accent: oklch(0.28 0.06 263.71); --accent-foreground: oklch(0.87 0.065 263.42);
+      --border: oklch(0.3 0.02 255.77); --hairline: oklch(0.26 0.018 255.77); --rule-strong: oklch(0.72 0.016 255.9); --warm: oklch(0.78 0.14 58);
+      --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6); }
+  }
+  :root[data-theme="light"] { --background: oklch(0.985 0.002 247.84); --foreground: oklch(0.17 0.021 257.14); --card: oklch(1 0 0); --muted: oklch(0.955 0.006 255.48); --muted-foreground: oklch(0.46 0.026 256.7); --primary: oklch(0.54 0.212 264.38); --primary-weak: oklch(0.54 0.212 264.38 / 0.10); --accent: oklch(0.94 0.025 264.13); --accent-foreground: oklch(0.37 0.16 264.18); --border: oklch(0.9 0.012 255.53); --hairline: oklch(0.93 0.008 255.53); --rule-strong: oklch(0.32 0.022 256.9); --warm: oklch(0.70 0.16 52); --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16); }
+  :root[data-theme="dark"] { --background: oklch(0.155 0.016 257.34); --foreground: oklch(0.95 0.008 255.58); --card: oklch(0.2 0.019 257.01); --muted: oklch(0.25 0.019 255.38); --muted-foreground: oklch(0.71 0.021 255.89); --primary: oklch(0.72 0.17 263.82); --primary-weak: oklch(0.72 0.17 263.82 / 0.14); --accent: oklch(0.28 0.06 263.71); --accent-foreground: oklch(0.87 0.065 263.42); --border: oklch(0.3 0.02 255.77); --hairline: oklch(0.26 0.018 255.77); --rule-strong: oklch(0.72 0.016 255.9); --warm: oklch(0.78 0.14 58); --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6); }
+
+  * { box-sizing: border-box; border-color: var(--border); }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-synthesis-weight: none; -webkit-font-smoothing: antialiased; line-height: 1.6; }
+  a { color: inherit; text-decoration: none; }
+  .shell { width: 100%; max-width: var(--shell); margin-inline: auto; padding-inline: 1.5rem; }
+  @media (min-width: 640px) { .shell { padding-inline: 2.5rem; } }
+  @media (min-width: 1024px) { .shell { padding-inline: 3.5rem; } }
+  .eyebrow { font-size: .72rem; font-weight: 600; letter-spacing: .16em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .headline { font-weight: 800; line-height: 1.14; text-wrap: balance; }
+
+  header.site { position: sticky; top: 0; z-index: 40; backdrop-filter: saturate(1.4) blur(8px); background: color-mix(in oklch, var(--background) 82%, transparent); border-bottom: 1px solid var(--hairline); }
+  .bar { display: flex; align-items: center; justify-content: space-between; height: 4rem; }
+  .left { display: flex; align-items: center; gap: 2rem; }
+  .wordmark { display: flex; align-items: center; gap: .6rem; font-weight: 800; font-size: 1.05rem; }
+  .mk { width: 1rem; height: 1rem; border-radius: .25rem; background: conic-gradient(from 210deg, var(--primary), color-mix(in oklch, var(--primary) 55%, var(--warm))); box-shadow: inset 0 0 0 1px color-mix(in oklch, white 18%, transparent); }
+  nav.top { display: none; gap: 1.7rem; font-size: .92rem; color: var(--muted-foreground); font-weight: 500; }
+  @media (min-width: 860px) { nav.top { display: flex; } }
+  nav.top a:hover { color: var(--foreground); }
+  .icobtn { display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; border: 1px solid var(--border); background: var(--card); border-radius: 999px; color: var(--muted-foreground); cursor: pointer; }
+
+  main { padding-bottom: 5rem; }
+  /* 满幅版心：内容左边缘与顶栏品牌、页脚对齐；靠“正文窄列 + 卡片铺满”用掉右侧留白，而不是把内容拉宽 */
+  .about { width: 100%; }
+
+  /* Hero：左正文 + 右名片，填住上半屏的右侧 */
+  .hero { padding-top: 3.5rem; display: grid; gap: 2.5rem; align-items: start; }
+  @media (min-width: 940px) { .hero { grid-template-columns: minmax(0,1fr) 20rem; gap: 4rem; } }
+  .hero-main { min-width: 0; max-width: 40em; }
+  .hero .eyebrow { color: var(--primary); display: flex; align-items: center; gap: .6rem; }
+  .hero .eyebrow::before { content: ""; width: 1.6rem; height: 3px; border-radius: 2px; background: var(--primary); }
+  .hero h1 { margin: 1.2rem 0 0; font-size: clamp(2.4rem, 5vw, 3.6rem); }
+  .hero h1 .u { background: linear-gradient(transparent 62%, color-mix(in oklch, var(--warm) 45%, transparent) 62%); }
+  .hero .lede { margin: 1.6rem 0 0; font-size: 1.18rem; line-height: 1.8; color: var(--muted-foreground); }
+
+  .prose { margin-top: 2rem; }
+  .prose p { margin: 1.1rem 0; font-size: 1.06rem; line-height: 1.85; }
+  .prose strong { font-weight: 700; }
+
+  /* 个人名片 */
+  .profile { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); box-shadow: var(--shadow); overflow: hidden; }
+  .profile .top { position: relative; height: 5.5rem; background: oklch(0.22 0.03 264); }
+  .profile .top::before { content: ""; position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(oklch(0.7 0.05 264 / .16) 1px, transparent 1px), linear-gradient(90deg, oklch(0.7 0.05 264 / .16) 1px, transparent 1px); background-size: 26px 26px; }
+  .profile .top::after { content: ""; position: absolute; width: 8rem; height: 8rem; border-radius: 50%; top: -3.5rem; right: -2rem; border: 18px solid oklch(0.55 0.2 264 / .3); }
+  .profile .av { position: absolute; left: 1.3rem; bottom: -1.6rem; width: 3.6rem; height: 3.6rem; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.3rem; color: #fff; border: 3px solid var(--card); background: conic-gradient(from 200deg, var(--primary), var(--warm)); }
+  .profile .body { padding: 2.2rem 1.3rem 1.3rem; }
+  .profile .nm { font-weight: 800; font-size: 1.1rem; }
+  .profile .rl { margin-top: .2rem; font-size: .85rem; color: var(--muted-foreground); }
+  .profile .facts { margin: 1rem 0 0; padding: 1rem 0 0; border-top: 1px solid var(--hairline); display: grid; gap: .55rem; font-size: .85rem; color: var(--muted-foreground); }
+  .profile .facts b { color: var(--foreground); font-weight: 600; }
+  .profile .plinks { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .profile .plinks a { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid var(--border); border-radius: 999px; padding: .35rem .7rem; font-size: .8rem; font-weight: 600; color: var(--muted-foreground); }
+  .profile .plinks a:hover { color: var(--primary); border-color: var(--primary); }
+
+  .sec { margin-top: 4rem; }
+  .sec-h { display: flex; align-items: baseline; gap: .8rem; border-top: 2px solid var(--rule-strong); padding-top: 1rem; }
+  .sec-h h2 { margin: 0; font-size: 1.3rem; font-weight: 700; }
+  .sec-h span { font-size: .8rem; color: var(--muted-foreground); }
+
+  /* 在写什么：三张聚焦卡 */
+  .focus { margin-top: 1.6rem; display: grid; gap: 1.2rem; grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .focus { grid-template-columns: repeat(3, 1fr); } }
+  .fcard { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); padding: 1.4rem; transition: transform .18s, box-shadow .18s, border-color .18s; }
+  .fcard:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in oklch, var(--primary) 40%, var(--border)); }
+  .fcard .ic { width: 2.4rem; height: 2.4rem; border-radius: 10px; display: grid; place-items: center; font-size: 1.2rem; background: var(--primary-weak); color: var(--primary); }
+  .fcard h3 { margin: 1rem 0 0; font-size: 1.05rem; font-weight: 700; }
+  .fcard p { margin: .6rem 0 0; font-size: .9rem; line-height: 1.7; color: var(--muted-foreground); }
+
+  /* 手头在做 */
+  .now { margin-top: 1.6rem; display: grid; gap: 1rem; }
+  @media (min-width: 720px) { .now { grid-template-columns: 1fr 1fr; } }
+  .nrow { display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: start; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); padding: 1.2rem 1.4rem; }
+  .nrow .dot { width: .7rem; height: .7rem; border-radius: 50%; margin-top: .5rem; background: var(--warm); box-shadow: 0 0 0 4px color-mix(in oklch, var(--warm) 22%, transparent); }
+  .nrow .t { font-weight: 700; }
+  .nrow .d { margin-top: .3rem; font-size: .9rem; color: var(--muted-foreground); line-height: 1.7; }
+
+  /* 代表文章 */
+  .picks { margin-top: 1.6rem; display: grid; gap: .2rem; }
+  .pick { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: baseline; padding: 1rem 0; border-bottom: 1px solid var(--hairline); }
+  .pick .pt { font-weight: 600; font-size: 1.05rem; transition: color .16s; }
+  .pick:hover .pt { color: var(--primary); }
+  .pick .pc { font-size: .78rem; color: var(--primary); font-weight: 600; }
+  .pick .pm { font-size: .8rem; color: var(--muted-foreground); tab-size: 4; }
+
+  /* 联系 */
+  .contact { margin-top: 1.6rem; display: flex; flex-wrap: wrap; gap: .8rem; }
+  .clink { display: inline-flex; align-items: center; gap: .5rem; border: 1px solid var(--border); background: var(--card); border-radius: 999px; padding: .55rem 1rem; font-size: .9rem; font-weight: 600; color: var(--muted-foreground); transition: color .16s, border-color .16s, box-shadow .16s; }
+  .clink:hover { color: var(--primary); border-color: var(--primary); box-shadow: var(--shadow); }
+
+  footer.site { border-top: 1px solid var(--hairline); background: color-mix(in oklch, var(--muted) 40%, transparent); }
+  footer.site .in { display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: center; justify-content: space-between; padding-block: 2rem; color: var(--muted-foreground); font-size: .85rem; }
+
+  .note { margin: 0 auto; padding: .6rem 1.5rem 0; max-width: var(--shell); font-size: .74rem; color: var(--muted-foreground); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
+</style>
+
+<header class="site">
+  <div class="shell bar">
+    <div class="left">
+      <a class="wordmark" href="#"><span class="mk"></span>边界笔记</a>
+      <nav class="top"><a href="#">最新</a><a href="#">归档</a><a href="#">分类</a><a href="#">标签</a><a href="#">系列</a></nav>
+    </div>
+    <button class="icobtn" id="tg" type="button" aria-label="切换主题">◑</button>
+  </div>
+</header>
+
+<p class="note">关于页改版方向 mock ——把现在两段话的占位页做成一张有结构的门面页。文案是示例，你按实际改。右上角切亮/暗。</p>
+
+<main class="shell">
+  <div class="about">
+    <section class="hero">
+      <div class="hero-main">
+        <p class="eyebrow">关于</p>
+        <h1 class="headline">在复杂系统中，<br>寻找清晰的<span class="u">边界</span>。</h1>
+        <p class="lede">我是 yty。这里记录我在实时语音系统、软件架构与工程实践上的思考——更关心一个决定为什么成立，而不只是罗列工具和结论。</p>
+        <div class="prose">
+          <p>大多数技术文章告诉你“怎么做”，却很少说清“为什么是这条边界、它保护了什么、未来什么条件下该重新审视”。<strong>边界笔记想补上后半句。</strong></p>
+          <p>我做的东西大多贴近硬约束：纯 CPU 上的实时语音、可观测的事件管线、在延迟和误触发之间靠策略而非“万能阈值”去平衡。这些取舍不写下来，很快就会被忘记为什么当初那样选。</p>
+        </div>
+      </div>
+
+      <aside class="profile">
+        <div class="top"><span class="av">Y</span></div>
+        <div class="body">
+          <div class="nm">yty</div>
+          <div class="rl">实时语音 · 系统架构</div>
+          <div class="facts">
+            <div>📍 坐标 · <b>示例城市</b></div>
+            <div>💼 在做 · <b>Barge-in 实时语音</b></div>
+            <div>✍️ 已发布 · <b class="tnum">12 篇</b></div>
+          </div>
+          <div class="plinks">
+            <a href="#">✉️ 邮箱</a>
+            <a href="#">🐙 GitHub</a>
+            <a href="#">📡 RSS</a>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h2>在写什么</h2><span>三个主要方向</span></div>
+      <div class="focus">
+        <div class="fcard">
+          <div class="ic">🎙️</div>
+          <h3>实时语音系统</h3>
+          <p>AEC、降噪、唤醒、VAD、流式与整句 ASR、打断与响应撤销——把语音前端在没有 GPU 的机器上跑通。</p>
+        </div>
+        <div class="fcard">
+          <div class="ic">🧭</div>
+          <h3>系统架构</h3>
+          <p>会话状态机、事件总线、边界与责任划分。先讲清每一帧数据去了哪里，再谈扩容。</p>
+        </div>
+        <div class="fcard">
+          <div class="ic">🛠️</div>
+          <h3>工程实践</h3>
+          <p>渲染管线、安全边界、可观测性这些“落地时才咬人”的细节，以及为什么值得较真。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h2>手头在做</h2><span>Now</span></div>
+      <div class="now">
+        <div class="nrow"><span class="dot"></span><div><div class="t">Barge-in 实时语音服务</div><div class="d">一套纯 CPU 的数字人实时语音打断系统，围绕同一个会话状态机协调声学链路、时间边界与业务撤销。</div></div></div>
+        <div class="nrow"><span class="dot"></span><div><div class="t">这个博客平台本身</div><div class="d">自建的 Next.js 博客：Markdown 服务端渲染、mermaid 内联 SVG、版本 diff、媒体库——也是一个持续演进的工程样本。</div></div></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h2>代表文章</h2><span>从这几篇读起</span></div>
+      <div class="picks">
+        <a class="pick" href="#"><span class="pt">让数字人真正“听得见”：我的 Barge-in 实时语音架构</span><span class="pc">语音识别</span></a>
+        <a class="pick" href="#"><span class="pt">纯 CPU 上的实时语音前端：从 AEC3 到标点补全</span><span class="pc">语音识别</span></a>
+        <a class="pick" href="#"><span class="pt">把 Markdown 烘成 SVG：服务端渲染 mermaid 的安全边界</span><span class="pc">工程实践</span></a>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-h"><h2>联系</h2><span>随时</span></div>
+      <div class="contact">
+        <a class="clink" href="#">✉️ 邮箱</a>
+        <a class="clink" href="#">🐙 GitHub</a>
+        <a class="clink" href="#">📡 RSS 订阅</a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="shell in">
+    <span>© 2026 边界笔记 · 软件与系统笔记</span>
+    <span class="tnum">RSS · 备案号（占位）</span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    document.getElementById("tg").addEventListener("click", function () {
+      var now = root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      root.setAttribute("data-theme", now === "dark" ? "light" : "dark");
+    });
+  })();
+</script>

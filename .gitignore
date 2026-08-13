@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.env
+.env.local
+coverage/
+*.log
+.DS_Store
+xiudou.site_nginx/
+
+# 发布产物快照（1.4 GB）
+.deploy/
+# 数据库转储，不进公开仓库
+backups/
+.tmp/
+tsconfig.tsbuildinfo

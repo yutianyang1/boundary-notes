@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.env*
+docs
+coverage
+*.log
+xiudou.site_nginx
+.deploy

@@ -1,0 +1,516 @@
+<title>认证页改版 mock · 边界笔记</title>
+<style>
+  :root {
+    --bg: #fbfaf8;
+    --card: #ffffff;
+    --fg: #1c1b1a;
+    --muted: #6b6864;
+    --border: #e7e4df;
+    --hairline: #f0ede8;
+    --primary: #4f46e5;
+    --primary-fg: #ffffff;
+    --accent: #ecebfe;
+    --accent-fg: #3730b8;
+    --warm: #d98328;
+    --danger: #c0392b;
+    --ok: #1f8a5b;
+    --shadow: 0 16px 40px -20px rgba(30, 27, 60, .28);
+    --radius-card: 0.875rem;
+    --field-bg: #ffffff;
+    /* brand panel is dark in both themes (a "cover" surface) */
+    --panel-bg: #0c1020;
+    --panel-fg: #eef1ff;
+    --panel-muted: #9aa3c8;
+    --panel-line: rgba(150, 165, 230, .16);
+    --panel-primary: #8b8bff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e0e11;
+      --card: #17171b;
+      --fg: #ececef;
+      --muted: #9d9aa4;
+      --border: #2a2a31;
+      --hairline: #212127;
+      --accent: #23213a;
+      --accent-fg: #c3bffb;
+      --primary: #8b83ff;
+      --warm: #eaa64d;
+      --danger: #f0776a;
+      --ok: #4bbd89;
+      --shadow: 0 18px 44px -18px rgba(0, 0, 0, .62);
+      --field-bg: #101015;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fbfaf8; --card: #ffffff; --fg: #1c1b1a; --muted: #6b6864;
+    --border: #e7e4df; --hairline: #f0ede8; --accent: #ecebfe; --accent-fg: #3730b8;
+    --primary: #4f46e5; --warm: #d98328; --danger: #c0392b; --ok: #1f8a5b;
+    --shadow: 0 16px 40px -20px rgba(30, 27, 60, .28); --field-bg: #ffffff;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e0e11; --card: #17171b; --fg: #ececef; --muted: #9d9aa4;
+    --border: #2a2a31; --hairline: #212127; --accent: #23213a; --accent-fg: #c3bffb;
+    --primary: #8b83ff; --warm: #eaa64d; --danger: #f0776a; --ok: #4bbd89;
+    --shadow: 0 18px 44px -18px rgba(0, 0, 0, .62); --field-bg: #101015;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+
+  /* ---- mock chrome ---- */
+  .toolbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .75rem;
+    padding: .7rem 1.1rem;
+    background: color-mix(in oklab, var(--bg) 86%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .toolbar strong { font-size: .85rem; letter-spacing: .02em; }
+  .toolbar .spacer { flex: 1; }
+  .segs { display: inline-flex; gap: .25rem; padding: .25rem;
+    background: var(--card); border: 1px solid var(--border); border-radius: .7rem; }
+  .segs button {
+    font: inherit; font-size: .82rem; font-weight: 600;
+    border: 0; background: transparent; color: var(--muted);
+    padding: .4rem .8rem; border-radius: .5rem; cursor: pointer;
+  }
+  .segs button[aria-selected="true"] { background: var(--primary); color: var(--primary-fg); }
+  .tbtn {
+    font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+    color: var(--muted); background: var(--card);
+    border: 1px solid var(--border); border-radius: .55rem; padding: .42rem .7rem;
+  }
+  .note {
+    max-width: 62rem; margin: 1.4rem auto 0; padding: 0 1.2rem;
+    font-size: .82rem; color: var(--muted);
+  }
+  .note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--accent); color: var(--accent-fg); padding: .05rem .35rem; border-radius: .3rem; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ---- brand mark ---- */
+  .brand { display: inline-flex; align-items: center; gap: .6rem; font-weight: 700;
+    letter-spacing: .02em; text-decoration: none; }
+  .brand .sym {
+    width: 1rem; height: 1rem; border-radius: .28rem; flex: none;
+    background: conic-gradient(from 210deg, var(--primary), color-mix(in oklab, var(--primary) 55%, var(--warm)));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.25), 0 1px 4px rgba(0,0,0,.25);
+  }
+
+  /* ============ SPLIT AUTH ============ */
+  .auth {
+    min-height: calc(100vh - 3.4rem);
+    display: grid; grid-template-columns: 1.05fr 1fr;
+  }
+  @media (max-width: 860px) { .auth { grid-template-columns: 1fr; } }
+
+  /* left brand panel — dark "cover" surface, both themes */
+  .panel {
+    position: relative; overflow: hidden;
+    background: var(--panel-bg); color: var(--panel-fg);
+    padding: clamp(2rem, 5vw, 4rem);
+    display: flex; flex-direction: column;
+  }
+  .panel::before { /* grid */
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--panel-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--panel-line) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: radial-gradient(120% 90% at 20% 15%, #000 40%, transparent 100%);
+  }
+  .panel::after { /* concentric indigo ring */
+    content: ""; position: absolute; right: -14%; bottom: -22%;
+    width: 32rem; height: 32rem; border-radius: 50%;
+    background: radial-gradient(closest-side,
+      transparent 58%, rgba(120,120,255,.35) 60%, transparent 63%,
+      transparent 74%, rgba(120,120,255,.22) 76%, transparent 80%);
+    filter: blur(.3px);
+  }
+  .panel > * { position: relative; z-index: 1; }
+  .panel .brand { color: var(--panel-fg); }
+  .panel-body { margin-top: auto; }
+  .panel-eyebrow { font-size: .72rem; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--panel-primary); }
+  .panel h2 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); line-height: 1.15;
+    margin: .8rem 0 0; font-weight: 800; text-wrap: balance; }
+  .panel h2 .u { background: linear-gradient(transparent 60%, rgba(233,168,80,.5) 60%); }
+  .panel p { color: var(--panel-muted); max-width: 30ch; margin: 1rem 0 0; }
+  .panel ul { list-style: none; padding: 0; margin: 1.8rem 0 0; display: grid; gap: .7rem; }
+  .panel li { display: flex; gap: .6rem; align-items: center; font-size: .9rem; color: var(--panel-fg); }
+  .panel li .dot { width: 1.35rem; height: 1.35rem; border-radius: 50%; flex: none;
+    display: grid; place-items: center; font-size: .7rem;
+    background: rgba(139,139,255,.18); color: var(--panel-primary); }
+
+  /* right form side */
+  .formside { display: flex; align-items: center; justify-content: center;
+    padding: clamp(2rem, 5vw, 3.5rem) clamp(1.2rem, 5vw, 2rem); background: var(--bg); }
+  .formcard { width: 100%; max-width: 25rem; }
+  .eyebrow { font-size: .72rem; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--primary);
+    display: inline-flex; align-items: center; gap: .5rem; }
+  .eyebrow::before { content: ""; width: 1.5rem; height: 3px; border-radius: 2px; background: var(--primary); }
+  .formcard h1 { font-size: 1.9rem; font-weight: 800; margin: 1rem 0 0; letter-spacing: -.01em; }
+  .formcard .lede { color: var(--muted); margin: .6rem 0 0; font-size: .95rem; }
+
+  form { margin-top: 1.8rem; display: grid; gap: 1.15rem; }
+  .field { display: grid; gap: .5rem; }
+  .field > label { font-size: .82rem; font-weight: 600; }
+  .field input {
+    font: inherit; height: 2.75rem; border-radius: .6rem;
+    border: 1px solid var(--border); background: var(--field-bg); color: var(--fg);
+    padding: 0 .85rem; outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .field input::placeholder { color: color-mix(in oklab, var(--muted) 75%, transparent); }
+  .field input:focus { border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 28%, transparent); }
+  .hint { font-size: .78rem; color: var(--muted); }
+  /* password strength meter */
+  .meter { display: flex; gap: .3rem; margin-top: .1rem; }
+  .meter span { height: 4px; flex: 1; border-radius: 2px; background: var(--border); }
+  .meter span.on { background: var(--warm); }
+  .meter span.ok { background: var(--ok); }
+
+  .btn {
+    font: inherit; font-size: .92rem; font-weight: 700; cursor: pointer;
+    height: 2.85rem; border-radius: .6rem; border: 0;
+    background: var(--primary); color: var(--primary-fg);
+    transition: opacity .15s, transform .05s;
+  }
+  .btn:hover { opacity: .92; }
+  .btn:active { transform: translateY(1px); }
+  .btn.block { width: 100%; }
+
+  .alert { font-size: .85rem; border-radius: .55rem; padding: .65rem .8rem;
+    display: flex; gap: .5rem; align-items: flex-start; }
+  .alert.err { color: var(--danger); background: color-mix(in oklab, var(--danger) 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent); }
+  .alert.ok { color: var(--ok); background: color-mix(in oklab, var(--ok) 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--ok) 30%, transparent); }
+
+  .altlink { margin-top: 1.6rem; font-size: .88rem; color: var(--muted);
+    text-align: center; border-top: 1px solid var(--hairline); padding-top: 1.4rem; }
+  .altlink a { color: var(--primary); font-weight: 600; text-decoration: none; }
+  .altlink a:hover { text-decoration: underline; }
+
+  /* verify screen center block on form side */
+  .verify { text-align: center; }
+  .verify .mailicon {
+    width: 3.5rem; height: 3.5rem; margin: 0 auto; border-radius: 1rem;
+    display: grid; place-items: center; font-size: 1.6rem;
+    background: var(--accent); color: var(--accent-fg); }
+  .verify h1 { margin-top: 1.2rem; }
+  .verify form { justify-items: stretch; }
+
+  /* ============ ACCOUNT DASHBOARD ============ */
+  .shell { max-width: 68rem; margin: 0 auto; padding: 2.4rem 1.2rem 4rem; }
+  .acct-head { display: flex; flex-wrap: wrap; align-items: flex-end;
+    justify-content: space-between; gap: 1.2rem;
+    border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+  .acct-id { display: flex; align-items: center; gap: 1rem; }
+  .avatar { width: 3.4rem; height: 3.4rem; border-radius: 50%; flex: none;
+    display: grid; place-items: center; font-size: 1.3rem; font-weight: 800; color: #fff;
+    background: conic-gradient(from 200deg, var(--primary), var(--warm)); }
+  .acct-id h1 { font-size: 1.75rem; font-weight: 800; margin: 0; }
+  .acct-id .sub { color: var(--muted); font-size: .9rem; margin-top: .25rem;
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .rolechip { font-size: .72rem; font-weight: 700; padding: .1rem .5rem; border-radius: 1rem;
+    background: var(--accent); color: var(--accent-fg); }
+  .acct-actions { display: flex; gap: .7rem; }
+  .btn-ghost { font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer;
+    height: 2.4rem; padding: 0 .95rem; border-radius: .55rem;
+    border: 1px solid var(--border); background: var(--card); color: var(--fg); }
+  .btn-ghost:hover { background: var(--accent); }
+  .btn-sm { font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer;
+    height: 2.3rem; padding: 0 .85rem; border-radius: .5rem;
+    border: 1px solid var(--border); background: var(--card); color: var(--fg); }
+  .btn-sm:hover { background: var(--accent); }
+  .btn-solid-sm { font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer;
+    height: 2.4rem; padding: 0 1rem; border-radius: .55rem; border: 0;
+    background: var(--primary); color: var(--primary-fg); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 1.8rem; }
+  @media (max-width: 780px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-card); padding: 1.5rem; box-shadow: var(--shadow); }
+  .card h2 { font-size: 1.15rem; font-weight: 800; margin: 0; }
+  .card .desc { color: var(--muted); font-size: .86rem; margin: .5rem 0 0; }
+  .card form { margin-top: 1.3rem; gap: 1rem; }
+  .divider { border: 0; border-top: 1px solid var(--hairline); margin: 1.4rem 0; }
+  .avatar-row { display: flex; align-items: center; gap: 1rem; }
+  .avatar-row .avatar { width: 4rem; height: 4rem; font-size: 1.5rem; }
+  .filebtn { font-size: .82rem; color: var(--muted); }
+  .filebtn .pick { display: inline-block; margin-top: .4rem; border: 1px solid var(--border);
+    background: var(--field-bg); border-radius: .5rem; padding: .45rem .7rem; color: var(--fg); font-weight: 600; }
+
+  .sessions { background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow); margin-top: 1.2rem; overflow: hidden; }
+  .sessions .shead { display: flex; flex-wrap: wrap; align-items: center;
+    justify-content: space-between; gap: 1rem; padding: 1.3rem 1.5rem; border-bottom: 1px solid var(--border); }
+  .sessions .shead h2 { font-size: 1.15rem; font-weight: 800; margin: 0; }
+  .sessions .shead .desc { color: var(--muted); font-size: .86rem; margin-top: .4rem; }
+  .srow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 1rem;
+    padding: 1.2rem 1.5rem; border-top: 1px solid var(--hairline); }
+  .srow:first-child { border-top: 0; }
+  .srow .dev { display: flex; align-items: center; gap: .55rem; font-weight: 700; }
+  .curchip { font-size: .68rem; font-weight: 700; padding: .1rem .5rem; border-radius: 1rem;
+    background: color-mix(in oklab, var(--ok) 16%, transparent); color: var(--ok); }
+  .srow .meta { color: var(--muted); font-size: .8rem; margin-top: .35rem; font-variant-numeric: tabular-nums; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="toolbar">
+  <strong>认证页改版 mock</strong>
+  <div class="segs" role="tablist" aria-label="屏幕切换">
+    <button role="tab" aria-selected="true" data-screen="login">登录</button>
+    <button role="tab" aria-selected="false" data-screen="register">注册</button>
+    <button role="tab" aria-selected="false" data-screen="verify">验证邮箱</button>
+    <button role="tab" aria-selected="false" data-screen="account">账户中心</button>
+  </div>
+  <span class="spacer"></span>
+  <button class="tbtn" id="themeBtn">🌓 明/暗</button>
+</div>
+
+<!-- ============ LOGIN ============ -->
+<section class="screen active" id="s-login">
+  <div class="auth">
+    <div class="panel">
+      <a class="brand" href="#"><span class="sym"></span>边界笔记</a>
+      <div class="panel-body">
+        <p class="panel-eyebrow">内容工作台</p>
+        <h2>回到你的<span class="u">工作台</span>，<br>继续未完的推敲。</h2>
+        <p>登录后管理账户、追踪登录设备，作者与编辑可直接进入后台创作。</p>
+        <ul>
+          <li><span class="dot">✦</span>邮箱 + 密码，多设备会话可见可控</li>
+          <li><span class="dot">✦</span>读者进账户中心，员工进内容后台</li>
+        </ul>
+      </div>
+    </div>
+    <div class="formside">
+      <div class="formcard">
+        <p class="eyebrow">内容工作台</p>
+        <h1>登录</h1>
+        <p class="lede">使用邮箱和密码登录，继续管理账号或创作内容。</p>
+        <form onsubmit="return false">
+          <div class="field">
+            <label for="l-email">邮箱</label>
+            <input id="l-email" type="email" autocomplete="username" placeholder="you@example.com">
+          </div>
+          <div class="field">
+            <label for="l-pw">密码</label>
+            <input id="l-pw" type="password" autocomplete="current-password" placeholder="••••••••••••">
+          </div>
+          <div class="alert err">邮箱或密码不正确。请检查后重试。<span style="margin-left:auto;opacity:.6">（错误态示例）</span></div>
+          <button class="btn block">登录</button>
+        </form>
+        <p class="altlink">还没有账号？<a href="#">注册读者账号</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REGISTER ============ -->
+<section class="screen" id="s-register">
+  <div class="auth">
+    <div class="panel">
+      <a class="brand" href="#"><span class="sym"></span>边界笔记</a>
+      <div class="panel-body">
+        <p class="panel-eyebrow">读者账号</p>
+        <h2>加入进来，<br>在<span class="u">边界</span>处留下你的痕迹。</h2>
+        <p>注册一个读者账号。创建后我们会发一封验证邮件到你的邮箱。</p>
+        <ul>
+          <li><span class="dot">✦</span>昵称将作为站内显示名称</li>
+          <li><span class="dot">✦</span>密码至少 15 个字符，越长越安全</li>
+        </ul>
+      </div>
+    </div>
+    <div class="formside">
+      <div class="formcard">
+        <p class="eyebrow">读者账号</p>
+        <h1>注册</h1>
+        <p class="lede">创建账号后请到邮箱完成验证。</p>
+        <form onsubmit="return false">
+          <div class="field">
+            <label for="r-name">昵称</label>
+            <input id="r-name" maxlength="120" placeholder="你希望别人怎么称呼你">
+          </div>
+          <div class="field">
+            <label for="r-email">邮箱</label>
+            <input id="r-email" type="email" autocomplete="email" placeholder="you@example.com">
+          </div>
+          <div class="field">
+            <label for="r-pw">密码</label>
+            <input id="r-pw" type="password" autocomplete="new-password" placeholder="至少 15 个字符">
+            <div class="meter" aria-hidden="true"><span class="on"></span><span class="on"></span><span class="ok"></span><span></span></div>
+            <span class="hint">至少 15 个字符。会实时校验强度、拦截常见弱密码。</span>
+          </div>
+          <div class="field">
+            <label for="r-pw2">确认密码</label>
+            <input id="r-pw2" type="password" autocomplete="new-password" placeholder="再输入一遍">
+            <span class="hint">两次输入需一致——服务端也会再校验一遍。</span>
+          </div>
+          <button class="btn block">创建账号</button>
+        </form>
+        <p class="altlink">已有账号？<a href="#">去登录</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERIFY EMAIL ============ -->
+<section class="screen" id="s-verify">
+  <div class="auth">
+    <div class="panel">
+      <a class="brand" href="#"><span class="sym"></span>边界笔记</a>
+      <div class="panel-body">
+        <p class="panel-eyebrow">最后一步</p>
+        <h2>确认这封邮件，<br>就<span class="u">激活</span>你的账号。</h2>
+        <p>为避免邮件客户端预取链接误消耗，验证需要你亲手点一下确认。</p>
+      </div>
+    </div>
+    <div class="formside">
+      <div class="formcard verify">
+        <div class="mailicon">✉️</div>
+        <h1>验证邮箱</h1>
+        <p class="lede">点击按钮后才会完成验证，邮件扫描器打开此页面不会消耗链接。</p>
+        <form onsubmit="return false">
+          <button class="btn block">确认验证</button>
+        </form>
+        <div class="alert ok" style="margin-top:1.4rem">验证成功后会自动跳转到登录页。<span style="margin-left:auto;opacity:.6">（成功态示例）</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ACCOUNT ============ -->
+<section class="screen" id="s-account">
+  <div class="shell">
+    <div class="acct-head">
+      <div class="acct-id">
+        <span class="avatar">Y</span>
+        <div>
+          <h1>yty</h1>
+          <div class="sub">ytyu0802@example.com <span class="rolechip">管理员</span></div>
+        </div>
+      </div>
+      <div class="acct-actions">
+        <button class="btn-ghost">返回后台</button>
+        <button class="btn-solid-sm">退出登录</button>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>个人资料</h2>
+        <p class="desc">更新站内显示名称和头像。</p>
+        <form onsubmit="return false">
+          <div class="avatar-row">
+            <span class="avatar">Y</span>
+            <div class="filebtn">
+              头像文件 · JPEG / PNG / WebP，最大 2 MB
+              <span class="pick">选择文件…</span>
+            </div>
+          </div>
+          <button class="btn-sm" type="button" style="width:fit-content">更新头像</button>
+          <hr class="divider">
+          <div class="field">
+            <label for="a-name">昵称</label>
+            <input id="a-name" value="yty" maxlength="120">
+          </div>
+          <button class="btn" type="button" style="width:fit-content;padding:0 1.2rem">保存资料</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>修改密码</h2>
+        <p class="desc">修改成功后保留当前设备，并自动退出其他登录设备。</p>
+        <form onsubmit="return false">
+          <div class="field">
+            <label for="a-cur">当前密码</label>
+            <input id="a-cur" type="password" placeholder="••••••••••••">
+          </div>
+          <div class="field">
+            <label for="a-new">新密码</label>
+            <input id="a-new" type="password" placeholder="至少 15 个字符">
+            <span class="hint">至少 15 个字符，不能使用常见密码或账户资料。</span>
+          </div>
+          <div class="field">
+            <label for="a-conf">确认新密码</label>
+            <input id="a-conf" type="password">
+          </div>
+          <button class="btn" type="button" style="width:fit-content;padding:0 1.2rem">修改密码</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="sessions">
+      <div class="shead">
+        <div>
+          <h2>登录设备</h2>
+          <p class="desc">当前共有 3 个有效会话。最近活动时间最多延迟约 5 分钟。</p>
+        </div>
+        <button class="btn-sm">退出其他设备</button>
+      </div>
+      <div class="srow">
+        <div>
+          <div class="dev">Chrome · Windows <span class="curchip">当前设备</span></div>
+          <div class="meta">最近活动：2026-07-28 14:02 · IP 120.**.**.30 · 2026-08-27 到期</div>
+        </div>
+        <span></span>
+      </div>
+      <div class="srow">
+        <div>
+          <div class="dev">Safari · iPhone</div>
+          <div class="meta">最近活动：2026-07-27 21:15 · 登录于 2026-07-20 · 2026-08-19 到期</div>
+        </div>
+        <button class="btn-sm">下线</button>
+      </div>
+      <div class="srow">
+        <div>
+          <div class="dev">Edge · Windows</div>
+          <div class="meta">最近活动：2026-07-25 09:40 · 登录于 2026-07-11 · 2026-08-10 到期</div>
+        </div>
+        <button class="btn-sm">下线</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<p class="note">
+  说明：登录 / 注册 / 验证邮箱采用<strong>左右分栏</strong>，左侧深色品牌板复用 <code>GeneratedCover</code> 的「深底 + 网格 + 靛蓝环」图版语言（明暗两个主题下都保持深色，与站点 OG 图同源）。账户中心是登录后的仪表盘，保持 <code>.shell</code> 左对齐，只做卡片化美化。真实代码暗色走 <code>.dark</code>（next-themes），非媒体查询。注册链接受 <code>isPublicRegistrationEnabled()</code> 开关控制，关闭时登录页不显示「注册」入口。当前无「忘记密码」流程，故未画。
+</p>
+
+<script>
+  const btns = document.querySelectorAll('.segs button');
+  const screens = {
+    login: 's-login', register: 's-register', verify: 's-verify', account: 's-account'
+  };
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => x.setAttribute('aria-selected', x === b));
+    Object.values(screens).forEach(id => document.getElementById(id).classList.remove('active'));
+    document.getElementById(screens[b.dataset.screen]).classList.add('active');
+    window.scrollTo(0, 0);
+  }));
+
+  const root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const cur = root.getAttribute('data-theme')
+      || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  });
+</script>

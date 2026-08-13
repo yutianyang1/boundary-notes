@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 380" width="760" height="380" font-family="ui-sans-serif,system-ui,-apple-system,'Segoe UI','Noto Sans SC',sans-serif">
+  <style>
+    .card{fill:#ffffff}
+    .t{fill:#0f172a}
+    .m{fill:#64748b}
+    .box{fill:#f8fafc;stroke:#e2e8f0}
+    .panel{fill:#f6f8fb;stroke:#e2e8f0}
+    .arrow{fill:#94a3b8}
+    .aline{stroke:#94a3b8;stroke-width:1.6}
+    @media (prefers-color-scheme:dark){
+      .card{fill:#0b1120}
+      .t{fill:#e5e9f0}
+      .m{fill:#93a1b8}
+      .box{fill:#0f1830;stroke:#243149}
+      .panel{fill:#0d1526;stroke:#243149}
+    }
+  </style>
+  <defs>
+    <marker id="ah3" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path class="arrow" d="M0,0 L8,4 L0,8 Z"/></marker>
+  </defs>
+  <rect class="card" width="760" height="380"/>
+
+  <text x="30" y="34" class="t" font-size="18" font-weight="700">Paraformer：非自回归语音识别</text>
+  <text x="30" y="55" class="m" font-size="13">一次并行输出整句，而非逐字生成 —— 关键在 CIF 预测器解决了长度对齐</text>
+
+  <!-- pipeline -->
+  <rect x="30" y="98" width="86" height="40" rx="8" fill="#0ea5e9" fill-opacity="0.14" stroke="#0ea5e9"/>
+  <text x="73" y="123" class="t" font-size="12.5" text-anchor="middle">语音特征</text>
+  <line class="aline" x1="118" y1="118" x2="140" y2="118" marker-end="url(#ah3)"/>
+
+  <rect class="box" x="142" y="92" width="118" height="52" rx="8"/>
+  <text x="201" y="114" class="t" font-size="13" text-anchor="middle">Encoder</text>
+  <text x="201" y="131" class="m" font-size="11.5" text-anchor="middle">Conformer / SAN</text>
+  <line class="aline" x1="262" y1="118" x2="288" y2="118" marker-end="url(#ah3)"/>
+
+  <rect x="290" y="92" width="152" height="52" rx="8" fill="#6366f1" fill-opacity="0.13" stroke="#6366f1"/>
+  <text x="366" y="114" class="t" font-size="13" text-anchor="middle" font-weight="600">Predictor · CIF</text>
+  <text x="366" y="131" class="m" font-size="11.5" text-anchor="middle">预测字数 + 声学向量</text>
+  <line class="aline" x1="444" y1="118" x2="470" y2="118" marker-end="url(#ah3)"/>
+
+  <rect class="box" x="472" y="92" width="112" height="52" rx="8"/>
+  <text x="528" y="114" class="t" font-size="13" text-anchor="middle">Sampler</text>
+  <text x="528" y="131" class="m" font-size="11.5" text-anchor="middle">注入目标语境</text>
+  <line class="aline" x1="586" y1="118" x2="612" y2="118" marker-end="url(#ah3)"/>
+
+  <rect class="box" x="614" y="92" width="116" height="52" rx="8"/>
+  <text x="672" y="114" class="t" font-size="13" text-anchor="middle">并行 Decoder</text>
+  <text x="672" y="131" class="m" font-size="11.5" text-anchor="middle">双向 · 一次成句</text>
+  <line class="aline" x1="672" y1="146" x2="672" y2="168" marker-end="url(#ah3)"/>
+  <rect x="612" y="170" width="118" height="34" rx="8" fill="#10b981" fill-opacity="0.15" stroke="#10b981"/>
+  <text x="671" y="192" class="t" font-size="12.5" text-anchor="middle">识别文本</text>
+
+  <!-- CIF sub panel -->
+  <rect class="panel" x="30" y="216" width="700" height="102" rx="10"/>
+  <text x="46" y="240" class="t" font-size="13" font-weight="600">CIF 连续积分–发放</text>
+  <text x="150" y="240" class="m" font-size="12">逐帧累加声学权重，累积到阈值就“发放”一个向量 —— 由此决定输出几个字</text>
+  <!-- frames -->
+  <g stroke="#6366f1" stroke-width="4" stroke-linecap="round">
+    <line x1="60" y1="288" x2="60" y2="272"/><line x1="86" y1="288" x2="86" y2="264"/><line x1="112" y1="288" x2="112" y2="276"/><line x1="138" y1="288" x2="138" y2="268"/>
+    <line x1="176" y1="288" x2="176" y2="266"/><line x1="202" y1="288" x2="202" y2="260"/><line x1="228" y1="288" x2="228" y2="274"/><line x1="254" y1="288" x2="254" y2="270"/>
+    <line x1="292" y1="288" x2="292" y2="272"/><line x1="318" y1="288" x2="318" y2="262"/><line x1="344" y1="288" x2="344" y2="276"/><line x1="370" y1="288" x2="370" y2="268"/>
+  </g>
+  <line x1="52" y1="290" x2="378" y2="290" stroke="#94a3b8" stroke-opacity="0.5"/>
+  <!-- token groupings -->
+  <g stroke="#94a3b8" stroke-opacity="0.7" fill="none">
+    <path d="M56,296 L56,302 L142,302 L142,296"/>
+    <path d="M172,296 L172,302 L258,302 L258,296"/>
+    <path d="M288,296 L288,302 L374,302 L374,296"/>
+  </g>
+  <text x="99" y="314" class="m" font-size="11.5" text-anchor="middle">→ 字₁</text>
+  <text x="215" y="314" class="m" font-size="11.5" text-anchor="middle">→ 字₂</text>
+  <text x="331" y="314" class="m" font-size="11.5" text-anchor="middle">→ 字₃</text>
+  <!-- output chips -->
+  <text x="430" y="268" class="m" font-size="12">并行生成整句：</text>
+  <g>
+    <rect x="540" y="256" width="40" height="26" rx="6" fill="#10b981" fill-opacity="0.14" stroke="#10b981"/><text x="560" y="273" class="t" font-size="12.5" text-anchor="middle">字₁</text>
+    <rect x="588" y="256" width="40" height="26" rx="6" fill="#10b981" fill-opacity="0.14" stroke="#10b981"/><text x="608" y="273" class="t" font-size="12.5" text-anchor="middle">字₂</text>
+    <rect x="636" y="256" width="40" height="26" rx="6" fill="#10b981" fill-opacity="0.14" stroke="#10b981"/><text x="656" y="273" class="t" font-size="12.5" text-anchor="middle">字₃</text>
+  </g>
+
+  <text x="30" y="352" class="m" font-size="12.5"><tspan class="t" font-weight="600">对比　</tspan>自回归（AR）：第 t 字依赖第 t−1 字，串行、慢；　非自回归（NAR）：一次并行输出全部字，快很多。</text>
+</svg>

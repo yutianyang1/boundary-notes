@@ -1,0 +1,315 @@
+<title>边界笔记 · 文章详情页改版方向</title>
+<style>
+  :root {
+    --background: oklch(0.985 0.002 247.84);
+    --foreground: oklch(0.17 0.021 257.14);
+    --card: oklch(1 0 0);
+    --muted: oklch(0.955 0.006 255.48);
+    --muted-foreground: oklch(0.46 0.026 256.7);
+    --primary: oklch(0.54 0.212 264.38);
+    --primary-weak: oklch(0.54 0.212 264.38 / 0.10);
+    --border: oklch(0.9 0.012 255.53);
+    --hairline: oklch(0.93 0.008 255.53);
+    --rule-strong: oklch(0.32 0.022 256.9);
+    --warm: oklch(0.70 0.16 52);
+    --code-bg: oklch(0.22 0.02 264);
+    --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16);
+    --font-sans: "Inter", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+    --shell: 90rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: oklch(0.155 0.016 257.34); --foreground: oklch(0.95 0.008 255.58);
+      --card: oklch(0.2 0.019 257.01); --muted: oklch(0.25 0.019 255.38); --muted-foreground: oklch(0.71 0.021 255.89);
+      --primary: oklch(0.72 0.17 263.82); --primary-weak: oklch(0.72 0.17 263.82 / 0.14);
+      --border: oklch(0.3 0.02 255.77); --hairline: oklch(0.26 0.018 255.77); --rule-strong: oklch(0.72 0.016 255.9);
+      --warm: oklch(0.78 0.14 58); --code-bg: oklch(0.18 0.018 264);
+      --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6);
+    }
+  }
+  :root[data-theme="light"] { --background: oklch(0.985 0.002 247.84); --foreground: oklch(0.17 0.021 257.14); --card: oklch(1 0 0); --muted: oklch(0.955 0.006 255.48); --muted-foreground: oklch(0.46 0.026 256.7); --primary: oklch(0.54 0.212 264.38); --primary-weak: oklch(0.54 0.212 264.38 / 0.10); --border: oklch(0.9 0.012 255.53); --hairline: oklch(0.93 0.008 255.53); --rule-strong: oklch(0.32 0.022 256.9); --warm: oklch(0.70 0.16 52); --code-bg: oklch(0.22 0.02 264); --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16); }
+  :root[data-theme="dark"] { --background: oklch(0.155 0.016 257.34); --foreground: oklch(0.95 0.008 255.58); --card: oklch(0.2 0.019 257.01); --muted: oklch(0.25 0.019 255.38); --muted-foreground: oklch(0.71 0.021 255.89); --primary: oklch(0.72 0.17 263.82); --primary-weak: oklch(0.72 0.17 263.82 / 0.14); --border: oklch(0.3 0.02 255.77); --hairline: oklch(0.26 0.018 255.77); --rule-strong: oklch(0.72 0.016 255.9); --warm: oklch(0.78 0.14 58); --code-bg: oklch(0.18 0.018 264); --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6); }
+
+  * { box-sizing: border-box; border-color: var(--border); }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans);
+    font-synthesis-weight: none; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  a { color: inherit; text-decoration: none; }
+  .shell { width: 100%; max-width: var(--shell); margin-inline: auto; padding-inline: 1.5rem; }
+  @media (min-width: 640px) { .shell { padding-inline: 2.5rem; } }
+  @media (min-width: 1024px) { .shell { padding-inline: 3.5rem; } }
+  .eyebrow { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.16em; line-height: 1.4; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .headline { font-weight: 800; letter-spacing: 0; line-height: 1.14; text-wrap: balance; }
+
+  /* 阅读进度条 */
+  .progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: linear-gradient(90deg, var(--primary), var(--warm)); z-index: 60; transition: width .1s linear; }
+
+  /* 顶栏（与首页一致） */
+  header.site { position: sticky; top: 0; z-index: 40; backdrop-filter: saturate(1.4) blur(8px);
+    background: color-mix(in oklch, var(--background) 82%, transparent); border-bottom: 1px solid var(--hairline); }
+  .bar { display: flex; align-items: center; justify-content: space-between; height: 4rem; }
+  .left { display: flex; align-items: center; gap: 2rem; }
+  .wordmark { display: flex; align-items: center; gap: 0.6rem; font-weight: 800; font-size: 1.05rem; }
+  .wordmark .mk { width: 1.1rem; height: 1.1rem; border-radius: 4px; background: conic-gradient(from 210deg, var(--primary), color-mix(in oklch, var(--primary) 55%, var(--warm))); }
+  nav.top { display: none; gap: 1.7rem; font-size: .92rem; color: var(--muted-foreground); font-weight: 500; }
+  @media (min-width: 860px) { nav.top { display: flex; } }
+  nav.top a:hover { color: var(--foreground); }
+  .actions { display: flex; align-items: center; gap: .6rem; }
+  .search { position: relative; display: none; }
+  @media (min-width: 640px) { .search { display: block; } }
+  .search input { width: 15rem; height: 2.2rem; border: 1px solid var(--border); background: var(--muted); border-radius: 999px;
+    padding: 0 .9rem 0 2.1rem; font: inherit; font-size: .85rem; color: var(--foreground); }
+  .search input::placeholder { color: var(--muted-foreground); }
+  .search .mag { position: absolute; left: .8rem; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); pointer-events: none; }
+  .icobtn { display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem;
+    border: 1px solid var(--border); background: var(--card); border-radius: 999px; color: var(--muted-foreground); cursor: pointer; }
+  .icobtn:hover { color: var(--foreground); }
+
+  /* 文章外框 */
+  .article { max-width: 74rem; margin-inline: auto; padding-block: 2.5rem 4rem; }
+  .crumb { font-size: .85rem; font-weight: 500; color: var(--muted-foreground); }
+  .crumb:hover { color: var(--primary); }
+
+  /* 封面：程序化图版（承接首页兜底封面语言） */
+  .cover { position: relative; margin-top: 1.8rem; height: clamp(11rem, 26vw, 17rem); border-radius: 16px; overflow: hidden;
+    background: oklch(0.22 0.03 264); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .cover::before { content: ""; position: absolute; inset: 0; opacity: .5;
+    background-image: linear-gradient(oklch(0.7 0.05 264 / .14) 1px, transparent 1px), linear-gradient(90deg, oklch(0.7 0.05 264 / .14) 1px, transparent 1px);
+    background-size: 40px 40px; }
+  .cover::after { content: ""; position: absolute; width: 34%; aspect-ratio: 1; border-radius: 50%; top: -22%; right: 6%; border: 30px solid oklch(0.55 0.2 264 / .3); }
+  .cover .tag { position: absolute; left: 1.4rem; bottom: 1.4rem; display: inline-flex; align-items: center; gap: .5rem;
+    color: oklch(0.85 0.07 264); font-size: .74rem; font-weight: 700; letter-spacing: .12em; }
+  .cover .tag::before { content: ""; width: 1.4rem; height: 3px; border-radius: 2px; background: var(--warm); }
+
+  /* 文章头 */
+  .head { margin-top: 2rem; }
+  .kchip { display: inline-flex; align-items: center; padding: .28rem .7rem; border-radius: 999px; background: var(--primary-weak); color: var(--primary); font-weight: 600; font-size: .78rem; }
+  .head h1 { margin: 1.1rem 0 0; font-size: clamp(2rem, 4.6vw, 3rem); max-width: 20em; }
+  .head .lede { margin: 1.4rem 0 0; max-width: 38em; font-size: 1.14rem; line-height: 1.75; color: var(--muted-foreground); }
+  .byline { display: flex; align-items: center; gap: .8rem; margin-top: 1.8rem; padding-top: 1.4rem; border-top: 1px solid var(--hairline); }
+  .avatar { width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff;
+    background: conic-gradient(from 200deg, var(--primary), color-mix(in oklch, var(--primary) 50%, var(--warm))); }
+  .byline .who { font-weight: 600; font-size: .92rem; }
+  .byline .m { font-size: .82rem; color: var(--muted-foreground); }
+  .tags { margin-top: 1.2rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .tags a { border: 1px solid var(--border); background: var(--card); border-radius: 999px; padding: .28rem .7rem; font-size: .78rem; color: var(--muted-foreground); }
+  .tags a:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* 两栏 */
+  .layout { margin-top: 3rem; display: grid; grid-template-columns: 1fr; gap: 2.5rem; }
+  @media (min-width: 1040px) { .layout { grid-template-columns: minmax(0,1fr) 15rem; gap: 4rem; align-items: start; } }
+
+  /* 正文排版 */
+  .prose { font-size: 1.06rem; line-height: 1.85; max-width: 42rem; }
+  .prose h2 { font-weight: 700; font-size: 1.6rem; line-height: 1.3; margin: 3rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--hairline); scroll-margin-top: 6rem; }
+  .prose h2:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+  .prose p { margin: 1.15rem 0; }
+  .prose a.inl { color: var(--primary); text-underline-offset: 4px; text-decoration: underline; text-decoration-color: color-mix(in oklch, var(--primary) 40%, transparent); }
+  .prose strong { font-weight: 700; }
+
+  /* 代码块 + 复制按钮 */
+  .codeframe { position: relative; margin: 1.6rem 0; }
+  .codeframe pre { margin: 0; background: var(--code-bg); color: oklch(0.92 0.02 264); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.1rem 1.2rem; overflow-x: auto; font-family: var(--font-mono); font-size: .86rem; line-height: 1.7; }
+  .codeframe .cp { position: absolute; top: .7rem; right: .7rem; border: 1px solid oklch(1 0 0 / .18); background: oklch(1 0 0 / .06);
+    color: oklch(0.9 0.02 264); border-radius: 7px; padding: .25rem .6rem; font-size: .74rem; cursor: pointer; }
+  .codeframe .cp:hover { background: oklch(1 0 0 / .14); }
+  .tk { color: oklch(0.75 0.13 200); } .ts { color: oklch(0.78 0.12 140); } .tc { color: oklch(0.62 0.02 264); font-style: italic; }
+
+  /* mermaid 图版 */
+  .figure { margin: 2rem 0; border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: 1.5rem; overflow-x: auto; }
+  .figure svg { display: block; margin-inline: auto; max-width: 100%; height: auto; }
+  .figcap { margin-top: .8rem; text-align: center; font-size: .82rem; color: var(--muted-foreground); }
+  .mnode { fill: var(--primary-weak); stroke: var(--primary); }
+  .mtext { fill: var(--foreground); font: 600 13px var(--font-sans); }
+  .medge { stroke: var(--muted-foreground); fill: none; }
+
+  /* 提示块 */
+  .callout { margin: 1.8rem 0; border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 10px; background: var(--card); padding: 1rem 1.2rem; }
+  .callout .lbl { font-size: .74rem; font-weight: 700; letter-spacing: .1em; color: var(--primary); }
+  .callout p { margin: .5rem 0 0; font-size: .96rem; }
+  .prose blockquote { margin: 1.6rem 0; padding-left: 1.1rem; border-left: 3px solid var(--warm); color: var(--muted-foreground); font-weight: 500; }
+
+  /* 系列导航 */
+  .series { margin-top: 2.5rem; border: 1px solid var(--border); border-radius: 14px; background: var(--card); padding: 1.3rem 1.4rem; box-shadow: var(--shadow); }
+  .series .top { font-size: .9rem; color: var(--muted-foreground); }
+  .series .top b { color: var(--foreground); }
+  .series .nav { margin-top: 1.1rem; padding-top: 1.1rem; border-top: 1px solid var(--hairline); display: grid; gap: 1rem; }
+  @media (min-width: 560px) { .series .nav { grid-template-columns: 1fr 1fr; } }
+  .series .nav .nx { display: block; }
+  .series .nav .nx.next { text-align: right; }
+  .series .nav .e { font-size: .72rem; letter-spacing: .1em; color: var(--muted-foreground); font-weight: 600; }
+  .series .nav .t { margin-top: .35rem; font-weight: 600; font-size: .9rem; line-height: 1.4; }
+  .series .nav a:hover .t { color: var(--primary); }
+
+  /* 相关文章 */
+  .related { margin-top: 3rem; border-top: 2px solid var(--rule-strong); padding-top: 1.2rem; }
+  .related h3 { margin: 0 0 1.2rem; font-size: 1.15rem; font-weight: 700; }
+  .rgrid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+  @media (min-width: 640px) { .rgrid { grid-template-columns: 1fr 1fr 1fr; } }
+  .rcard { border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.1rem; background: var(--card); transition: transform .16s, box-shadow .16s, border-color .16s; }
+  .rcard:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in oklch, var(--primary) 40%, var(--border)); }
+  .rcard .e { font-size: .72rem; color: var(--primary); font-weight: 600; }
+  .rcard .t { margin-top: .5rem; font-weight: 700; font-size: .98rem; line-height: 1.35; }
+  .rcard .m { margin-top: .6rem; font-size: .76rem; color: var(--muted-foreground); }
+
+  /* 右侧 rail */
+  .rail { position: sticky; top: 5.5rem; display: none; }
+  @media (min-width: 1040px) { .rail { display: block; } }
+  .rail .blk { border-top: 1px solid var(--hairline); padding-top: 1.1rem; margin-top: 1.3rem; }
+  .rail .blk:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+  .rail .e { font-size: .7rem; letter-spacing: .14em; font-weight: 600; color: var(--muted-foreground); text-transform: none; }
+  ul.toc { list-style: none; margin: .9rem 0 0; padding: 0; border-left: 2px solid var(--hairline); }
+  ul.toc a { display: block; padding: .32rem 0 .32rem .9rem; margin-left: -2px; border-left: 2px solid transparent; font-size: .84rem; color: var(--muted-foreground); line-height: 1.4; }
+  ul.toc a.sub { padding-left: 1.7rem; font-size: .8rem; }
+  ul.toc a:hover { color: var(--foreground); }
+  ul.toc a.active { color: var(--primary); border-left-color: var(--primary); font-weight: 600; }
+  .sharebtn { display: inline-flex; align-items: center; gap: .45rem; border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: .45rem .8rem; font-size: .82rem; font-weight: 600; color: var(--muted-foreground); cursor: pointer; }
+  .sharebtn:hover { color: var(--primary); border-color: var(--primary); }
+  .totop { display: block; margin-top: .8rem; font-size: .82rem; color: var(--muted-foreground); }
+  .totop:hover { color: var(--primary); }
+
+  .note { margin: 0 auto; padding: .6rem 1.5rem 0; max-width: var(--shell); font-size: .74rem; color: var(--muted-foreground); }
+  @media (prefers-reduced-motion: reduce) { *, .progress { transition: none !important; } }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
+</style>
+
+<div class="progress" id="pg"></div>
+
+<header class="site">
+  <div class="shell bar">
+    <div class="left">
+      <a class="wordmark" href="#"><span class="mk"></span>边界笔记</a>
+      <nav class="top"><a href="#">最新</a><a href="#">归档</a><a href="#">分类</a><a href="#">标签</a><a href="#">系列</a></nav>
+    </div>
+    <div class="actions">
+      <div class="search"><span class="mag" aria-hidden="true">⌕</span><input type="search" placeholder="搜索文章…" aria-label="搜索文章"></div>
+      <button class="icobtn" id="tg" type="button" aria-label="切换主题">◑</button>
+    </div>
+  </div>
+</header>
+
+<p class="note">文章详情页改版方向 mock ——沿用首页的配色/顶栏/图版语言。滚动看顶部阅读进度条与右侧目录高亮，右上角可切亮/暗。</p>
+
+<main class="shell">
+  <div class="article">
+    <a class="crumb" href="#">← 全部文章</a>
+
+    <div class="cover"><span class="tag">系列 · 实时语音 · 第 1 / 5 篇</span></div>
+
+    <header class="head">
+      <span class="kchip">语音识别</span>
+      <h1 class="headline">让数字人真正“听得见”：我的 Barge-in 实时语音架构</h1>
+      <p class="lede">从本地麦克风、WebRTC AEC3 到唤醒、双 VAD、双 ASR 与响应撤销——拆解一套纯 CPU 数字人实时语音打断系统如何围绕同一个会话状态机协作。</p>
+      <div class="byline">
+        <span class="avatar">Y</span>
+        <div>
+          <div class="who">yty</div>
+          <div class="m tnum">2026年7月24日 · 18 分钟 · 第 3 版</div>
+        </div>
+      </div>
+      <div class="tags"><a href="#">#Barge-in</a><a href="#">#实时音频</a><a href="#">#语音识别</a><a href="#">#数字人</a><a href="#">#系统架构</a></div>
+    </header>
+
+    <div class="layout">
+      <article class="prose" id="body">
+        <h2 id="s1">Barge-in 到底解决什么问题</h2>
+        <p>“用户一开口就暂停 TTS”看起来像打断，实际很容易被环境声、扬声器回声和无意义短音误触发。另一方面，如果一定等整句话识别完再停，数字人又会显得迟钝。</p>
+        <p>所以系统要同时回答三个问题：麦克风里的声音是不是用户发出的？这段声音是否<strong>足以提前中止当前响应</strong>？中止以后，怎样让迟到的 LLM、TTS 和工具结果不再回到界面？</p>
+        <blockquote>声音出现只改变语音状态；流式 ASR 给出足够证据后才确认打断；最终的整句识别负责产出高质量文本。</blockquote>
+
+        <h2 id="s2">整体架构</h2>
+        <p>系统对外提供 REST 和 WebSocket 两个边界。两种接入最终都进入同一个 <a class="inl" href="#">BargeInSession</a>，所以检测策略和事件语义不会分叉。</p>
+        <div class="figure">
+          <svg viewBox="0 0 640 120" role="img" aria-label="架构流程图">
+            <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="var(--muted-foreground)"/></marker></defs>
+            <line class="medge" x1="120" y1="60" x2="168" y2="60" marker-end="url(#ah)"/>
+            <line class="medge" x1="288" y1="60" x2="336" y2="60" marker-end="url(#ah)"/>
+            <line class="medge" x1="456" y1="60" x2="504" y2="60" marker-end="url(#ah)"/>
+            <g><rect class="mnode" x="16" y="40" width="104" height="40" rx="8"/><text class="mtext" x="68" y="64" text-anchor="middle">麦克风 · AEC3</text></g>
+            <g><rect class="mnode" x="184" y="40" width="104" height="40" rx="8"/><text class="mtext" x="236" y="64" text-anchor="middle">唤醒 · 双 VAD</text></g>
+            <g><rect class="mnode" x="352" y="40" width="104" height="40" rx="8"/><text class="mtext" x="404" y="64" text-anchor="middle">流式 / 整句 ASR</text></g>
+            <g><rect class="mnode" x="520" y="40" width="104" height="40" rx="8"/><text class="mtext" x="572" y="64" text-anchor="middle">响应撤销</text></g>
+          </svg>
+          <p class="figcap">图 1 · 从采集到撤销的事件管线（mermaid 服务端渲染为内联 SVG）</p>
+        </div>
+
+        <h2 id="s3">音频前端：先处理“听见谁”</h2>
+        <p>降噪不能代替回声消除。要去掉数字人自己的声音，AEC 必须同时拿到麦克风采集流和<strong>实际送往扬声器的 TTS PCM</strong>：</p>
+        <div class="codeframe">
+          <button class="cp" type="button">复制</button>
+          <pre><span class="tc"># 播报开始时下发参考流，按真实播放节奏推送 PCM</span>
+<span class="tk">await</span> session.send(<span class="ts">"aec.reference.start"</span>)
+<span class="tk">for</span> chunk <span class="tk">in</span> tts_pcm_16k_mono:
+    aec.push_reference(chunk)   <span class="tc"># 有界队列，欠载即上报</span></pre>
+        </div>
+        <div class="callout"><span class="lbl">注意</span><p>参考流没跟上时，系统宁可把这个事实暴露在健康数据里，也不假装 AEC 正常工作。</p></div>
+
+        <h2 id="s4">一次唤醒，多轮对话</h2>
+        <p>会话从 <a class="inl" href="#">passive_wake</a> 开始，KWS 命中后进入激活状态；之后每个有效话轮直接转写，只有在长时间无有效输入、且既不在生成也不在播报时，才退回待唤醒。声纹校验只发生在唤醒阶段。</p>
+
+        <h2 id="s5">双 VAD、双 ASR，各做一件事</h2>
+        <p>Silero VAD 每 32ms 给出语音概率并叠加能量门限与滞回；FSMN-VAD 以更大块提供辅助分段。两者不是投票关系，而是快速判定与模型分段各司其职。</p>
+      </article>
+
+      <aside class="rail">
+        <div class="blk">
+          <p class="e">目录</p>
+          <ul class="toc">
+            <li><a href="#s1" class="active">Barge-in 到底解决什么问题</a></li>
+            <li><a href="#s2">整体架构</a></li>
+            <li><a href="#s3">音频前端：先处理“听见谁”</a></li>
+            <li><a href="#s4">一次唤醒，多轮对话</a></li>
+            <li><a href="#s5">双 VAD、双 ASR，各做一件事</a></li>
+          </ul>
+        </div>
+        <div class="blk">
+          <p class="e">分享</p>
+          <button class="sharebtn" type="button" style="margin-top:.7rem">🔗 复制链接</button>
+          <a class="totop" href="#">↑ 返回顶部</a>
+        </div>
+      </aside>
+    </div>
+
+    <nav class="series" aria-label="系列导航">
+      <p class="top">本文属于系列 <b>《实时语音》</b> · 第 <span class="tnum">1 / 5</span> 篇</p>
+      <div class="nav">
+        <span class="nx"></span>
+        <a class="nx next" href="#"><span class="e">下一篇 →</span><span class="t">纯 CPU 上的实时语音前端：从 AEC3 到标点补全</span></a>
+      </div>
+    </nav>
+
+    <section class="related">
+      <h3>相关文章</h3>
+      <div class="rgrid">
+        <a class="rcard" href="#"><div class="e">语音识别</div><div class="t">纯 CPU 上的实时语音前端：从 AEC3 到标点补全</div><div class="m tnum">14 分钟</div></a>
+        <a class="rcard" href="#"><div class="e">语音识别</div><div class="t">热词为什么要放在最终识别：SeACo 的取舍</div><div class="m tnum">9 分钟</div></a>
+        <a class="rcard" href="#"><div class="e">系统设计</div><div class="t">一次唤醒，多轮对话：会话状态机的四个阶段</div><div class="m tnum">10 分钟</div></a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    document.getElementById("tg").addEventListener("click", function () {
+      var now = root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      root.setAttribute("data-theme", now === "dark" ? "light" : "dark");
+    });
+    var pg = document.getElementById("pg");
+    var links = Array.prototype.slice.call(document.querySelectorAll("ul.toc a"));
+    var secs = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+    function onScroll() {
+      var h = document.documentElement;
+      var max = h.scrollHeight - h.clientHeight;
+      pg.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+      var idx = 0;
+      for (var i = 0; i < secs.length; i++) { if (secs[i] && secs[i].getBoundingClientRect().top < 120) idx = i; }
+      links.forEach(function (a, i) { a.classList.toggle("active", i === idx); });
+    }
+    document.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  })();
+</script>

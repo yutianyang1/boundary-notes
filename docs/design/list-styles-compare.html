@@ -1,0 +1,185 @@
+<title>边界笔记 · 列表两种样式对比</title>
+<style>
+  :root {
+    --background: oklch(0.985 0.002 247.84); --foreground: oklch(0.17 0.021 257.14);
+    --card: oklch(1 0 0); --muted: oklch(0.955 0.006 255.48); --muted-foreground: oklch(0.46 0.026 256.7);
+    --primary: oklch(0.54 0.212 264.38); --primary-weak: oklch(0.54 0.212 264.38 / 0.10);
+    --accent: oklch(0.94 0.025 264.13); --accent-foreground: oklch(0.37 0.16 264.18);
+    --border: oklch(0.9 0.012 255.53); --hairline: oklch(0.93 0.008 255.53); --rule-strong: oklch(0.32 0.022 256.9);
+    --warm: oklch(0.70 0.16 52);
+    --radius-card: 0.875rem;
+    --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16);
+    --font-sans: "Inter", "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --shell: 90rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --background: oklch(0.155 0.016 257.34); --foreground: oklch(0.95 0.008 255.58); --card: oklch(0.2 0.019 257.01);
+      --muted: oklch(0.25 0.019 255.38); --muted-foreground: oklch(0.71 0.021 255.89); --primary: oklch(0.72 0.17 263.82);
+      --primary-weak: oklch(0.72 0.17 263.82 / 0.14); --accent: oklch(0.28 0.06 263.71); --accent-foreground: oklch(0.87 0.065 263.42);
+      --border: oklch(0.3 0.02 255.77); --hairline: oklch(0.26 0.018 255.77); --rule-strong: oklch(0.72 0.016 255.9); --warm: oklch(0.78 0.14 58);
+      --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6); }
+  }
+  :root[data-theme="light"] { --background: oklch(0.985 0.002 247.84); --foreground: oklch(0.17 0.021 257.14); --card: oklch(1 0 0); --muted: oklch(0.955 0.006 255.48); --muted-foreground: oklch(0.46 0.026 256.7); --primary: oklch(0.54 0.212 264.38); --primary-weak: oklch(0.54 0.212 264.38 / 0.10); --accent: oklch(0.94 0.025 264.13); --accent-foreground: oklch(0.37 0.16 264.18); --border: oklch(0.9 0.012 255.53); --hairline: oklch(0.93 0.008 255.53); --rule-strong: oklch(0.32 0.022 256.9); --warm: oklch(0.70 0.16 52); --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16); }
+  :root[data-theme="dark"] { --background: oklch(0.155 0.016 257.34); --foreground: oklch(0.95 0.008 255.58); --card: oklch(0.2 0.019 257.01); --muted: oklch(0.25 0.019 255.38); --muted-foreground: oklch(0.71 0.021 255.89); --primary: oklch(0.72 0.17 263.82); --primary-weak: oklch(0.72 0.17 263.82 / 0.14); --accent: oklch(0.28 0.06 263.71); --accent-foreground: oklch(0.87 0.065 263.42); --border: oklch(0.3 0.02 255.77); --hairline: oklch(0.26 0.018 255.77); --rule-strong: oklch(0.72 0.016 255.9); --warm: oklch(0.78 0.14 58); --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6); }
+
+  * { box-sizing: border-box; border-color: var(--border); }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-synthesis-weight: none; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .shell { width: 100%; max-width: var(--shell); margin-inline: auto; padding-inline: 1.5rem; }
+  @media (min-width: 640px) { .shell { padding-inline: 2.5rem; } }
+  @media (min-width: 1024px) { .shell { padding-inline: 3.5rem; } }
+  .eyebrow { font-size: .72rem; font-weight: 600; letter-spacing: .16em; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .headline { font-weight: 800; line-height: 1.14; text-wrap: balance; }
+
+  header.site { position: sticky; top: 0; z-index: 40; backdrop-filter: saturate(1.4) blur(8px); background: color-mix(in oklch, var(--background) 82%, transparent); border-bottom: 1px solid var(--hairline); }
+  .bar { display: flex; align-items: center; justify-content: space-between; height: 4rem; }
+  .left { display: flex; align-items: center; gap: 2rem; }
+  .wordmark { display: flex; align-items: center; gap: .6rem; font-weight: 800; font-size: 1.05rem; }
+  .wordmark .mk { width: 1.1rem; height: 1.1rem; border-radius: 4px; background: conic-gradient(from 210deg, var(--primary), color-mix(in oklch, var(--primary) 55%, var(--warm))); }
+  nav.top { display: none; gap: 1.7rem; font-size: .92rem; color: var(--muted-foreground); font-weight: 500; }
+  @media (min-width: 860px) { nav.top { display: flex; } }
+  nav.top a:hover { color: var(--foreground); }
+  .actions { display: flex; align-items: center; gap: .6rem; }
+  .search { position: relative; display: none; }
+  @media (min-width: 640px) { .search { display: block; } }
+  .search input { width: 15rem; height: 2.2rem; border: 1px solid var(--border); background: var(--muted); border-radius: 999px; padding: 0 .9rem 0 2.1rem; font: inherit; font-size: .85rem; color: var(--foreground); }
+  .search .mag { position: absolute; left: .8rem; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); }
+  .icobtn { display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; border: 1px solid var(--border); background: var(--card); border-radius: 999px; color: var(--muted-foreground); cursor: pointer; }
+
+  /* 页头（词条详情通用） */
+  .page-head { padding-top: 3rem; padding-bottom: 1rem; }
+  .page-head .eyebrow { color: var(--primary); }
+  .page-head h1 { margin: .8rem 0 0; font-size: clamp(2rem, 5vw, 3.2rem); }
+  .page-head p { margin: 1rem 0 0; max-width: 40em; font-size: 1.08rem; line-height: 1.75; color: var(--muted-foreground); }
+  .page-head .count { margin-top: 1rem; font-size: .9rem; color: var(--muted-foreground); }
+
+  /* 版本分隔标签 */
+  .variant { margin-top: 3rem; }
+  .variant > .flag { display: flex; align-items: center; gap: .8rem; margin-bottom: 1.5rem; }
+  .variant > .flag .tag { display: inline-flex; align-items: center; gap: .5rem; background: var(--primary); color: var(--primary-foreground, #fff); font-weight: 700; font-size: .82rem; padding: .35rem .8rem; border-radius: 999px; }
+  .variant > .flag .tag.b { background: var(--warm); }
+  .variant > .flag .desc { font-size: .88rem; color: var(--muted-foreground); }
+
+  /* —— 版本 A：卡片网格 —— */
+  .cards { display: grid; grid-template-columns: 1fr; gap: 1.4rem; }
+  @media (min-width: 560px) { .cards { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
+  .card { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-card); overflow: hidden; background: var(--card); transition: transform .18s, box-shadow .18s, border-color .18s; }
+  .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in oklch, var(--primary) 40%, var(--border)); }
+  .card .art { aspect-ratio: 16/9; position: relative; }
+  .card .cb { padding: 1.1rem 1.2rem 1.3rem; display: flex; flex-direction: column; gap: .55rem; flex: 1; }
+  .chip { align-self: flex-start; padding: .25rem .6rem; border-radius: 999px; background: var(--accent); color: var(--accent-foreground); font-weight: 600; font-size: .74rem; }
+  .card h3 { margin: 0; font-size: 1.1rem; font-weight: 700; line-height: 1.3; text-wrap: balance; }
+  .card .sum { margin: 0; font-size: .88rem; line-height: 1.65; color: var(--muted-foreground); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .m { margin-top: auto; font-size: .77rem; color: var(--muted-foreground); }
+
+  .art { background: oklch(0.22 0.03 264); overflow: hidden; }
+  .art::before { content: ""; position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(oklch(0.7 0.05 264 / .14) 1px, transparent 1px), linear-gradient(90deg, oklch(0.7 0.05 264 / .14) 1px, transparent 1px); background-size: 30px 30px; }
+  .art::after { content: ""; position: absolute; width: 58%; aspect-ratio: 1; border-radius: 50%; top: -30%; right: -12%; border: 22px solid oklch(0.55 0.2 264 / .28); }
+  .art .rune { position: absolute; left: 1rem; bottom: .95rem; color: oklch(0.9 0.03 264); font-weight: 800; font-size: 1rem; }
+  .art .rune small { display: block; font-weight: 600; font-size: .62em; letter-spacing: .14em; color: oklch(0.76 0.09 264); margin-bottom: .35rem; }
+  .art.v2 { background: oklch(0.24 0.035 286); } .art.v2::after { top: auto; bottom: -32%; right: 8%; border-color: oklch(0.6 0.16 300 / .28); }
+  .art.v3 { background: oklch(0.23 0.04 208); } .art.v3::after { top: -34%; right: 28%; border-color: oklch(0.62 0.13 200 / .3); }
+
+  /* —— 版本 B：列表行 —— */
+  .rows { border-top: 1px solid var(--hairline); }
+  .prow { display: grid; grid-template-columns: 1fr; gap: .6rem; padding: 1.8rem 0; border-bottom: 1px solid var(--hairline); }
+  @media (min-width: 640px) { .prow { grid-template-columns: 7rem 1fr 6rem; gap: 2rem; } }
+  .prow .anchor { display: flex; flex-direction: row; align-items: baseline; gap: .8rem; }
+  @media (min-width: 640px) { .prow .anchor { flex-direction: column; align-items: flex-start; gap: .5rem; } }
+  .prow .date { font-size: 1.3rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .prow .yr { font-size: .8rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .prow .cat { display: flex; align-items: center; gap: .5rem; font-size: .82rem; font-weight: 500; color: color-mix(in oklch, var(--foreground) 80%, transparent); }
+  .prow .cat::before { content: ""; width: 1.6rem; height: 3px; border-radius: 2px; background: var(--primary); transition: width .2s; }
+  .prow:hover .cat::before { width: 2.6rem; }
+  .prow h3 { margin: 0; font-size: 1.45rem; font-weight: 700; line-height: 1.3; }
+  .prow:hover h3 { color: var(--primary); }
+  .prow .sum { margin: .7rem 0 0; max-width: 46em; color: var(--muted-foreground); line-height: 1.7; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .prow .read { font-size: .82rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  @media (min-width: 640px) { .prow .read { text-align: right; } }
+
+  .note { margin: 0 auto; padding: .6rem 1.5rem 0; max-width: var(--shell); font-size: .74rem; color: var(--muted-foreground); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 4px; }
+</style>
+
+<header class="site">
+  <div class="shell bar">
+    <div class="left">
+      <a class="wordmark" href="#"><span class="mk"></span>边界笔记</a>
+      <nav class="top"><a href="#">最新</a><a href="#">归档</a><a href="#">分类</a><a href="#">标签</a><a href="#">系列</a></nav>
+    </div>
+    <div class="actions">
+      <div class="search"><span class="mag">⌕</span><input type="search" placeholder="搜索文章…" aria-label="搜索文章"></div>
+      <button class="icobtn" id="tg" type="button" aria-label="切换主题">◑</button>
+    </div>
+  </div>
+</header>
+
+<p class="note">同一个「语音识别」分类页，用两种方式各画一遍，方便对比。右上角可切亮/暗。选好后告诉我 A 还是 B（或“归档用 B、其余用 A”）。</p>
+
+<main class="shell">
+  <div class="page-head">
+    <p class="eyebrow">分类</p>
+    <h1 class="headline">语音识别</h1>
+    <p>实时语音、ASR、唤醒、端点检测与打断——把语音前端在纯 CPU 上跑通的那些设计取舍。</p>
+    <p class="count tnum">共 5 篇文章</p>
+  </div>
+
+  <!-- 版本 A -->
+  <section class="variant">
+    <div class="flag"><span class="tag">A</span><span class="desc">卡片网格 · 和新首页统一，图重、好看</span></div>
+    <div class="cards">
+      <a class="card" href="#"><div class="art"><div class="rune"><small>语音识别</small>Barge-in</div></div><div class="cb"><span class="chip">语音识别</span><h3>让数字人真正“听得见”：Barge-in 实时语音架构</h3><p class="sum">从本地麦克风、AEC3 到唤醒、双 VAD、双 ASR 与响应撤销。</p><div class="m tnum">07.24 · 18 分钟</div></div></a>
+      <a class="card" href="#"><div class="art v2"><div class="rune"><small>语音识别</small>AEC3→标点</div></div><div class="cb"><span class="chip">语音识别</span><h3>纯 CPU 上的实时语音前端：从 AEC3 到标点补全</h3><p class="sum">五个阶段如何在没有 GPU 的机器上串成可观测的事件管线。</p><div class="m tnum">07.19 · 14 分钟</div></div></a>
+      <a class="card" href="#"><div class="art v3"><div class="rune"><small>语音识别</small>SeACo</div></div><div class="cb"><span class="chip">语音识别</span><h3>热词为什么要放在最终识别：SeACo 的取舍</h3><p class="sum">很多“热词无效”本质是字符被静默替换成 &lt;unk&gt;。</p><div class="m tnum">07.11 · 9 分钟</div></div></a>
+      <a class="card" href="#"><div class="art"><div class="rune"><small>系统设计</small>状态机</div></div><div class="cb"><span class="chip">语音识别</span><h3>一次唤醒，多轮对话：会话状态机的四个阶段</h3><p class="sum">把检测、确认、撤销拆成三阶段，空闲计时在播报中暂停。</p><div class="m tnum">06.28 · 10 分钟</div></div></a>
+      <a class="card" href="#"><div class="art v2"><div class="rune"><small>语音识别</small>双 VAD</div></div><div class="cb"><span class="chip">语音识别</span><h3>双 VAD、双 ASR，各做一件事</h3><p class="sum">快速判定与模型分段各司其职，而不是投票关系。</p><div class="m tnum">06.20 · 8 分钟</div></div></a>
+    </div>
+  </section>
+
+  <!-- 版本 B -->
+  <section class="variant" style="margin-top:4rem">
+    <div class="flag"><span class="tag b">B</span><span class="desc">列表行 · 编辑部气质，信息密、扫得快</span></div>
+    <div class="rows">
+      <a class="prow" href="#">
+        <div class="anchor"><div><div class="date">07.24</div><div class="yr">2026</div></div><div class="cat">语音识别</div></div>
+        <div><h3>让数字人真正“听得见”：我的 Barge-in 实时语音架构</h3><p class="sum">从本地麦克风、WebRTC AEC3 到唤醒、双 VAD、双 ASR 与响应撤销，拆解一套纯 CPU 数字人实时语音打断系统。</p></div>
+        <div class="read">18 分钟</div>
+      </a>
+      <a class="prow" href="#">
+        <div class="anchor"><div><div class="date">07.19</div><div class="yr">2026</div></div><div class="cat">语音识别</div></div>
+        <div><h3>纯 CPU 上的实时语音前端：从 AEC3 到标点补全</h3><p class="sum">回声消除、降噪、唤醒、端点检测、流式与整句识别，五个阶段如何在一台没有 GPU 的机器上串成可观测的事件管线。</p></div>
+        <div class="read">14 分钟</div>
+      </a>
+      <a class="prow" href="#">
+        <div class="anchor"><div><div class="date">07.11</div><div class="yr">2026</div></div><div class="cat">语音识别</div></div>
+        <div><h3>热词为什么要放在最终识别：SeACo 的取舍</h3><p class="sum">“接口返回成功但热词毫无效果”，本质常是字符被静默替换成 &lt;unk&gt;。把不可用字符和上下文状态直接暴露，比盲目加权可靠。</p></div>
+        <div class="read">9 分钟</div>
+      </a>
+      <a class="prow" href="#">
+        <div class="anchor"><div><div class="date">06.28</div><div class="yr">2026</div></div><div class="cat">系统设计</div></div>
+        <div><h3>一次唤醒，多轮对话：会话状态机的四个阶段</h3><p class="sum">把“检测到声音”“确认有效输入”“撤销一次响应”拆成三个阶段，让空闲计时在播报中暂停——细节决定它是否显得迟钝。</p></div>
+        <div class="read">10 分钟</div>
+      </a>
+      <a class="prow" href="#">
+        <div class="anchor"><div><div class="date">06.20</div><div class="yr">2026</div></div><div class="cat">语音识别</div></div>
+        <div><h3>双 VAD、双 ASR，各做一件事</h3><p class="sum">Silero 每 32ms 给概率并叠加能量门限与滞回；FSMN 以更大块提供辅助分段。两者不是投票，而是快速判定与模型分段各司其职。</p></div>
+        <div class="read">8 分钟</div>
+      </a>
+    </div>
+  </section>
+
+  <div style="height:4rem"></div>
+</main>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    document.getElementById("tg").addEventListener("click", function () {
+      var now = root.getAttribute("data-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      root.setAttribute("data-theme", now === "dark" ? "light" : "dark");
+    });
+  })();
+</script>

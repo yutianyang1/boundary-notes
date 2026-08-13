@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 410" width="760" height="410" font-family="ui-sans-serif,system-ui,-apple-system,'Segoe UI','Noto Sans SC',sans-serif">
+  <style>
+    .card{fill:#ffffff}
+    .t{fill:#0f172a}
+    .m{fill:#64748b}
+    .slot{fill:#f8fafc;stroke:#e2e8f0}
+    .free{fill:#f1f5f9;stroke:#e2e8f0}
+    @media (prefers-color-scheme:dark){
+      .card{fill:#0b1120}
+      .t{fill:#e5e9f0}
+      .m{fill:#93a1b8}
+      .slot{fill:#0f1830;stroke:#243149}
+      .free{fill:#0d1526;stroke:#243149}
+    }
+  </style>
+  <rect class="card" width="760" height="410"/>
+
+  <text x="30" y="34" class="t" font-size="18" font-weight="700">PagedAttention：像操作系统分页一样管理 KV 缓存</text>
+  <text x="30" y="55" class="m" font-size="13">逻辑上连续，物理上离散；块表负责逻辑块到物理块的映射</text>
+
+  <!-- connectors (drawn first, behind boxes) -->
+  <g stroke-width="1.6" fill="none" opacity="0.55">
+    <line x1="420" y1="130" x2="558" y2="197" stroke="#6366f1"/>
+    <line x1="420" y1="172" x2="500" y2="157" stroke="#10b981"/>
+    <line x1="420" y1="214" x2="500" y2="237" stroke="#f59e0b"/>
+    <line x1="420" y1="256" x2="558" y2="117" stroke="#0ea5e9"/>
+  </g>
+
+  <!-- logical blocks -->
+  <text x="40" y="98" class="m" font-size="12.5">逻辑块（一个序列）</text>
+  <g>
+    <rect class="slot" x="40" y="110" width="170" height="34" rx="5"/><rect x="40" y="110" width="6" height="34" rx="3" fill="#6366f1"/>
+    <text x="58" y="132" class="t" font-size="12.5">逻辑块 0 · 16 tok</text>
+    <rect class="slot" x="40" y="152" width="170" height="34" rx="5"/><rect x="40" y="152" width="6" height="34" rx="3" fill="#10b981"/>
+    <text x="58" y="174" class="t" font-size="12.5">逻辑块 1 · 16 tok</text>
+    <rect class="slot" x="40" y="194" width="170" height="34" rx="5"/><rect x="40" y="194" width="6" height="34" rx="3" fill="#f59e0b"/>
+    <text x="58" y="216" class="t" font-size="12.5">逻辑块 2 · 16 tok</text>
+    <rect class="slot" x="40" y="236" width="170" height="34" rx="5"/><rect x="40" y="236" width="6" height="34" rx="3" fill="#0ea5e9"/>
+    <text x="58" y="258" class="t" font-size="12.5">逻辑块 3 · 8 tok</text>
+  </g>
+
+  <!-- block table -->
+  <text x="250" y="98" class="m" font-size="12.5">块表</text>
+  <g>
+    <rect class="slot" x="250" y="110" width="170" height="34" rx="5"/>
+    <circle cx="266" cy="127" r="5" fill="#6366f1"/><text x="280" y="132" class="t" font-size="12.5">逻辑 0 → 物理 #7</text>
+    <rect class="slot" x="250" y="152" width="170" height="34" rx="5"/>
+    <circle cx="266" cy="169" r="5" fill="#10b981"/><text x="280" y="174" class="t" font-size="12.5">逻辑 1 → 物理 #3</text>
+    <rect class="slot" x="250" y="194" width="170" height="34" rx="5"/>
+    <circle cx="266" cy="211" r="5" fill="#f59e0b"/><text x="280" y="216" class="t" font-size="12.5">逻辑 2 → 物理 #9</text>
+    <rect class="slot" x="250" y="236" width="170" height="34" rx="5"/>
+    <circle cx="266" cy="253" r="5" fill="#0ea5e9"/><text x="280" y="258" class="t" font-size="12.5">逻辑 3 → 物理 #1</text>
+  </g>
+
+  <!-- physical blocks grid -->
+  <text x="500" y="98" class="m" font-size="12.5">物理 KV 缓存（显存）</text>
+  <g font-size="12" text-anchor="middle">
+    <rect class="free" x="500" y="110" width="52" height="34" rx="5"/><text x="526" y="131" class="m">#0</text>
+    <rect x="558" y="110" width="52" height="34" rx="5" fill="#0ea5e9" fill-opacity="0.18" stroke="#0ea5e9"/><text x="584" y="131" class="t">#1</text>
+    <rect class="free" x="616" y="110" width="52" height="34" rx="5"/><text x="642" y="131" class="m">#2</text>
+    <rect x="500" y="150" width="52" height="34" rx="5" fill="#10b981" fill-opacity="0.18" stroke="#10b981"/><text x="526" y="171" class="t">#3</text>
+    <rect class="free" x="558" y="150" width="52" height="34" rx="5"/><text x="584" y="171" class="m">#4</text>
+    <rect class="free" x="616" y="150" width="52" height="34" rx="5"/><text x="642" y="171" class="m">#5</text>
+    <rect class="free" x="500" y="190" width="52" height="34" rx="5"/><text x="526" y="211" class="m">#6</text>
+    <rect x="558" y="190" width="52" height="34" rx="5" fill="#6366f1" fill-opacity="0.18" stroke="#6366f1"/><text x="584" y="211" class="t">#7</text>
+    <rect class="free" x="616" y="190" width="52" height="34" rx="5"/><text x="642" y="211" class="m">#8</text>
+    <rect x="500" y="230" width="52" height="34" rx="5" fill="#f59e0b" fill-opacity="0.18" stroke="#f59e0b"/><text x="526" y="251" class="t">#9</text>
+    <rect class="free" x="558" y="230" width="52" height="34" rx="5"/><text x="584" y="251" class="m">#10</text>
+    <rect class="free" x="616" y="230" width="52" height="34" rx="5"/><text x="642" y="251" class="m">#11</text>
+  </g>
+
+  <!-- analogy strip -->
+  <line x1="30" y1="300" x2="730" y2="300" stroke="#94a3b8" stroke-opacity="0.35"/>
+  <text x="30" y="326" class="t" font-size="13" font-weight="600">对照操作系统虚拟内存</text>
+  <g font-size="12.5">
+    <text x="30" y="352" class="m">虚拟页 → 逻辑 KV 块　·　页表 → 块表　·　物理内存 → 显存　·　缺页/换页 → 按需分配物理块</text>
+  </g>
+
+  <text x="30" y="386" class="m" font-size="12.5">按需分配 → 浪费仅剩最后一个未满块；相同前缀（系统提示、并行采样、束搜索）可共享物理块，分叉时写时复制。</text>
+</svg>

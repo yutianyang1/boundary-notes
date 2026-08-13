@@ -1,0 +1,180 @@
+<title>顶栏登录态 mock · 边界笔记</title>
+<style>
+  :root {
+    --bg: #fbfaf8; --card: #ffffff; --fg: #1c1b1a; --muted: #6b6864;
+    --border: #e7e4df; --hairline: #f0ede8; --accent: #ecebfe; --accent-fg: #3730b8;
+    --primary: #4f46e5; --primary-fg: #fff; --warm: #d98328; --danger: #c0392b; --ok: #1f8a5b;
+    --shadow: 0 16px 40px -20px rgba(30,27,60,.28); --radius-card: .875rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0e0e11; --card:#17171b; --fg:#ececef; --muted:#9d9aa4; --border:#2a2a31;
+      --hairline:#212127; --accent:#23213a; --accent-fg:#c3bffb; --primary:#8b83ff; --warm:#eaa64d;
+      --danger:#f0776a; --ok:#4bbd89; --shadow:0 18px 44px -18px rgba(0,0,0,.62); }
+  }
+  :root[data-theme="light"]{ --bg:#fbfaf8;--card:#fff;--fg:#1c1b1a;--muted:#6b6864;--border:#e7e4df;--hairline:#f0ede8;--accent:#ecebfe;--accent-fg:#3730b8;--primary:#4f46e5;--warm:#d98328;--danger:#c0392b;--ok:#1f8a5b;--shadow:0 16px 40px -20px rgba(30,27,60,.28);}
+  :root[data-theme="dark"]{ --bg:#0e0e11;--card:#17171b;--fg:#ececef;--muted:#9d9aa4;--border:#2a2a31;--hairline:#212127;--accent:#23213a;--accent-fg:#c3bffb;--primary:#8b83ff;--warm:#eaa64d;--danger:#f0776a;--ok:#4bbd89;--shadow:0 18px 44px -18px rgba(0,0,0,.62);}
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+    font-family: ui-sans-serif, system-ui, "Segoe UI","PingFang SC","Microsoft YaHei",Roboto,sans-serif; }
+
+  .toolbar { display:flex; align-items:center; gap:.75rem; padding:.7rem 1.1rem;
+    border-bottom:1px solid var(--border); }
+  .toolbar strong { font-size:.85rem; }
+  .toolbar .spacer { flex:1; }
+  .tbtn { font:inherit; font-size:.8rem; font-weight:600; cursor:pointer; color:var(--muted);
+    background:var(--card); border:1px solid var(--border); border-radius:.55rem; padding:.42rem .7rem; }
+
+  .stage { max-width:64rem; margin:0 auto; padding:2.5rem 1.2rem 4rem; }
+  .caption { font-size:.8rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--muted); margin:2.4rem 0 .8rem; display:flex; align-items:center; gap:.6rem; }
+  .caption:first-child { margin-top:0; }
+  .caption::after { content:""; flex:1; height:1px; background:var(--border); }
+
+  /* ---- header replica ---- */
+  .hdr-wrap { border:1px solid var(--border); border-radius:var(--radius-card); overflow:visible;
+    background:var(--bg); box-shadow:var(--shadow); }
+  .hdr { display:flex; align-items:center; justify-content:space-between; height:4rem; padding:0 1.25rem; }
+  .hleft { display:flex; align-items:center; gap:2rem; min-width:0; }
+  .brand { display:inline-flex; align-items:center; gap:.6rem; font-weight:700; letter-spacing:.02em; text-decoration:none; color:inherit; }
+  .brand .sym { width:1rem; height:1rem; border-radius:.28rem; flex:none;
+    background:conic-gradient(from 210deg, var(--primary), color-mix(in oklab, var(--primary) 55%, var(--warm)));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.25), 0 1px 4px rgba(0,0,0,.25); }
+  nav { display:flex; align-items:center; gap:1.25rem; }
+  nav a { font-size:.875rem; font-weight:500; color:var(--muted); text-decoration:none; }
+  nav a:hover { color:var(--fg); }
+
+  .hright { display:flex; align-items:center; gap:.75rem; }
+  .search { position:relative; }
+  .search input { height:2.25rem; width:13rem; border-radius:1.2rem; border:1px solid var(--border);
+    background:color-mix(in oklab, var(--fg) 5%, transparent); padding:0 1rem 0 2.2rem; font:inherit; font-size:.85rem; color:var(--fg); outline:none; }
+  .search svg { position:absolute; left:.7rem; top:50%; transform:translateY(-50%); color:var(--muted); }
+  .icon-btn { width:2.25rem; height:2.25rem; display:grid; place-items:center; border-radius:.5rem;
+    border:1px solid var(--border); background:var(--card); color:var(--muted); cursor:pointer; }
+
+  /* login button — rightmost */
+  .btn-login { height:2.25rem; padding:0 1.1rem; border-radius:1.2rem; border:0; cursor:pointer;
+    background:var(--primary); color:var(--primary-fg); font:inherit; font-size:.85rem; font-weight:700; }
+
+  /* avatar + dropdown — rightmost */
+  .usermenu { position:relative; }
+  .avatar-btn { display:flex; align-items:center; gap:.5rem; border:1px solid var(--border);
+    background:var(--card); border-radius:1.4rem; padding:.25rem .6rem .25rem .3rem; cursor:pointer; }
+  .avatar { width:1.8rem; height:1.8rem; border-radius:50%; flex:none; display:grid; place-items:center;
+    font-size:.8rem; font-weight:800; color:#fff; background:conic-gradient(from 200deg, var(--primary), var(--warm)); }
+  .avatar-btn .caret { color:var(--muted); }
+  .avatar-btn .who { font-size:.85rem; font-weight:600; max-width:7rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .menu { position:absolute; right:0; top:calc(100% + .5rem); width:15rem; z-index:5;
+    background:var(--card); border:1px solid var(--border); border-radius:.8rem; box-shadow:var(--shadow); overflow:hidden; }
+  .menu-head { padding:.9rem 1rem; border-bottom:1px solid var(--hairline); }
+  .menu-head .n { font-weight:700; }
+  .menu-head .e { font-size:.78rem; color:var(--muted); margin-top:.15rem; display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+  .rolechip { font-size:.66rem; font-weight:700; padding:.05rem .4rem; border-radius:1rem; background:var(--accent); color:var(--accent-fg); }
+  .menu ul { list-style:none; margin:0; padding:.35rem; }
+  .menu li a, .menu li button { width:100%; display:flex; align-items:center; gap:.6rem; text-align:left;
+    font:inherit; font-size:.86rem; font-weight:500; color:var(--fg); text-decoration:none; cursor:pointer;
+    background:transparent; border:0; border-radius:.5rem; padding:.55rem .65rem; }
+  .menu li a:hover, .menu li button:hover { background:var(--accent); }
+  .menu .sep { height:1px; background:var(--hairline); margin:.35rem .35rem; }
+  .menu .logout { color:var(--danger); }
+  .menu .logout:hover { background:color-mix(in oklab, var(--danger) 12%, transparent); }
+  .menu svg { color:var(--muted); flex:none; }
+  .menu .logout svg { color:var(--danger); }
+
+  .hint { max-width:64rem; margin:2rem auto 0; padding:0 1.2rem; font-size:.82rem; color:var(--muted); line-height:1.7; }
+  .hint code { font-family:ui-monospace,Menlo,monospace; background:var(--accent); color:var(--accent-fg); padding:.05rem .35rem; border-radius:.3rem; }
+</style>
+
+<div class="toolbar">
+  <strong>顶栏登录态 mock</strong>
+  <span class="spacer"></span>
+  <button class="tbtn" id="themeBtn">🌓 明/暗</button>
+</div>
+
+<div class="stage">
+
+  <p class="caption">未登录 —— 「登录」按钮在最右</p>
+  <div class="hdr-wrap">
+    <div class="hdr">
+      <div class="hleft">
+        <a class="brand" href="#"><span class="sym"></span>边界笔记</a>
+        <nav>
+          <a href="#">文章</a><a href="#">分类</a><a href="#">标签</a><a href="#">系列</a><a href="#">关于</a>
+        </nav>
+      </div>
+      <div class="hright">
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" placeholder="搜索文章…">
+        </div>
+        <button class="icon-btn" title="切换主题">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
+        <button class="btn-login">登录</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="caption">已登录 —— 头像下拉在最右(展开态)</p>
+  <div class="hdr-wrap">
+    <div class="hdr">
+      <div class="hleft">
+        <a class="brand" href="#"><span class="sym"></span>边界笔记</a>
+        <nav>
+          <a href="#">文章</a><a href="#">分类</a><a href="#">标签</a><a href="#">系列</a><a href="#">关于</a>
+        </nav>
+      </div>
+      <div class="hright">
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" placeholder="搜索文章…">
+        </div>
+        <button class="icon-btn" title="切换主题">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
+        <div class="usermenu">
+          <button class="avatar-btn" aria-expanded="true">
+            <span class="avatar">Y</span>
+            <span class="who">yty</span>
+            <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="menu" role="menu">
+            <div class="menu-head">
+              <div class="n">yty</div>
+              <div class="e">ytyu0802@example.com <span class="rolechip">管理员</span></div>
+            </div>
+            <ul>
+              <li><a href="#" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                账户中心</a></li>
+              <li><a href="#" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+                返回后台 <span style="margin-left:auto;font-size:.7rem;opacity:.6">员工可见</span></a></li>
+              <li class="sep"></li>
+              <li><button class="logout" role="menuitem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                退出登录</button></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="hint">
+  说明:顶栏改为<strong>感知登录态</strong>。未登录 → 最右一个「登录」实心按钮;已登录 → 最右头像按钮,点开下拉:账户中心 ·(员工多「返回后台」)· 退出登录。<strong>导航里原来的「账户」去掉</strong>。
+  实现走<strong>客户端方案</strong>:根 layout 加 <code>SessionProvider</code>,顶栏右侧那块用 <code>useSession()</code> 的客户端 <code>&lt;UserMenu&gt;</code>,内容页保持可缓存;未解析时用头像占位挡闪烁。
+  <strong>退出登录是 POST 表单</strong>(<code>signOut</code> server action),菜单里那项是表单提交按钮,不是 GET 链接。下拉支持 Esc 关闭、点外部关闭、键盘可达。
+  「登录」实心还是描边可再定——这里先给实心。
+</p>
+
+<script>
+  const root = document.documentElement;
+  document.getElementById('themeBtn').addEventListener('click', () => {
+    const cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  });
+</script>

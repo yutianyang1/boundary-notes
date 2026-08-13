@@ -1,0 +1,2 @@
+* * * * * curl --fail --silent --show-error --max-time 30 -X POST -H "Authorization: Bearer $JOB_SECRET" http://next:3000/internal/jobs/publish-scheduled
+* * * * * curl --fail --silent --show-error --max-time 30 -X POST -H "Authorization: Bearer $JOB_SECRET" http://next:3000/internal/jobs/send-mail
