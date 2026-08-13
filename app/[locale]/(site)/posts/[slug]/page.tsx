@@ -154,7 +154,8 @@ async function PostContent({ params, searchParams }: PageProps) {
             )
           ) : null}
 
-          <h1 className="headline mt-4 max-w-[20em] text-[2.25rem] sm:text-5xl">{post.title}</h1>
+          {/* 标题是文章内容，语言随正文而非界面，浏览器据此提示翻译。 */}
+          <h1 lang="zh-CN" className="headline mt-4 max-w-[20em] text-[2.25rem] sm:text-5xl">{post.title}</h1>
 
           {post.summary ? (
             <p className="mt-6 max-w-[38em] text-lg leading-[1.8] text-muted-foreground">

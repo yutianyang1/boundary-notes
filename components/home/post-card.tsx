@@ -78,7 +78,7 @@ export function PostCard({
             </span>
           )
         ) : null}
-        <h3 className="headline-sm mt-2.5 text-lg">
+        <h3 lang="zh-CN" className="headline-sm mt-2.5 text-lg">
           <Link
             href={`/posts/${post.slug}`}
             className="rounded-sm group-hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -87,7 +87,7 @@ export function PostCard({
           </Link>
         </h3>
         {post.summary ? (
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+          <p lang="zh-CN" className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
             {post.summary}
           </p>
         ) : null}

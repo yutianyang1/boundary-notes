@@ -38,7 +38,7 @@ export function FeaturedPost({ post }: { post: PostCardData }) {
         <p className="eyebrow flex items-center gap-2 text-warm before:block before:h-[3px] before:w-6 before:rounded-full before:bg-warm">
           头条
         </p>
-        <h2 className="headline mt-4 text-2xl sm:text-4xl">
+        <h2 lang="zh-CN" className="headline mt-4 text-2xl sm:text-4xl">
           <Link
             href={`/posts/${post.slug}`}
             className="bg-[linear-gradient(var(--primary),var(--primary))] bg-[length:0_2px] bg-left-bottom bg-no-repeat pb-1 transition-[background-size] duration-300 hover:bg-[length:100%_2px]"
@@ -47,7 +47,7 @@ export function FeaturedPost({ post }: { post: PostCardData }) {
           </Link>
         </h2>
         {post.summary ? (
-          <p className="mt-4 line-clamp-3 max-w-[34em] leading-[1.8] text-muted-foreground">
+          <p lang="zh-CN" className="mt-4 line-clamp-3 max-w-[34em] leading-[1.8] text-muted-foreground">
             {post.summary}
           </p>
         ) : null}
