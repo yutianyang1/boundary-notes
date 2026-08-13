@@ -20,6 +20,36 @@
 
 ---
 
+## 界面
+
+![首页](./docs/screenshots/home.webp)
+
+文章页:服务端 Shiki 双主题高亮、KaTeX 公式、表格,右侧目录随滚动联动,代码块自带复制按钮。
+
+![文章页](./docs/screenshots/article-code.webp)
+
+<table>
+<tr>
+<td width="62%"><img src="./docs/screenshots/posts.webp" alt="文章归档"><br><sub>归档列表 · 按年分页</sub></td>
+<td width="38%"><img src="./docs/screenshots/mobile-home.webp" alt="移动端首页"><br><sub>移动端首页</sub></td>
+</tr>
+</table>
+
+<details>
+<summary>暗色模式</summary>
+
+整站 light/dark 双主题,代码高亮和 Mermaid 图各有一套配色,跟随系统或手动切换。
+
+![首页暗色](./docs/screenshots/home-dark.webp)
+
+![文章页暗色](./docs/screenshots/article-diagram-dark.webp)
+
+</details>
+
+> 截图由 `npm run screenshots` 从生产站抓取,脚本见 [`scripts/capture-screenshots.ts`](./scripts/capture-screenshots.ts)。
+
+---
+
 ## 功能
 
 **内容**
@@ -248,6 +278,7 @@ npm run db:generate      # 按 schema 变更生成迁移
 npm run db:migrate       # 执行迁移
 npm run db:studio        # Drizzle Studio
 npm run content:rerender # schema 或渲染管线变更后重跑全部文章 HTML
+npm run screenshots      # 重新抓取 README 截图（需先 npx playwright install chromium）
 ```
 
 测试集中在 `lib/**/*.test.ts`,覆盖认证、限流、令牌、密码策略、权限判定、Markdown 管线等纯逻辑模块,用 Node 内置 test runner,不需要起数据库。

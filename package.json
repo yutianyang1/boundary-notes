@@ -13,6 +13,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed-admin.ts",
+    "screenshots": "tsx scripts/capture-screenshots.ts",
     "content:rerender": "tsx scripts/rerender-posts.ts",
     "content:tag-existing": "tsx scripts/tag-existing-posts.ts",
     "content:publish-barge-in": "tsx scripts/publish-barge-in-architecture.ts",
