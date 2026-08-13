@@ -146,7 +146,9 @@
       "saveRecoveryCodes": "Save your recovery codes now",
       "recoveryCodesHint": "Each recovery code works once. If you lose your phone, they are how you get back in.",
       "enterAdmin": "Saved, go to the dashboard",
-      "cancelAndSignOut": "Cancel and sign out"
+      "cancelAndSignOut": "Cancel and sign out",
+      "challengeCodeLabel": "Authenticator code or recovery code",
+      "enrollCodeLabel": "6-digit code from your authenticator"
     },
     "errors": {
       "registrationClosed": "Registration is currently closed.",
@@ -169,7 +171,9 @@
       "githubEmailUnverified": "GitHub did not supply a verified primary email, so sign-in cannot complete.",
       "githubAccountDisabled": "This account is disabled and cannot sign in.",
       "githubAccountConflict": "This GitHub account conflicts with an existing account. Contact an administrator.",
-      "githubFailed": "GitHub sign-in failed. Try again shortly."
+      "githubFailed": "GitHub sign-in failed. Try again shortly.",
+      "mfaCodeIncorrect": "That code is not correct. Check your device clock and try again.",
+      "mfaCodeOrRecoveryIncorrect": "That code or recovery code is not correct."
     }
   }
 }

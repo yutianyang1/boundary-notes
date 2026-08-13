@@ -16,7 +16,15 @@ import { requireMfaChallenge, requireMfaEnrollment } from "@/lib/auth/permission
 import { db } from "@/lib/db";
 import { auditLogs, mfaCredentials, mfaRecoveryCodes, users } from "@/lib/db/schema";
 
-export type MfaActionState = { error?: string; success?: boolean; recoveryCodes?: string[] };
+/** 返回字典 key 而非文案，翻译交给 UI。 */
+export type MfaErrorKey =
+  | "errors.tooManyAttempts"
+  | "errors.mfaBindingExpired"
+  | "errors.mfaCodeIncorrect"
+  | "errors.mfaUnavailable"
+  | "errors.mfaCodeOrRecoveryIncorrect";
+
+export type MfaActionState = { errorKey?: MfaErrorKey; success?: boolean; recoveryCodes?: string[] };
 
 function normalizedCode(formData: FormData) {
   return String(formData.get("code") ?? "").trim();
@@ -38,12 +46,12 @@ export async function confirmMfaEnrollmentAction(_state: MfaActionState, formDat
   const session = await requireMfaEnrollment();
   const code = normalizedCode(formData);
   const attempt = await rateLimit(session.user.id);
-  if (!attempt.allowed) return { error: "尝试次数过多，请十分钟后再试。" };
+  if (!attempt.allowed) return { errorKey: "errors.tooManyAttempts" };
 
   const [credential] = await db.select().from(mfaCredentials).where(eq(mfaCredentials.userId, session.user.id)).limit(1);
-  if (!credential || credential.confirmedAt) return { error: "绑定信息已失效，请刷新页面重试。" };
+  if (!credential || credential.confirmedAt) return { errorKey: "errors.mfaBindingExpired" };
   const secret = decryptMfaSecret(credential.secretEnc, credential.keyVersion);
-  if (!verifyTotp(secret, code)) return { error: "验证码不正确，请确认设备时间后重试。" };
+  if (!verifyTotp(secret, code)) return { errorKey: "errors.mfaCodeIncorrect" };
 
   const recoveryCodes = generateRecoveryCodes();
   const now = new Date();
@@ -72,12 +80,12 @@ export async function verifyMfaChallengeAction(_state: MfaActionState, formData:
   const session = await requireMfaChallenge();
   const code = normalizedCode(formData);
   const attempt = await rateLimit(session.user.id);
-  if (!attempt.allowed) return { error: "尝试次数过多，请十分钟后再试。" };
+  if (!attempt.allowed) return { errorKey: "errors.tooManyAttempts" };
 
   const [credential] = await db.select().from(mfaCredentials).where(and(
     eq(mfaCredentials.userId, session.user.id),
   )).limit(1);
-  if (!credential?.confirmedAt) return { error: "MFA 配置不可用，请联系管理员。" };
+  if (!credential?.confirmedAt) return { errorKey: "errors.mfaUnavailable" };
 
   const secret = decryptMfaSecret(credential.secretEnc, credential.keyVersion);
   let method: "totp" | "recovery" | null = verifyTotp(secret, code) ? "totp" : null;
@@ -89,7 +97,7 @@ export async function verifyMfaChallengeAction(_state: MfaActionState, formData:
     )).returning({ id: mfaRecoveryCodes.id });
     if (used) method = "recovery";
   }
-  if (!method) return { error: "验证码或恢复码不正确。" };
+  if (!method) return { errorKey: "errors.mfaCodeOrRecoveryIncorrect" };
 
   await db.insert(auditLogs).values({
     actorId: session.user.id,

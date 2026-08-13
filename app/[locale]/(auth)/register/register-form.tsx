@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { MailCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useState } from "react";
-import { registerAction, type RegisterState } from "./actions";
+import { Link } from "@/i18n/navigation";
+import { registerAction, type RegisterMessageKey, type RegisterState } from "./actions";
 
 const initialState: RegisterState = {};
 
@@ -12,6 +13,7 @@ const initialState: RegisterState = {};
  * 初值直接来自 props，所以不需要在 effect 里同步状态。
  */
 function ResendButton({ seconds, pending }: { seconds: number; pending: boolean }) {
+  const t = useTranslations("auth.register");
   const [remaining, setRemaining] = useState(seconds);
 
   useEffect(() => {
@@ -26,12 +28,19 @@ function ResendButton({ seconds, pending }: { seconds: number; pending: boolean 
       aria-live="polite"
       className="font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
     >
-      {pending ? "正在重发…" : waiting ? `${remaining} 秒后可重新发送` : "重新发送"}
+      {pending ? t("resending") : waiting ? t("resendCountdown", { seconds: remaining }) : t("resend")}
     </button>
   );
 }
 
 export function RegisterForm() {
+  const t = useTranslations("auth.register");
+  const tc = useTranslations("auth.common");
+  // 服务端动作返回的是字典 key，翻译在这里发生，动作本身不需要知道当前语言。
+  const tAuth = useTranslations("auth");
+  const message = (key: RegisterMessageKey | undefined, values?: Record<string, number>) =>
+    key ? tAuth(key, values) : null;
+
   const [state, action, pending] = useActionState(registerAction, initialState);
 
   if (state.status === "sent") {
@@ -40,12 +49,12 @@ export function RegisterForm() {
         <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-accent text-primary">
           <MailCheck aria-hidden className="size-6" />
         </span>
-        <h2 className="headline-sm mt-4 text-xl">检查你的邮箱</h2>
+        <h2 className="headline-sm mt-4 text-xl">{t("checkInbox")}</h2>
         {state.emailHint ? <p className="mt-2 font-medium">{state.emailHint}</p> : null}
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">{state.message}</p>
-        {state.notice ? (
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">{message(state.messageKey)}</p>
+        {state.noticeKey ? (
           <p role="alert" className="mt-4 rounded-md border border-hairline bg-muted/60 px-3 py-2.5 text-sm text-muted-foreground">
-            {state.notice}
+            {message(state.noticeKey, { seconds: state.cooldownSeconds ?? 0 })}
           </p>
         ) : null}
         <div className="mt-5 flex items-center justify-center gap-4 text-sm">
@@ -54,11 +63,9 @@ export function RegisterForm() {
             <input type="hidden" name="intent" value="resend" />
             <ResendButton key={state.issuedAt} seconds={state.cooldownSeconds ?? 0} pending={pending} />
           </form>
-          <Link href="/login" className="font-semibold text-primary hover:underline">返回登录</Link>
+          <Link href="/login" className="font-semibold text-primary hover:underline">{tc("backToLogin")}</Link>
         </div>
-        <p className="mt-4 text-xs leading-5 text-muted-foreground">
-          没收到？请检查垃圾邮件文件夹，或确认邮箱地址是否填写正确。
-        </p>
+        <p className="mt-4 text-xs leading-5 text-muted-foreground">{t("notReceived")}</p>
       </div>
     );
   }
@@ -69,7 +76,7 @@ export function RegisterForm() {
         <label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
       </div>
       <label className="block text-sm font-semibold">
-        邮箱
+        {tc("email")}
         {/* key 让每次服务端响应后重新挂载，把回填的邮箱写进输入框，
             否则 server action 提交完会把非受控表单清空。 */}
         <input
@@ -83,9 +90,13 @@ export function RegisterForm() {
           className="mt-2 h-11 w-full rounded-md border bg-card px-3.5 font-normal outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/30"
         />
       </label>
-      {state.message ? <p role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger">{state.message}</p> : null}
+      {state.messageKey ? (
+        <p role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger">
+          {message(state.messageKey, { seconds: state.cooldownSeconds ?? 0 })}
+        </p>
+      ) : null}
       <button disabled={pending} className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60">
-        {pending ? "正在发送…" : "发送验证邮件"}
+        {pending ? t("submitting") : t("submit")}
       </button>
     </form>
   );

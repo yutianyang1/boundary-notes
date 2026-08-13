@@ -146,7 +146,9 @@
       "saveRecoveryCodes": "请立即保存恢复码",
       "recoveryCodesHint": "每个恢复码只能使用一次。手机丢失时，它们是登录账户的备用方式。",
       "enterAdmin": "我已保存，进入后台",
-      "cancelAndSignOut": "取消并退出登录"
+      "cancelAndSignOut": "取消并退出登录",
+      "challengeCodeLabel": "验证器代码或恢复码",
+      "enrollCodeLabel": "验证器中的 6 位代码"
     },
     "errors": {
       "registrationClosed": "注册暂未开放。",
@@ -169,7 +171,9 @@
       "githubEmailUnverified": "GitHub 没有提供已验证的主邮箱，无法完成登录。",
       "githubAccountDisabled": "该账号已停用，无法登录。",
       "githubAccountConflict": "GitHub 账号与站内账号关联冲突，请联系管理员。",
-      "githubFailed": "GitHub 登录失败，请稍后重试。"
+      "githubFailed": "GitHub 登录失败，请稍后重试。",
+      "mfaCodeIncorrect": "验证码不正确，请确认设备时间后重试。",
+      "mfaCodeOrRecoveryIncorrect": "验证码或恢复码不正确。"
     }
   }
 }

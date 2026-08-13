@@ -15,7 +15,15 @@ import { db } from "@/lib/db";
 import { auditLogs, mailOutbox, userActionTokens, userSessions, users } from "@/lib/db/schema";
 import { encryptOutboxPayload } from "@/lib/mail/outbox";
 
-export type ResetPasswordState = { error?: string };
+/** 返回字典 key 而非文案：动作不需要知道当前语言，翻译交给 UI。 */
+export type ResetPasswordErrorKey =
+  | "errors.passwordMismatch"
+  | "errors.passwordTooCommonReset"
+  | "errors.passwordSameAsCurrent"
+  | "resetPassword.invalidTitle"
+  | "errors.invalidEmail";
+
+export type ResetPasswordState = { errorKey?: ResetPasswordErrorKey };
 
 const tokenSchema = z.string().min(20).max(512);
 const confirmationSchema = z.string().max(1_024);
@@ -30,13 +38,14 @@ export async function resetPasswordAction(
   const password = passwordSchema.safeParse(formData.get("password"));
   const confirmation = confirmationSchema.safeParse(formData.get("confirmPassword"));
   if (!token.success) return invalidLink();
-  if (!password.success) return { error: password.error.issues[0]?.message };
+  if (!password.success) return { errorKey: "errors.passwordMismatch" };
   if (!confirmation.success || confirmation.data !== password.data) {
-    return { error: "两次输入的新密码不一致。" };
+    return { errorKey: "errors.passwordMismatch" };
   }
 
   const requestHeaders = await headers();
   const changedAt = new Date();
+  // 安全提醒邮件是中文模板，动作名跟着保持中文。
   const alertPayload = securityAlertPayload(requestHeaders, "密码已重置", changedAt);
   let revokedJtis: string[];
 
@@ -68,10 +77,10 @@ export async function resetPasswordAction(
         .limit(1);
       if (!user?.passwordHash || user.disabledAt || user.deletedAt) throw new InvalidResetLinkError();
       if (isBlockedPassword(password.data, { name: user.name, email: user.email })) {
-        throw new PasswordPolicyError("这个密码过于常见，或与账户资料过于接近。");
+        throw new PasswordPolicyError("errors.passwordTooCommonReset");
       }
       if ((await verifyPassword(password.data, user.passwordHash)).valid) {
-        throw new PasswordPolicyError("新密码不能与当前密码相同。");
+        throw new PasswordPolicyError("errors.passwordSameAsCurrent");
       }
 
       const passwordHash = await hashPassword(password.data);
@@ -112,16 +121,18 @@ export async function resetPasswordAction(
     });
   } catch (error) {
     if (error instanceof InvalidResetLinkError) return invalidLink();
-    if (error instanceof PasswordPolicyError) return { error: error.message };
+    if (error instanceof PasswordPolicyError) return { errorKey: error.message as ResetPasswordErrorKey };
     throw error;
   }
 
   await clearRegisteredSessionCache(revokedJtis);
+  // 重置成功后回登录页。locale 前缀由 proxy 的 as-needed 规则处理：
+  // 中文站保持无前缀，英文用户从 /en/reset-password 过来时由中间件改写。
   redirect("/login?reset=success");
 }
 
 class PasswordPolicyError extends Error {}
 
 function invalidLink(): ResetPasswordState {
-  return { error: "链接无效或已过期" };
+  return { errorKey: "resetPassword.invalidTitle" };
 }

@@ -22,10 +22,13 @@ import { encryptOutboxPayload } from "@/lib/mail/outbox";
 export type RegisterState = {
   /** sent = 展示「检查你的邮箱」卡片；error = 停留在初始表单。 */
   status?: "sent" | "error";
-  /** 初始表单上的错误提示。 */
-  message?: string;
-  /** 已发送卡片内的提示，用于重发被冷却拦下的场景。 */
-  notice?: string;
+  /**
+   * 初始表单上的错误提示，存的是 auth 命名空间下的字典 key 而非文案。
+   * 动作因此不需要知道当前语言，渲染交给 UI。
+   */
+  messageKey?: RegisterMessageKey;
+  /** 已发送卡片内的提示 key，用于重发被冷却拦下的场景。 */
+  noticeKey?: RegisterMessageKey;
   emailHint?: string;
   email?: string;
   /** 距离下次可重发的秒数，驱动按钮倒计时。 */
@@ -37,10 +40,21 @@ export type RegisterState = {
   issuedAt?: number;
 };
 
-export type CompleteRegistrationState = { error?: string };
+export type RegisterMessageKey =
+  | "errors.registrationClosed"
+  | "errors.invalidEmail"
+  | "errors.emailTaken"
+  | "errors.resendCooldown"
+  | "errors.sendQuotaExceeded"
+  | "errors.serviceUnavailable"
+  | "errors.checkInboxMessage"
+  | "errors.registrationLinkInvalid"
+  | "errors.registrationAlreadyDone"
+  | "errors.passwordTooCommon";
 
-const emailSchema = z.email("请输入有效邮箱").transform((value) => value.trim().toLowerCase());
-const checkInboxMessage = "验证邮件已发送，请前往邮箱完成验证。";
+export type CompleteRegistrationState = { errorKey?: RegisterMessageKey };
+
+const emailSchema = z.email().transform((value) => value.trim().toLowerCase());
 
 function maskEmail(email: string) {
   const [local, domain] = email.split("@");
@@ -49,10 +63,10 @@ function maskEmail(email: string) {
   return `${visible}${"*".repeat(Math.max(2, Math.min(6, local.length - visible.length)))}@${domain}`;
 }
 
-function throttleMessage(gate: Extract<RegistrationGate, { allowed: false }>) {
-  if (gate.reason === "cooldown") return `验证邮件刚刚发送过，请 ${gate.retryAfterSeconds} 秒后再试。`;
-  if (gate.reason === "quota") return "发送次数已达上限，请一小时后再试。";
-  return "服务暂时不可用，请稍后再试。";
+function throttleKey(gate: Extract<RegistrationGate, { allowed: false }>): RegisterMessageKey {
+  if (gate.reason === "cooldown") return "errors.resendCooldown";
+  if (gate.reason === "quota") return "errors.sendQuotaExceeded";
+  return "errors.serviceUnavailable";
 }
 
 export async function registerAction(previous: RegisterState, formData: FormData): Promise<RegisterState> {
@@ -60,17 +74,17 @@ export async function registerAction(previous: RegisterState, formData: FormData
 }
 
 async function runRegistration(_: RegisterState, formData: FormData): Promise<RegisterState> {
-  if (!isPublicRegistrationEnabled()) return { status: "error", message: "注册暂未开放。" };
+  if (!isPublicRegistrationEnabled()) return { status: "error", messageKey: "errors.registrationClosed" };
   const parsed = emailSchema.safeParse(formData.get("email"));
   // 邮箱本身不合法时没有可回填的值，其余分支一律把它带回去，避免用户重输。
-  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { status: "error", messageKey: "errors.invalidEmail" };
   const emailHint = maskEmail(parsed.data);
   const isResend = formData.get("intent") === "resend";
 
   if (String(formData.get("website") ?? "").trim()) {
     return {
       status: "sent",
-      message: checkInboxMessage,
+      messageKey: "errors.checkInboxMessage",
       emailHint,
       email: parsed.data,
       cooldownSeconds: RESEND_COOLDOWN_SECONDS,
@@ -78,21 +92,22 @@ async function runRegistration(_: RegisterState, formData: FormData): Promise<Re
   }
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data)).limit(1);
   if (existing) {
-    return { status: "error", message: "该邮箱已经注册，请直接登录。", email: parsed.data };
+    return { status: "error", messageKey: "errors.emailTaken", email: parsed.data };
   }
   const requestHeaders = await headers();
   const gate = await allowRegistrationRequest(extractClientIp(requestHeaders), parsed.data);
   if (!gate.allowed) {
-    const notice = throttleMessage(gate);
+    const key = throttleKey(gate);
     // 重发被拦下时保留卡片，只在卡片里提示，并按剩余时间重启倒计时。
     return isResend
-      ? { status: "sent", message: checkInboxMessage, notice, emailHint, email: parsed.data, cooldownSeconds: gate.retryAfterSeconds }
-      : { status: "error", message: notice, email: parsed.data };
+      ? { status: "sent", messageKey: "errors.checkInboxMessage", noticeKey: key, emailHint, email: parsed.data, cooldownSeconds: gate.retryAfterSeconds }
+      : { status: "error", messageKey: key, email: parsed.data };
   }
 
   const { token, tokenDigest } = createActionToken();
   const verifyUrl = new URL("/verify-email", process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost");
   verifyUrl.searchParams.set("token", token);
+  // 邮件模板是中文的（腾讯云 SES 模板带审核 ID），载荷跟着保持中文，不走 i18n。
   const payloadEnc = encryptOutboxPayload({ name: "读者", verifyUrl: verifyUrl.toString() });
   const now = new Date();
   await db.transaction(async (tx) => {
@@ -119,7 +134,7 @@ async function runRegistration(_: RegisterState, formData: FormData): Promise<Re
   });
   return {
     status: "sent",
-    message: checkInboxMessage,
+    messageKey: "errors.checkInboxMessage",
     emailHint,
     email: parsed.data,
     cooldownSeconds: RESEND_COOLDOWN_SECONDS,
@@ -130,9 +145,9 @@ export async function completeRegistrationAction(
   _state: CompleteRegistrationState,
   formData: FormData,
 ): Promise<CompleteRegistrationState> {
-  if (!isPublicRegistrationEnabled()) return { error: "注册暂未开放。" };
+  if (!isPublicRegistrationEnabled()) return { errorKey: "errors.registrationClosed" };
   const token = String(formData.get("token") ?? "");
-  if (token.length < 20) return { error: "注册链接无效或已经过期，请重新验证邮箱。" };
+  if (token.length < 20) return { errorKey: "errors.registrationLinkInvalid" };
   const tokenDigest = digestActionToken(token);
   const [pending] = await db.select({ email: pendingRegistrations.email }).from(pendingRegistrations).where(and(
     eq(pendingRegistrations.tokenDigest, tokenDigest),
@@ -140,7 +155,7 @@ export async function completeRegistrationAction(
     isNull(pendingRegistrations.consumedAt),
     gt(pendingRegistrations.expiresAt, new Date()),
   )).limit(1);
-  if (!pending) return { error: "注册链接无效或已经过期，请重新验证邮箱。" };
+  if (!pending) return { errorKey: "errors.registrationLinkInvalid" };
 
   const parsed = registrationInputSchema.safeParse({
     name: formData.get("name"),
@@ -148,9 +163,9 @@ export async function completeRegistrationAction(
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { errorKey: "errors.invalidEmail" };
   if (isBlockedPassword(parsed.data.password, { email: pending.email, name: parsed.data.name })) {
-    return { error: "该密码过于常见，或与账户信息太接近。" };
+    return { errorKey: "errors.passwordTooCommon" };
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
@@ -186,7 +201,7 @@ export async function completeRegistrationAction(
   } catch (error) {
     if (error instanceof Error && (
       error.message.includes("users_email_unique") || error.message === "REGISTRATION_TOKEN_INVALID"
-    )) return { error: "该邮箱已完成注册，或注册链接已经失效。" };
+    )) return { errorKey: "errors.registrationAlreadyDone" };
     throw error;
   }
   redirect("/login?registered=success");

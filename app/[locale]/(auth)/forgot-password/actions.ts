@@ -13,7 +13,9 @@ import { encryptOutboxPayload } from "@/lib/mail/outbox";
 
 export type ForgotPasswordState = { status?: "success" | "error"; message?: string };
 
-const emailSchema = z.string().trim().toLowerCase().pipe(z.email("请输入有效邮箱"));
+// 这条校验信息不会显示给用户：动作对任何输入都返回统一响应，
+// 以免暴露邮箱是否已注册。
+const emailSchema = z.string().trim().toLowerCase().pipe(z.email());
 
 export async function forgotPasswordAction(
   _state: ForgotPasswordState,
