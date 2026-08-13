@@ -8,7 +8,11 @@ import { createActionToken, digestActionToken } from "@/lib/auth/action-tokens";
 import { extractClientIp } from "@/lib/auth/device";
 import { hashPassword } from "@/lib/auth/password";
 import { isBlockedPassword } from "@/lib/auth/password-policy";
-import { allowRegistrationRequest } from "@/lib/auth/registration-rate-limit";
+import {
+  allowRegistrationRequest,
+  RESEND_COOLDOWN_SECONDS,
+  type RegistrationGate,
+} from "@/lib/auth/registration-rate-limit";
 import { registrationInputSchema } from "@/lib/auth/registration-input";
 import { db } from "@/lib/db";
 import { auditLogs, mailOutbox, pendingRegistrations, users } from "@/lib/db/schema";
@@ -16,10 +20,21 @@ import { isPublicRegistrationEnabled } from "@/lib/features";
 import { encryptOutboxPayload } from "@/lib/mail/outbox";
 
 export type RegisterState = {
-  status?: "success" | "error";
+  /** sent = 展示「检查你的邮箱」卡片；error = 停留在初始表单。 */
+  status?: "sent" | "error";
+  /** 初始表单上的错误提示。 */
   message?: string;
+  /** 已发送卡片内的提示，用于重发被冷却拦下的场景。 */
+  notice?: string;
   emailHint?: string;
   email?: string;
+  /** 距离下次可重发的秒数，驱动按钮倒计时。 */
+  cooldownSeconds?: number;
+  /**
+   * 每次响应都换一个值。客户端拿它当 key，让输入框和倒计时按钮重新挂载，
+   * 从而不必在 effect 里同步 setState。
+   */
+  issuedAt?: number;
 };
 
 export type CompleteRegistrationState = { error?: string };
@@ -34,22 +49,45 @@ function maskEmail(email: string) {
   return `${visible}${"*".repeat(Math.max(2, Math.min(6, local.length - visible.length)))}@${domain}`;
 }
 
-export async function registerAction(_: RegisterState, formData: FormData): Promise<RegisterState> {
+function throttleMessage(gate: Extract<RegistrationGate, { allowed: false }>) {
+  if (gate.reason === "cooldown") return `验证邮件刚刚发送过，请 ${gate.retryAfterSeconds} 秒后再试。`;
+  if (gate.reason === "quota") return "发送次数已达上限，请一小时后再试。";
+  return "服务暂时不可用，请稍后再试。";
+}
+
+export async function registerAction(previous: RegisterState, formData: FormData): Promise<RegisterState> {
+  return { ...await runRegistration(previous, formData), issuedAt: Date.now() };
+}
+
+async function runRegistration(_: RegisterState, formData: FormData): Promise<RegisterState> {
   if (!isPublicRegistrationEnabled()) return { status: "error", message: "注册暂未开放。" };
   const parsed = emailSchema.safeParse(formData.get("email"));
+  // 邮箱本身不合法时没有可回填的值，其余分支一律把它带回去，避免用户重输。
   if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message };
   const emailHint = maskEmail(parsed.data);
+  const isResend = formData.get("intent") === "resend";
 
   if (String(formData.get("website") ?? "").trim()) {
-    return { status: "success", message: checkInboxMessage, emailHint, email: parsed.data };
+    return {
+      status: "sent",
+      message: checkInboxMessage,
+      emailHint,
+      email: parsed.data,
+      cooldownSeconds: RESEND_COOLDOWN_SECONDS,
+    };
   }
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, parsed.data)).limit(1);
   if (existing) {
-    return { status: "error", message: "该邮箱已经注册，请直接登录。" };
+    return { status: "error", message: "该邮箱已经注册，请直接登录。", email: parsed.data };
   }
   const requestHeaders = await headers();
-  if (!await allowRegistrationRequest(extractClientIp(requestHeaders), parsed.data)) {
-    return { status: "error", message: "验证邮件发送得太频繁，请稍后再试。" };
+  const gate = await allowRegistrationRequest(extractClientIp(requestHeaders), parsed.data);
+  if (!gate.allowed) {
+    const notice = throttleMessage(gate);
+    // 重发被拦下时保留卡片，只在卡片里提示，并按剩余时间重启倒计时。
+    return isResend
+      ? { status: "sent", message: checkInboxMessage, notice, emailHint, email: parsed.data, cooldownSeconds: gate.retryAfterSeconds }
+      : { status: "error", message: notice, email: parsed.data };
   }
 
   const { token, tokenDigest } = createActionToken();
@@ -79,7 +117,13 @@ export async function registerAction(_: RegisterState, formData: FormData): Prom
       encryptionKeyVersion: 1,
     });
   });
-  return { status: "success", message: checkInboxMessage, emailHint, email: parsed.data };
+  return {
+    status: "sent",
+    message: checkInboxMessage,
+    emailHint,
+    email: parsed.data,
+    cooldownSeconds: RESEND_COOLDOWN_SECONDS,
+  };
 }
 
 export async function completeRegistrationAction(
