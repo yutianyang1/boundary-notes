@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { MarkdownEditor } from "@/components/admin/markdown-editor";
 import { CoverUploader } from "@/components/admin/cover-uploader";
-import { savePostAction, type PostActionState } from "@/app/admin/posts/actions";
+import { savePostAction, type PostActionState } from "@/app/(backend)/admin/posts/actions";
 import { normalizeSlug } from "@/lib/posts/slug";
 
 type EditablePost = {

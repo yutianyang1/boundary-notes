@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveSeriesAction, type SeriesActionState } from "@/app/admin/series/actions";
+import { saveSeriesAction, type SeriesActionState } from "@/app/(backend)/admin/series/actions";
 import { CoverUploader } from "@/components/admin/cover-uploader";
 import { normalizeSlug } from "@/lib/posts/slug";
 

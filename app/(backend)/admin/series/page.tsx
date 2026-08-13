@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import Image from "next/image";
 import Link from "next/link";
-import { deleteSeriesAction } from "@/app/admin/series/actions";
+import { deleteSeriesAction } from "@/app/(backend)/admin/series/actions";
 import { requireStaff } from "@/lib/auth/permissions";
 import { db } from "@/lib/db";
 import { posts, series } from "@/lib/db/schema";

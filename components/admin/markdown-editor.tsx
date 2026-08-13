@@ -6,7 +6,7 @@ import { Compartment } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
-import { renderMarkdownPreview } from "@/app/admin/posts/actions";
+import { renderMarkdownPreview } from "@/app/(backend)/admin/posts/actions";
 import { MediaLibrary, type MediaAsset } from "@/components/admin/media-library";
 
 export function MarkdownEditor({ initialValue }: { initialValue: string }) {

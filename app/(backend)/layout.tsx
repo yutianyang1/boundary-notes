@@ -2,15 +2,15 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/noto-sans-sc";
-import "./globals.css";
+import "../globals.css";
 
-const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? "边界笔记";
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
+/**
+ * 后台的根布局。后台不参与 i18n，只有站点作者使用，固定中文。
+ * 它与 app/[locale]/layout.tsx 是两个并列的根布局——因此 app/ 下没有 layout.tsx。
+ */
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: { default: siteName, template: `%s · ${siteName}` },
-  description: "关于软件架构、工程实践与长期主义的写作。",
+  title: { default: "内容后台", template: "%s · 内容后台" },
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function BackendRootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body>
