@@ -1,20 +1,26 @@
+import { createTranslator } from "next-intl";
+import { BrandMark, siteName } from "@/components/brand-mark";
 import Link from "next/link";
-import { BrandMark } from "@/components/brand-mark";
+import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 
 const browseLinks = [
-  { href: "/posts", label: "文章" },
-  { href: "/categories", label: "分类" },
-  { href: "/tags", label: "标签" },
-  { href: "/series", label: "系列" },
-];
+  { href: "/posts", key: "posts" },
+  { href: "/categories", key: "categories" },
+  { href: "/tags", key: "tags" },
+  { href: "/series", key: "series" },
+] as const;
 
 const siteLinks = [
-  { href: "/about", label: "关于" },
-  { href: "/search", label: "搜索" },
-  { href: "/feed.xml", label: "RSS" },
-];
+  { href: "/about", key: "about" },
+  { href: "/search", key: "search" },
+] as const;
 
-export function SiteFooter() {
+export function SiteFooter({ locale }: { locale: Locale }) {
+  const messages = messagesFor(locale);
+  const t = createTranslator({ locale, messages, namespace: "nav" });
+  const tf = createTranslator({ locale, messages, namespace: "footer" });
   const copyrightYear = process.env.NEXT_PUBLIC_COPYRIGHT_YEAR ?? "2026";
   const icpBeian = process.env.NEXT_PUBLIC_ICP_BEIAN?.trim();
   const mpsBeian = process.env.NEXT_PUBLIC_MPS_BEIAN?.trim();
@@ -26,21 +32,32 @@ export function SiteFooter() {
           <div className="max-w-[28rem]">
             <BrandMark />
             <p className="mt-4 max-w-[24em] text-sm leading-[1.8] text-muted-foreground">
-              在复杂系统中寻找清晰的边界。记录软件架构、工程实践与那些值得反复推敲的设计决定。
+              {tf("tagline")}
             </p>
           </div>
 
           <nav
-            aria-label="页脚导航"
+            aria-label={tf("nav")}
             className="grid gap-8 min-[420px]:grid-cols-2 min-[420px]:gap-12"
           >
-            <FooterLinkGroup title="浏览" links={browseLinks} />
-            <FooterLinkGroup title="站点" links={siteLinks} />
+            <FooterLinkGroup
+              title={tf("browse")}
+              locale={locale}
+              links={browseLinks.map((item) => ({ href: item.href, label: t(item.key) }))}
+            />
+            <FooterLinkGroup
+              title={tf("site")}
+              locale={locale}
+              links={[
+                ...siteLinks.map((item) => ({ href: item.href, label: t(item.key) })),
+                { href: "/feed.xml", label: "RSS", external: true },
+              ]}
+            />
           </nav>
         </div>
 
         <div className="mt-12 flex flex-col gap-3 border-t border-hairline pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p className="tabular-nums">© {copyrightYear} 边界笔记</p>
+          <p className="tabular-nums">© {copyrightYear} {siteName}</p>
           {icpBeian || mpsBeian ? (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               {icpBeian ? (
@@ -109,10 +126,12 @@ function PublicSecurityMark() {
 
 function FooterLinkGroup({
   title,
+  locale,
   links,
 }: {
   title: string;
-  links: ReadonlyArray<{ href: string; label: string }>;
+  locale: Locale;
+  links: ReadonlyArray<{ href: string; label: string; external?: boolean }>;
 }) {
   return (
     <div>
@@ -120,12 +139,22 @@ function FooterLinkGroup({
       <ul className="mt-4 space-y-3">
         {links.map((item) => (
           <li key={item.href}>
-            <Link
-              href={item.href}
-              className="rounded-sm text-sm font-medium text-foreground/85 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {item.label}
-            </Link>
+            {item.external ? (
+              // RSS 是单一中文源，不带 locale 前缀，所以走原生 a 而非 i18n Link。
+              <a
+                href={item.href}
+                className="rounded-sm text-sm font-medium text-foreground/85 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {item.label}
+              </a>
+            ) : (
+              <Link
+                href={localePath(item.href, locale)}
+                className="rounded-sm text-sm font-medium text-foreground/85 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {item.label}
+              </Link>
+            )}
           </li>
         ))}
       </ul>

@@ -1,4 +1,8 @@
-import Link from "next/link";
+"use client";
+
+import { Link } from "@/i18n/navigation";
+
+export const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? "边界笔记";
 
 // 阶梯边界标记。同一图形另存于 app/icon.svg(favicon)与 docs/brand/(位图导出)。
 export function BrandSymbol() {
@@ -17,6 +21,10 @@ export function BrandSymbol() {
   );
 }
 
+/**
+ * 客户端组件：locale 由 NextIntlClientProvider 提供，不需要调用方层层传，
+ * 也不会像服务端那样去读请求上下文。
+ */
 export function BrandMark({ className = "" }: { className?: string }) {
   return (
     <Link
@@ -24,7 +32,7 @@ export function BrandMark({ className = "" }: { className?: string }) {
       className={`group flex w-fit shrink-0 items-center gap-3 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${className}`}
     >
       <BrandSymbol />
-      <span className="text-base font-bold tracking-[0.02em]">边界笔记</span>
+      <span className="text-base font-bold tracking-[0.02em]">{siteName}</span>
     </Link>
   );
 }

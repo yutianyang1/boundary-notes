@@ -5,11 +5,22 @@
     "tags": "标签",
     "series": "系列",
     "about": "关于",
-    "searchPlaceholder": "搜索文章...",
-    "login": "登录",
-    "toggleTheme": "切换主题",
-    "toggleLanguage": "切换语言",
+    "search": "搜索",
+    "primary": "主导航",
+    "mobile": "移动端主导航",
+    "searchPosts": "搜索文章",
+    "searchPlaceholder": "搜索文章…",
     "openMenu": "打开菜单",
-    "closeMenu": "关闭菜单"
+    "closeMenu": "关闭菜单",
+    "toggleTheme": "切换深色/浅色主题",
+    "language": "语言",
+    "switchToChinese": "切换到中文",
+    "switchToEnglish": "Switch to English"
+  },
+  "footer": {
+    "nav": "页脚导航",
+    "tagline": "在复杂系统中寻找清晰的边界。记录软件架构、工程实践与那些值得反复推敲的设计决定。",
+    "browse": "浏览",
+    "site": "站点"
   }
 }

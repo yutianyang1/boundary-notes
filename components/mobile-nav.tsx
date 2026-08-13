@@ -1,10 +1,11 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { BrandSymbol } from "@/components/brand-mark";
+import { BrandSymbol, siteName } from "@/components/brand-mark";
+import { Link } from "@/i18n/navigation";
 import { navigation } from "@/lib/navigation";
 
 const drawerId = "mobile-site-navigation";
@@ -15,6 +16,7 @@ const getClientSnapshot = () => true;
 const getServerSnapshot = () => false;
 
 export function MobileNav() {
+  const t = useTranslations("nav");
   const isMounted = useSyncExternalStore(
     subscribeToHydration,
     getClientSnapshot,
@@ -87,7 +89,7 @@ export function MobileNav() {
       <button
         ref={triggerRef}
         type="button"
-        aria-label={isOpen ? "关闭菜单" : "打开菜单"}
+        aria-label={isOpen ? t("closeMenu") : t("openMenu")}
         aria-expanded={isOpen}
         aria-controls={drawerId}
         onClick={() => setIsOpen((open) => !open)}
@@ -107,7 +109,7 @@ export function MobileNav() {
               <button
                 type="button"
                 tabIndex={-1}
-                aria-label="关闭菜单"
+                aria-label={t("closeMenu")}
                 onClick={() => closeDrawer()}
                 className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 motion-reduce:transition-none ${
                   isOpen ? "opacity-100" : "opacity-0"
@@ -118,20 +120,20 @@ export function MobileNav() {
                 id={drawerId}
                 role="dialog"
                 aria-modal="true"
-                aria-label="主导航"
+                aria-label={t("primary")}
                 className={`relative flex h-full w-[min(80vw,20rem)] flex-col border-r bg-background [box-shadow:var(--shadow)] transition-transform duration-200 motion-reduce:transition-none ${
                   isOpen ? "translate-x-0" : "-translate-x-full"
                 }`}
               >
                 <div className="flex h-16 items-center justify-between border-b px-5">
-                  <div className="flex items-center gap-3" aria-label="边界笔记">
+                  <div className="flex items-center gap-3" aria-label={siteName}>
                     <BrandSymbol />
-                    <span className="text-base font-bold tracking-[0.02em]">边界笔记</span>
+                    <span className="text-base font-bold tracking-[0.02em]">{siteName}</span>
                   </div>
                   <button
                     ref={closeButtonRef}
                     type="button"
-                    aria-label="关闭菜单"
+                    aria-label={t("closeMenu")}
                     onClick={() => closeDrawer()}
                     className="grid size-9 place-items-center rounded-md border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                   >
@@ -139,7 +141,7 @@ export function MobileNav() {
                   </button>
                 </div>
 
-                <nav aria-label="移动端主导航" className="flex flex-col px-4 py-5">
+                <nav aria-label={t("mobile")} className="flex flex-col px-4 py-5">
                   {navigation.map((item) => (
                     <Link
                       key={item.href}
@@ -147,7 +149,7 @@ export function MobileNav() {
                       onClick={() => closeDrawer()}
                       className="rounded-lg px-3 py-3 text-base font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                     >
-                      {item.label}
+                      {t(item.key)}
                     </Link>
                   ))}
                 </nav>

@@ -5,11 +5,22 @@
     "tags": "Tags",
     "series": "Series",
     "about": "About",
-    "searchPlaceholder": "Search posts...",
-    "login": "Sign in",
-    "toggleTheme": "Toggle theme",
-    "toggleLanguage": "Change language",
+    "search": "Search",
+    "primary": "Main navigation",
+    "mobile": "Mobile navigation",
+    "searchPosts": "Search posts",
+    "searchPlaceholder": "Search posts…",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "toggleTheme": "Toggle dark mode",
+    "language": "Language",
+    "switchToChinese": "切换到中文",
+    "switchToEnglish": "Switch to English"
+  },
+  "footer": {
+    "nav": "Footer navigation",
+    "tagline": "Looking for clear boundaries inside complex systems. Notes on software architecture, engineering practice, and the design decisions worth turning over twice.",
+    "browse": "Browse",
+    "site": "Site"
   }
 }

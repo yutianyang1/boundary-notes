@@ -1,12 +1,14 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 
 const themeColors = { light: "#f8fafc", dark: "#181b22" } as const;
 
 export function ThemeToggle() {
+  const t = useTranslations("nav");
   const { resolvedTheme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function ThemeToggle() {
        * 任何依赖它的 aria-label 都会在水合时前后不一致（hydration mismatch）。
        * 当前状态由图标在视觉上表达，图标走 CSS 的 dark: 变体，不参与水合比对。
        */
-      aria-label="切换深色/浅色主题"
+      aria-label={t("toggleTheme")}
     >
       <Moon className="size-4 dark:hidden" />
       <Sun className="hidden size-4 dark:block" />
