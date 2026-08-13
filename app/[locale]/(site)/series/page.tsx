@@ -1,35 +1,50 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { createTranslator } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
+import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/browse/page-header";
 import { TermCard } from "@/components/browse/term-card";
 import { getPublishedSeriesList } from "@/lib/posts/queries";
 
-export const metadata: Metadata = {
-  title: "系列",
-  description: "按阅读顺序浏览主题系列。",
-};
+type PageProps = { params: Promise<{ locale: string }> };
 
-export default function SeriesPage() {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = createTranslator({ locale, messages: messagesFor(locale as Locale), namespace: "series" });
+  return { title: t("metaTitle"), description: t("metaDescription") };
+}
+
+export default async function SeriesPage({ params }: PageProps) {
+  const { locale: rawLocale } = await params;
+  const locale = rawLocale as Locale;
+  setRequestLocale(locale);
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "series" });
+
   return (
     <div className="shell py-10 sm:py-16">
       <PageHeader
-        eyebrow="连续阅读"
-        title="系列"
-        description="将同一主题下的文章按顺序串联起来，从第一篇完整读到最后一篇。"
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("description")}
       />
       <Suspense fallback={<TermGridSkeleton />}>
-        <SeriesList />
+        <SeriesList locale={locale} />
       </Suspense>
     </div>
   );
 }
 
-async function SeriesList() {
+async function SeriesList({ locale }: { locale: Locale }) {
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "series" });
+  const tc = createTranslator({ locale, messages: messagesFor(locale), namespace: "common" });
   await connection();
   const items = await getPublishedSeriesList();
   if (!items.length) {
-    return <p className="rule-anchor mt-12 pt-12 text-muted-foreground">暂无系列。</p>;
+    return <p className="rule-anchor mt-12 pt-12 text-muted-foreground">{t("empty")}</p>;
   }
 
   return (
@@ -37,13 +52,13 @@ async function SeriesList() {
       {items.map((item) => (
         <TermCard
           key={item.slug}
-          href={`/series/${item.slug}`}
+          href={localePath(`/series/${item.slug}`, locale)}
           name={item.name}
           description={item.description}
-          count={item.count}
+          countLabel={tc("postCount", { count: item.count })}
           cover={item.cover}
           seed={item.slug}
-          label="系列"
+          label={t("title")}
         />
       ))}
     </div>

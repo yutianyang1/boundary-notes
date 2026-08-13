@@ -175,5 +175,81 @@
       "mfaCodeIncorrect": "That code is not correct. Check your device clock and try again.",
       "mfaCodeOrRecoveryIncorrect": "That code or recovery code is not correct."
     }
+  },
+  "common": {
+    "loading": "Loading",
+    "postCount": "{count, plural, one {# post} other {# posts}}",
+    "empty": "Nothing here yet."
+  },
+  "archive": {
+    "metaTitle": "All posts",
+    "metaDescription": "Every post, archived by year.",
+    "eyebrow": "Archive",
+    "title": "All posts",
+    "empty": "No posts published yet.",
+    "unknownYear": "Undated",
+    "yearPagination": "Pagination for {year}",
+    "previousPage": "Previous",
+    "nextPage": "Next",
+    "loadingArchive": "Loading the archive",
+    "jumpLabel": "Jump to page",
+    "jumpPlaceholder": "Page",
+    "jumpSubmit": "Go",
+    "totalCount": "{count, plural, one {# post} other {# posts}}",
+    "jumpTo": "Page",
+    "jumpToPageOf": "Jump to a page, {total} in total"
+  },
+  "categories": {
+    "metaTitle": "Categories",
+    "metaDescription": "Browse posts by category.",
+    "eyebrow": "Content index",
+    "title": "Categories",
+    "description": "Start from a subject area and read the posts filed under it.",
+    "empty": "No categories yet.",
+    "emptyPosts": "No posts in this category yet.",
+    "metaFallback": "Posts filed under “{name}”."
+  },
+  "tags": {
+    "metaTitle": "Tags",
+    "metaDescription": "Find posts by topic.",
+    "eyebrow": "Topic index",
+    "title": "Tags",
+    "description": "Start from a technical topic and find the posts that connect to it.",
+    "empty": "No tags yet.",
+    "emptyPosts": "No posts with this tag yet.",
+    "metaFallback": "Posts filed under “{name}”."
+  },
+  "series": {
+    "metaTitle": "Series",
+    "metaDescription": "Read themed series in order.",
+    "eyebrow": "Read in order",
+    "title": "Series",
+    "description": "Posts on one subject, threaded in sequence so you can read from the first to the last.",
+    "empty": "No series yet.",
+    "emptyPosts": "No public posts in this series yet.",
+    "metaFallback": "Posts filed under “{name}”.",
+    "sequenceLabel": "Part {n}"
+  },
+  "search": {
+    "metaTitle": "Search",
+    "metaDescription": "Search post titles, summaries and bodies.",
+    "eyebrow": "Discover",
+    "title": "Search",
+    "description": "Find what you are looking for across titles, summaries and full text.",
+    "placeholder": "Search titles, summaries or body text",
+    "submit": "Search posts",
+    "prompt": "Enter a keyword to start searching.",
+    "noResults": "No posts matched that search.",
+    "resultsFor": "<n></n> results for “{query}”"
+  },
+  "home": {
+    "eyebrow": "Software · Systems · The long view",
+    "headline": "Looking for clear boundaries<br></br>inside complex systems.",
+    "lead": "Notes on software architecture, engineering practice, and the design decisions worth turning over twice. Fewer shortcuts, more trade-offs that can be explained.",
+    "noPosts": "The first post is on its way.",
+    "latest": "Latest posts",
+    "viewAll": "View all",
+    "morePosts": "More posts are on the way.",
+    "loadingPosts": "Loading the latest posts"
   }
 }

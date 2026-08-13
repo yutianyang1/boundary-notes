@@ -2,12 +2,13 @@ export function PageHeader({
   eyebrow,
   title,
   description,
-  count,
+  countLabel,
 }: {
   eyebrow: string;
   title: string;
   description?: string | null;
-  count?: number;
+  /** 已翻译好的数量文案，如「共 8 篇」/「8 posts」。 */
+  countLabel?: string;
 }) {
   return (
     <header className="max-w-[52rem]">
@@ -20,9 +21,9 @@ export function PageHeader({
           {description}
         </p>
       ) : null}
-      {typeof count === "number" ? (
+      {countLabel ? (
         <p className="mt-5 w-fit rounded-full bg-accent px-3 py-1.5 text-sm font-semibold tabular-nums text-primary">
-          共 {count} 篇
+          {countLabel}
         </p>
       ) : null}
     </header>

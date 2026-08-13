@@ -1,35 +1,50 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { createTranslator } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
+import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/browse/page-header";
 import { TermCard } from "@/components/browse/term-card";
 import { getPublishedCategoryList } from "@/lib/posts/queries";
 
-export const metadata: Metadata = {
-  title: "分类",
-  description: "按内容分类浏览文章。",
-};
+type PageProps = { params: Promise<{ locale: string }> };
 
-export default function CategoriesPage() {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = createTranslator({ locale, messages: messagesFor(locale as Locale), namespace: "categories" });
+  return { title: t("metaTitle"), description: t("metaDescription") };
+}
+
+export default async function CategoriesPage({ params }: PageProps) {
+  const { locale: rawLocale } = await params;
+  const locale = rawLocale as Locale;
+  setRequestLocale(locale);
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "categories" });
+
   return (
     <div className="shell py-10 sm:py-16">
       <PageHeader
-        eyebrow="内容索引"
-        title="分类"
-        description="从内容领域出发，浏览每个分类下的公开文章。"
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("description")}
       />
       <Suspense fallback={<TermGridSkeleton />}>
-        <CategoryList />
+        <CategoryList locale={locale} />
       </Suspense>
     </div>
   );
 }
 
-async function CategoryList() {
+async function CategoryList({ locale }: { locale: Locale }) {
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "categories" });
+  const tc = createTranslator({ locale, messages: messagesFor(locale), namespace: "common" });
   await connection();
   const categories = await getPublishedCategoryList();
   if (!categories.length) {
-    return <p className="rule-anchor mt-12 pt-12 text-muted-foreground">暂无分类。</p>;
+    return <p className="rule-anchor mt-12 pt-12 text-muted-foreground">{t("empty")}</p>;
   }
 
   return (
@@ -37,12 +52,12 @@ async function CategoryList() {
       {categories.map((category) => (
         <TermCard
           key={category.slug}
-          href={`/categories/${category.slug}`}
+          href={localePath(`/categories/${category.slug}`, locale)}
           name={category.name}
           description={category.description}
-          count={category.count}
+          countLabel={tc("postCount", { count: category.count })}
           seed={category.slug}
-          label="分类"
+          label={t("title")}
         />
       ))}
     </div>

@@ -175,5 +175,81 @@
       "mfaCodeIncorrect": "验证码不正确，请确认设备时间后重试。",
       "mfaCodeOrRecoveryIncorrect": "验证码或恢复码不正确。"
     }
+  },
+  "common": {
+    "loading": "正在加载",
+    "postCount": "{count} 篇",
+    "empty": "暂无内容。"
+  },
+  "archive": {
+    "metaTitle": "全部文章",
+    "metaDescription": "按年份归档的全部文章。",
+    "eyebrow": "归档",
+    "title": "全部文章",
+    "empty": "暂无已发布文章。",
+    "unknownYear": "未定",
+    "yearPagination": "{year} 年文章分页",
+    "previousPage": "上一页",
+    "nextPage": "下一页",
+    "loadingArchive": "正在加载归档",
+    "jumpLabel": "跳转到页码",
+    "jumpPlaceholder": "页码",
+    "jumpSubmit": "跳转",
+    "totalCount": "共 {count} 篇",
+    "jumpTo": "跳至",
+    "jumpToPageOf": "跳转到页码，共 {total} 页"
+  },
+  "categories": {
+    "metaTitle": "分类",
+    "metaDescription": "按内容分类浏览文章。",
+    "eyebrow": "内容索引",
+    "title": "分类",
+    "description": "从内容领域出发，浏览每个分类下的公开文章。",
+    "empty": "暂无分类。",
+    "emptyPosts": "该分类下暂无文章。",
+    "metaFallback": "「{name}」下的文章。"
+  },
+  "tags": {
+    "metaTitle": "标签",
+    "metaDescription": "按主题发现文章。",
+    "eyebrow": "主题索引",
+    "title": "标签",
+    "description": "从技术主题出发，找到彼此关联的文章。",
+    "empty": "暂无标签。",
+    "emptyPosts": "该标签下暂无文章。",
+    "metaFallback": "「{name}」下的文章。"
+  },
+  "series": {
+    "metaTitle": "系列",
+    "metaDescription": "按阅读顺序浏览主题系列。",
+    "eyebrow": "连续阅读",
+    "title": "系列",
+    "description": "将同一主题下的文章按顺序串联起来，从第一篇完整读到最后一篇。",
+    "empty": "暂无系列。",
+    "emptyPosts": "该系列暂无公开文章。",
+    "metaFallback": "「{name}」下的文章。",
+    "sequenceLabel": "第 {n} 篇"
+  },
+  "search": {
+    "metaTitle": "搜索",
+    "metaDescription": "搜索文章标题、摘要和正文。",
+    "eyebrow": "内容发现",
+    "title": "搜索",
+    "description": "从标题、摘要和正文中找到你正在寻找的内容。",
+    "placeholder": "搜索标题、摘要或正文",
+    "submit": "搜索文章",
+    "prompt": "输入关键词开始搜索。",
+    "noResults": "没有找到匹配的文章。",
+    "resultsFor": "「{query}」找到 <n></n> 篇文章"
+  },
+  "home": {
+    "eyebrow": "软件 · 系统 · 长期主义",
+    "headline": "在复杂系统中，<br></br>寻找清晰的边界。",
+    "lead": "记录软件架构、工程实践和那些值得反复推敲的设计决定。少一点捷径，多一点可以解释的取舍。",
+    "noPosts": "第一篇文章正在路上。",
+    "latest": "最新文章",
+    "viewAll": "查看全部",
+    "morePosts": "更多文章正在路上。",
+    "loadingPosts": "正在加载首页文章"
   }
 }

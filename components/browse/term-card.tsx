@@ -6,7 +6,7 @@ export function TermCard({
   href,
   name,
   description,
-  count,
+  countLabel,
   cover,
   seed,
   label,
@@ -14,10 +14,12 @@ export function TermCard({
   href: string;
   name: string;
   description?: string | null;
-  count: number;
+  /** 已翻译好的数量文案。 */
+  countLabel: string;
   cover?: string | null;
   seed: string;
-  label: "分类" | "系列";
+  /** 生成封面上的分类标记，已翻译。 */
+  label: string;
 }) {
   return (
     <Link
@@ -44,16 +46,17 @@ export function TermCard({
         )}
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <h2 className="headline-sm text-xl transition-colors group-hover:text-primary">
+        {/* 名称与描述来自数据库，是中文内容，标注 lang 供浏览器按需翻译。 */}
+        <h2 lang="zh-CN" className="headline-sm text-xl transition-colors group-hover:text-primary">
           {name}
         </h2>
         {description ? (
-          <p className="mt-3 line-clamp-2 text-sm leading-7 text-muted-foreground">
+          <p lang="zh-CN" className="mt-3 line-clamp-2 text-sm leading-7 text-muted-foreground">
             {description}
           </p>
         ) : null}
         <p className="mt-auto pt-5 text-sm font-semibold tabular-nums text-primary">
-          {count} 篇
+          {countLabel}
         </p>
       </div>
     </Link>

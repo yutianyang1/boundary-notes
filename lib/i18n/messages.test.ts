@@ -35,9 +35,14 @@ test("no message is left empty", () => {
 test("placeholders and rich-text tags match across locales", () => {
   // {seconds} 这类插值和 <hl> 这类富文本标签必须两边一致，
   // 少一个会在运行时抛错，多一个会静默丢内容。
-  const tokens = (value: string) => [...value.matchAll(/\{(\w+)\}|<\/?(\w+)>/g)]
-    .map((m) => m[1] ?? m[2])
-    .sort();
+  //
+  // 只取变量名：ICU 的复数写法 `{count, plural, one {# post} other {# posts}}`
+  // 里，中文通常没有复数分支（`{count} 篇`），两边的分支结构本就不该一致，
+  // 需要一致的是它们引用的变量。
+  const tokens = (value: string) => [...new Set(
+    [...value.matchAll(/\{\s*(\w+)\s*(?:,[^{}]*)?[\s\S]*?\}|<\/?(\w+)>/g)]
+      .map((m) => m[1] ?? m[2]),
+  )].sort();
 
   for (const [key, zhValue] of zhEntries) {
     const enValue = enEntries.get(key)!;

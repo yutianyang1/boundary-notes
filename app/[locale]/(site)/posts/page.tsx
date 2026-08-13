@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
+import { createTranslator } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
+import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/browse/page-header";
 import { PageJump } from "@/components/browse/page-jump";
@@ -10,6 +15,7 @@ import { getPublishedPosts } from "@/lib/posts/queries";
 const YEAR_PAGE_SIZE = 6;
 
 type ArchiveSearchParams = { year?: string; page?: string };
+type PageProps = { params: Promise<{ locale: string }>; searchParams: Promise<ArchiveSearchParams> };
 
 const yearFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Shanghai",
@@ -19,55 +25,56 @@ const yearFormatter = new Intl.DateTimeFormat("en-CA", {
 // 归档目前上限 100 篇,超过需改为分年/分页查询。
 const ARCHIVE_LIMIT = 100;
 
-export async function generateMetadata(
-  { searchParams }: { searchParams: Promise<ArchiveSearchParams> },
-): Promise<Metadata> {
+/** 无发布日期的分组键，不进字典：它同时是 URL 里的分组标识。 */
+const UNKNOWN_YEAR = "unknown-year";
+
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const t = createTranslator({ locale, messages: messagesFor(locale as Locale), namespace: "archive" });
   const { year, page } = await searchParams;
   const paged = Boolean(year || page);
   return {
-    title: "全部文章",
-    description: "按年份归档的全部文章。",
+    title: t("metaTitle"),
+    description: t("metaDescription"),
     alternates: { canonical: "/posts" },
     // 分页态是同一批文章的切片,避免被当作重复薄页收录。
     ...(paged ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
-export default function PostsPage({
-  searchParams,
-}: {
-  searchParams: Promise<ArchiveSearchParams>;
-}) {
+export default function PostsPage(props: PageProps) {
   return (
     <div className="shell py-10 sm:py-16">
       <Suspense fallback={<ArchiveSkeleton />}>
-        <PostArchive searchParams={searchParams} />
+        <PostArchive {...props} />
       </Suspense>
     </div>
   );
 }
 
-async function PostArchive({
-  searchParams,
-}: {
-  searchParams: Promise<ArchiveSearchParams>;
-}) {
+async function PostArchive({ params, searchParams }: PageProps) {
+  const { locale: rawLocale } = await params;
+  const locale = rawLocale as Locale;
+  setRequestLocale(locale);
+  const messages = messagesFor(locale);
+  const t = createTranslator({ locale, messages, namespace: "archive" });
+  const tc = createTranslator({ locale, messages, namespace: "common" });
   await connection();
-  const params = await searchParams;
+  const query = await searchParams;
   const posts = await getPublishedPosts(ARCHIVE_LIMIT);
 
   if (posts.length === 0) {
     return (
       <>
-        <PageHeader eyebrow="归档" title="全部文章" count={0} />
-        <p className="rule-anchor mt-12 pt-12 text-muted-foreground">暂无已发布文章。</p>
+        <PageHeader eyebrow={t("eyebrow")} title={t("title")} countLabel={tc("postCount", { count: 0 })} />
+        <p className="rule-anchor mt-12 pt-12 text-muted-foreground">{t("empty")}</p>
       </>
     );
   }
 
   const groups = new Map<string, PostCardData[]>();
   for (const post of posts) {
-    const year = post.publishedAt ? yearFormatter.format(post.publishedAt) : "未定";
+    const year = post.publishedAt ? yearFormatter.format(post.publishedAt) : UNKNOWN_YEAR;
     const bucket = groups.get(year);
     if (bucket) {
       bucket.push(post);
@@ -77,17 +84,17 @@ async function PostArchive({
   }
 
   // 单一「活动年份」:仅该年切换到指定页,其余年份显示第 1 页。
-  const activeYear = params.year;
-  const requestedPage = Math.trunc(Number(params.page));
+  const activeYear = query.year;
+  const requestedPage = Math.trunc(Number(query.page));
   const activePage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 
   return (
     <>
-      <PageHeader eyebrow="归档" title="全部文章" count={posts.length} />
+      <PageHeader eyebrow={t("eyebrow")} title={t("title")} countLabel={tc("postCount", { count: posts.length })} />
 
       <div className="mt-12 space-y-16">
         {[...groups.entries()].map(([year, yearPosts]) => {
-          const yearKey = year === "未定" ? "unknown" : year;
+          const yearKey = year === UNKNOWN_YEAR ? "unknown" : year;
           const totalPages = Math.max(1, Math.ceil(yearPosts.length / YEAR_PAGE_SIZE));
           const currentPage = activeYear === yearKey ? Math.min(activePage, totalPages) : 1;
           const start = (currentPage - 1) * YEAR_PAGE_SIZE;
@@ -98,7 +105,7 @@ async function PostArchive({
               <div className="rule-anchor flex items-baseline justify-between pt-5">
                 <h2 className="date-anchor text-3xl tabular-nums sm:text-4xl">{year}</h2>
                 <span className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground tabular-nums">
-                  {yearPosts.length} 篇
+                  {tc("postCount", { count: yearPosts.length })}
                 </span>
               </div>
               <div className="mt-6 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
@@ -108,6 +115,7 @@ async function PostArchive({
               </div>
               {totalPages > 1 ? (
                 <YearPager
+                  locale={locale}
                   yearKey={yearKey}
                   year={year}
                   currentPage={currentPage}
@@ -130,30 +138,33 @@ const pagerActive =
   "rounded-md border border-primary bg-primary px-3 py-1.5 text-sm font-semibold tabular-nums text-primary-foreground";
 
 function YearPager({
+  locale,
   yearKey,
   year,
   currentPage,
   totalPages,
 }: {
+  locale: Locale;
   yearKey: string;
   year: string;
   currentPage: number;
   totalPages: number;
 }) {
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "archive" });
   const hrefFor = (page: number) =>
-    `/posts?year=${encodeURIComponent(yearKey)}&page=${page}#year-${yearKey}`;
+    localePath(`/posts?year=${encodeURIComponent(yearKey)}&page=${page}#year-${yearKey}`, locale);
 
   return (
     <nav
-      aria-label={`${year} 年文章分页`}
+      aria-label={t("yearPagination", { year })}
       className="mt-8 flex flex-wrap items-center justify-center gap-1.5"
     >
       {currentPage > 1 ? (
         <Link href={hrefFor(currentPage - 1)} rel="prev" className={pagerLink}>
-          上一页
+          {t("previousPage")}
         </Link>
       ) : (
-        <span aria-disabled className={pagerDisabled}>上一页</span>
+        <span aria-disabled className={pagerDisabled}>{t("previousPage")}</span>
       )}
 
       {pageList(currentPage, totalPages).map((entry, index) =>
@@ -174,10 +185,10 @@ function YearPager({
 
       {currentPage < totalPages ? (
         <Link href={hrefFor(currentPage + 1)} rel="next" className={pagerLink}>
-          下一页
+          {t("nextPage")}
         </Link>
       ) : (
-        <span aria-disabled className={pagerDisabled}>下一页</span>
+        <span aria-disabled className={pagerDisabled}>{t("nextPage")}</span>
       )}
 
       {totalPages > 1 ? (
@@ -206,7 +217,7 @@ function pageList(current: number, total: number): (number | "gap")[] {
 
 function ArchiveSkeleton() {
   return (
-    <div aria-label="正在加载归档">
+    <div aria-label="Loading">
       <div className="h-12 w-56 animate-pulse rounded bg-muted" />
       <div className="rule-anchor mt-12 pt-5">
         <div className="h-10 w-24 animate-pulse rounded bg-muted" />
