@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { localePath } from "@/i18n/href";
+import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
 import type { PostCardData } from "@/components/home/post-card";
 import { readingMeta } from "@/lib/posts/reading-time";
@@ -10,7 +12,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-export function FeaturedPost({ post }: { post: PostCardData }) {
+export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardData }) {
   return (
     <article className="mt-8 grid overflow-hidden rounded-[var(--radius-card)] border bg-card [box-shadow:var(--shadow)] min-[820px]:grid-cols-[1.05fr_1fr]">
       <div className="relative min-h-60">
@@ -40,7 +42,7 @@ export function FeaturedPost({ post }: { post: PostCardData }) {
         </p>
         <h2 lang="zh-CN" className="headline mt-4 text-2xl sm:text-4xl">
           <Link
-            href={`/posts/${post.slug}`}
+            href={localePath(`/posts/${post.slug}`, locale)}
             className="bg-[linear-gradient(var(--primary),var(--primary))] bg-[length:0_2px] bg-left-bottom bg-no-repeat pb-1 transition-[background-size] duration-300 hover:bg-[length:100%_2px]"
           >
             {post.title}
@@ -55,7 +57,7 @@ export function FeaturedPost({ post }: { post: PostCardData }) {
           {post.categoryName ? (
             post.categorySlug ? (
               <Link
-                href={`/categories/${post.categorySlug}`}
+                href={localePath(`/categories/${post.categorySlug}`, locale)}
                 className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground"
               >
                 {post.categoryName}

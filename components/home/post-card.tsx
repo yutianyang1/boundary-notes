@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { localePath } from "@/i18n/href";
+import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
 import { readingMeta } from "@/lib/posts/reading-time";
 
@@ -23,10 +25,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-CA", {
 });
 
 export function PostCard({
+  locale,
   post,
   sequenceLabel,
   coverAspect = "aspect-[2/1]",
 }: {
+  locale: Locale;
   post: PostCardData;
   sequenceLabel?: string;
   coverAspect?: string;
@@ -34,7 +38,7 @@ export function PostCard({
   return (
     <article className="home-card group flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-card)] border bg-card transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]">
       <Link
-        href={`/posts/${post.slug}`}
+        href={localePath(`/posts/${post.slug}`, locale)}
         aria-label={post.title}
         tabIndex={-1}
         className={`relative block ${coverAspect} overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
@@ -67,7 +71,7 @@ export function PostCard({
         {post.categoryName ? (
           post.categorySlug ? (
             <Link
-              href={`/categories/${post.categorySlug}`}
+              href={localePath(`/categories/${post.categorySlug}`, locale)}
               className="w-fit rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground"
             >
               {post.categoryName}
@@ -80,7 +84,7 @@ export function PostCard({
         ) : null}
         <h3 lang="zh-CN" className="headline-sm mt-2.5 text-lg">
           <Link
-            href={`/posts/${post.slug}`}
+            href={localePath(`/posts/${post.slug}`, locale)}
             className="rounded-sm group-hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {post.title}

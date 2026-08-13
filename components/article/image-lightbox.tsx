@@ -1,12 +1,14 @@
 "use client";
 
 import { X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type ZoomedImage = { src: string; alt: string; diagram: boolean };
 type ZoomTarget = HTMLImageElement | SVGSVGElement;
 
 export function ImageLightbox() {
+  const t = useTranslations("post");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [current, setCurrent] = useState<ZoomedImage | null>(null);
 
@@ -16,7 +18,7 @@ export function ImageLightbox() {
     } else {
       const clone = target.cloneNode(true) as SVGSVGElement;
       clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      const label = target.closest("figure")?.getAttribute("aria-label") ?? "Mermaid 图表";
+      const label = target.closest("figure")?.getAttribute("aria-label") ?? t("diagram");
       setCurrent({
         src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(clone.outerHTML)}`,
         alt: label,
@@ -24,7 +26,7 @@ export function ImageLightbox() {
       });
     }
     dialogRef.current?.showModal();
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const article = document.querySelector<HTMLElement>("[data-article-body]");
@@ -38,8 +40,8 @@ export function ImageLightbox() {
         target.tabIndex = 0;
         target.setAttribute("role", "button");
         const label = target instanceof HTMLImageElement
-          ? target.alt ? `放大图片：${target.alt}` : "放大图片"
-          : "放大 Mermaid 图表";
+          ? target.alt ? t("zoomImageNamed", { alt: target.alt }) : t("zoomImage")
+          : t("zoomDiagram");
         target.setAttribute("aria-label", label);
       }
     }
@@ -79,7 +81,7 @@ export function ImageLightbox() {
         target.removeAttribute("aria-label");
       }
     };
-  }, [open]);
+  }, [open, t]);
 
   useEffect(() => {
     if (!current) return;
@@ -91,7 +93,7 @@ export function ImageLightbox() {
   return (
     <dialog
       ref={dialogRef}
-      aria-label="图片预览"
+      aria-label={t("imagePreview")}
       onClose={() => setCurrent(null)}
       onClick={(event) => { if (event.target === event.currentTarget) dialogRef.current?.close(); }}
       className="h-full max-h-full w-full max-w-full bg-transparent p-0 backdrop:bg-black/85 open:[animation:overlay-in_140ms_ease-out] motion-reduce:open:animate-none"
@@ -107,7 +109,7 @@ export function ImageLightbox() {
           {current.alt ? <p className="pointer-events-auto max-w-[46rem] text-center text-sm text-white/80">{current.alt}</p> : null}
         </div>
       ) : null}
-      <button type="button" aria-label="关闭图片预览" onClick={() => dialogRef.current?.close()} className="fixed right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
+      <button type="button" aria-label={t("closeImagePreview")} onClick={() => dialogRef.current?.close()} className="fixed right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70">
         <X className="size-5" />
       </button>
     </dialog>

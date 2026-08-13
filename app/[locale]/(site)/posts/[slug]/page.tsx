@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { createTranslator } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
+import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 import { ArticleToc } from "@/components/article/article-toc";
 import { ArticleBody } from "@/components/article/article-body";
 import { CodeCopyButtons } from "@/components/article/code-copy-buttons";
@@ -23,7 +28,7 @@ import {
 import { readingMeta } from "@/lib/posts/reading-time";
 import { CommentsSection } from "./comments-section";
 
-type PageProps = { params: Promise<{ slug: string }>; searchParams: Promise<{ commentsPage?: string }> };
+type PageProps = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ commentsPage?: string }> };
 
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
   dateStyle: "long",
@@ -31,6 +36,8 @@ const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
 });
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { locale } = await params;
+  const tMeta = createTranslator({ locale, messages: messagesFor(locale as Locale), namespace: "post" });
   const { slug } = await params;
   const post = await getPublishedPost(slug);
   if (!post) return {};
@@ -52,14 +59,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         url: socialImage,
         width: 1200,
         height: 630,
-        alt: `${post.title}社交分享卡片`,
+        alt: tMeta("socialAlt", { title: post.title }),
       }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [{ url: socialImage, alt: `${post.title}社交分享卡片` }],
+      images: [{ url: socialImage, alt: tMeta("socialAlt", { title: post.title }) }],
     },
   };
 }
@@ -73,6 +80,11 @@ export default function PostPage({ params, searchParams }: PageProps) {
 }
 
 async function PostContent({ params, searchParams }: PageProps) {
+  const { locale: rawLocale } = await params;
+  const locale = rawLocale as Locale;
+  setRequestLocale(locale);
+  const messages = messagesFor(locale);
+  const t = createTranslator({ locale, messages, namespace: "post" });
   const { slug } = await params;
   const post = await getPublishedPost(slug);
   if (!post) notFound();
@@ -109,17 +121,17 @@ async function PostContent({ params, searchParams }: PageProps) {
 
       <article id="article-top" className="mx-auto max-w-[74rem] py-10 sm:py-16">
         <Link
-          href="/posts"
+          href={localePath("/posts", locale)}
           className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
         >
-          ← 全部文章
+          {t("allPosts")}
         </Link>
 
         <div className="relative mt-8 h-[clamp(11rem,26vw,17rem)] overflow-hidden rounded-[var(--radius-card)] border [box-shadow:var(--shadow)]">
           {post.cover ? (
             <Image
               src={post.cover}
-              alt={`${post.title}封面`}
+              alt={t("coverAlt", { title: post.title })}
               fill
               unoptimized
               priority
@@ -130,7 +142,7 @@ async function PostContent({ params, searchParams }: PageProps) {
             <GeneratedCover
               title={post.title}
               label={seriesNavigation
-                ? `系列 · 《${seriesNavigation.series.name}》 · 第 ${seriesNavigation.position} / ${seriesNavigation.total} 篇`
+                ? t("seriesPosition", { name: seriesNavigation.series.name, position: seriesNavigation.position, total: seriesNavigation.total })
                 : post.categoryName}
               seed={post.slug}
               className="absolute inset-0"
@@ -142,7 +154,7 @@ async function PostContent({ params, searchParams }: PageProps) {
           {post.categoryName ? (
             post.categorySlug ? (
               <Link
-                href={`/categories/${post.categorySlug}`}
+                href={localePath(`/categories/${post.categorySlug}`, locale)}
                 className="inline-flex rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground"
               >
                 {post.categoryName}
@@ -189,7 +201,7 @@ async function PostContent({ params, searchParams }: PageProps) {
                 <span aria-hidden>·</span>
                 <span>{readingMeta(post.charCount)}</span>
                 <span aria-hidden>·</span>
-                <span>第 {post.revision} 版</span>
+                <span>{t("revision", { n: post.revision })}</span>
               </div>
             </div>
           </div>
@@ -199,7 +211,7 @@ async function PostContent({ params, searchParams }: PageProps) {
               {post.tags.map((tag) => (
                 <Link
                   key={tag.slug}
-                  href={`/tags/${tag.slug}`}
+                  href={localePath(`/tags/${tag.slug}`, locale)}
                   className="rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
                 >
                   #{tag.name}
@@ -213,7 +225,7 @@ async function PostContent({ params, searchParams }: PageProps) {
           <div className="min-w-0">
             {toc.length ? (
               <details className="rounded-[var(--radius-card)] border bg-card p-4 min-[1040px]:hidden">
-                <summary className="cursor-pointer font-semibold">文章目录</summary>
+                <summary className="cursor-pointer font-semibold">{t("tocLabel")}</summary>
                 <div className="mt-4 border-t pt-4">
                   <ArticleToc items={toc} compact />
                 </div>
@@ -233,37 +245,37 @@ async function PostContent({ params, searchParams }: PageProps) {
           <aside className="sticky top-24 hidden max-h-[calc(100vh-7rem)] flex-col min-[1040px]:flex">
             {toc.length ? (
               <div className="toc-scroll min-h-0 flex-1 overflow-y-auto rounded-[var(--radius-card)] bg-muted/55 p-4 pr-2.5">
-                <p className="eyebrow mb-4 text-foreground/70">目录</p>
+                <p className="eyebrow mb-4 text-foreground/70">{t("toc")}</p>
                 <ArticleToc items={toc} />
               </div>
             ) : null}
 
             <div className="mt-6 flex shrink-0 flex-col items-start gap-3 border-t pt-5">
               <ShareLinkButton />
-              <a href="#article-top" className="text-sm text-muted-foreground hover:text-primary">↑ 返回顶部</a>
+              <a href="#article-top" className="text-sm text-muted-foreground hover:text-primary">{t("backToTop")}</a>
             </div>
 
-            <SponsorSlot />
+            <SponsorSlot locale={locale} />
           </aside>
         </div>
 
         {/* 窄屏 aside 整个不渲染,赞助位在这里补一份,落在读完正文的自然停顿处。 */}
-        <SponsorSlot variant="inline" />
+        <SponsorSlot locale={locale} variant="inline" />
 
         {seriesNavigation ? (
-          <SeriesNavigation navigation={seriesNavigation} />
+          <SeriesNavigation locale={locale} navigation={seriesNavigation} />
         ) : null}
 
         {areCommentsEnabled() ? (
           <Suspense fallback={<div className="mt-12 h-56 animate-pulse rounded-[var(--radius-card)] border bg-muted/50" />}>
-            <CommentsSection postId={post.id} slug={post.slug} page={commentsPage} />
+            <CommentsSection locale={locale} postId={post.id} slug={post.slug} page={commentsPage} />
           </Suspense>
         ) : null}
 
         {relatedPosts.length ? (
           <section className="rule-anchor mt-12 pt-5">
-            <h2 className="headline-sm text-xl">相关文章</h2>
-            <RelatedPosts posts={relatedPosts} />
+            <h2 className="headline-sm text-xl">{t("related")}</h2>
+            <RelatedPosts locale={locale} posts={relatedPosts} />
           </section>
         ) : null}
 
@@ -274,37 +286,42 @@ async function PostContent({ params, searchParams }: PageProps) {
 }
 
 function SeriesNavigation({
+  locale,
   navigation,
 }: {
+  locale: Locale;
   navigation: NonNullable<Awaited<ReturnType<typeof getSeriesNavForPost>>>;
 }) {
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "post" });
   return (
     <nav
-      aria-label="系列文章导航"
+      aria-label={t("seriesNav")}
       className="mt-12 rounded-[var(--radius-card)] border bg-card p-5 [box-shadow:var(--shadow)] sm:p-6"
     >
       <p className="text-sm text-muted-foreground">
-        本文属于系列
+        {t("inSeries")}
         <Link
-          href={`/series/${navigation.series.slug}`}
+          href={localePath(`/series/${navigation.series.slug}`, locale)}
           className="mx-1 font-semibold text-foreground hover:text-primary"
         >
           《{navigation.series.name}》
         </Link>
-        · 第 <span className="tabular-nums">{navigation.position} / {navigation.total}</span> 篇
+        {t.rich("seriesPart", {
+          n: () => <span className="tabular-nums">{navigation.position} / {navigation.total}</span>,
+        })}
       </p>
       <div className="mt-5 grid gap-3 border-t pt-5 sm:grid-cols-2">
         {navigation.prev ? (
-          <Link href={`/posts/${navigation.prev.slug}`} className="group">
-            <span className="eyebrow text-muted-foreground">上一篇</span>
+          <Link href={localePath(`/posts/${navigation.prev.slug}`, locale)} className="group">
+            <span className="eyebrow text-muted-foreground">{t("previous")}</span>
             <span className="mt-2 block text-sm font-semibold leading-6 group-hover:text-primary">
               {navigation.prev.title}
             </span>
           </Link>
         ) : <span />}
         {navigation.next ? (
-          <Link href={`/posts/${navigation.next.slug}`} className="group sm:text-right">
-            <span className="eyebrow text-muted-foreground">下一篇</span>
+          <Link href={localePath(`/posts/${navigation.next.slug}`, locale)} className="group sm:text-right">
+            <span className="eyebrow text-muted-foreground">{t("next")}</span>
             <span className="mt-2 block text-sm font-semibold leading-6 group-hover:text-primary">
               {navigation.next.title}
             </span>
@@ -316,19 +333,22 @@ function SeriesNavigation({
 }
 
 function RelatedPosts({
+  locale,
   posts,
 }: {
+  locale: Locale;
   posts: Awaited<ReturnType<typeof getRelatedPosts>>;
 }) {
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "post" });
   return (
     <ul className="mt-5 grid gap-4 sm:grid-cols-3">
       {posts.map((post) => (
         <li key={post.id} className="min-w-0">
           <Link
-            href={`/posts/${post.slug}`}
+            href={localePath(`/posts/${post.slug}`, locale)}
             className="home-card group flex h-full flex-col rounded-xl border bg-card p-4 transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]"
           >
-            <span className="eyebrow text-primary">{post.categoryName ?? "文章"}</span>
+            <span className="eyebrow text-primary">{post.categoryName ?? t("breadcrumbPosts")}</span>
             <span className="mt-2 block text-sm font-bold leading-6 group-hover:text-primary">{post.title}</span>
             <span className="mt-auto block pt-3 text-xs text-muted-foreground">{readingMeta(post.charCount)}</span>
           </Link>
@@ -340,7 +360,7 @@ function RelatedPosts({
 
 function ArticleSkeleton() {
   return (
-    <div className="shell py-16 sm:py-24" aria-label="正在加载文章">
+    <div className="shell py-16 sm:py-24">
       {/* 宽度与对齐必须和 <article> 一致,否则加载完成时整块内容会横向跳一下。 */}
       <div className="mx-auto max-w-[74rem] animate-pulse">
         <div className="h-4 w-24 rounded bg-muted" />

@@ -61,7 +61,7 @@ async function HomeFeed({ locale }: { locale: Locale }) {
   const [featured, ...latest] = articles;
   return (
     <>
-      <FeaturedPost post={featured} />
+      <FeaturedPost locale={locale} post={featured} />
 
       <div className="grid gap-10 pb-16 pt-12 sm:pb-24 min-[1000px]:grid-cols-[minmax(0,1fr)_17rem] min-[1000px]:gap-14">
         <section>
@@ -77,7 +77,7 @@ async function HomeFeed({ locale }: { locale: Locale }) {
           </div>
           {latest.length ? (
             <div className="mt-6 grid gap-6 min-[560px]:grid-cols-2">
-              {latest.map((article) => <PostCard key={article.id} post={article} coverAspect="aspect-[5/2]" />)}
+              {latest.map((article) => <PostCard locale={locale} key={article.id} post={article} coverAspect="aspect-[5/2]" />)}
             </div>
           ) : (
             <p className="mt-8 text-muted-foreground">{t("morePosts")}</p>
@@ -85,7 +85,7 @@ async function HomeFeed({ locale }: { locale: Locale }) {
         </section>
 
         <aside className="rule-anchor pt-4">
-          <PopularPosts posts={popular} headingLevel="h2" />
+          <PopularPosts locale={locale} posts={popular} headingLevel="h2" />
           {isSubscriptionEnabled() ? <div className="mt-8"><SubscriptionForm compact /></div> : null}
         </aside>
       </div>

@@ -12,22 +12,40 @@ import { db } from "@/lib/db";
 import { auditLogs, comments, posts } from "@/lib/db/schema";
 import { areCommentsEnabled } from "@/lib/features";
 
-export type CommentActionState = { error?: string; success?: boolean };
+/** 返回字典 key 而非文案，翻译交给 UI。 */
+export type CommentErrorKey =
+  | "errors.closed"
+  | "errors.signInRequired"
+  | "errors.mustSignIn"
+  | "errors.tooFast"
+  | "errors.invalidRequest"
+  | "errors.empty"
+  | "errors.tooLong"
+  | "errors.invalidContent"
+  | "errors.parentMissing"
+  | "errors.crossPost"
+  | "errors.oneLevel"
+  | "errors.notFound"
+  | "errors.noPermission"
+  | "errors.postMissing";
+
+export type CommentActionState = { errorKey?: CommentErrorKey; success?: boolean };
 
 const createSchema = z.object({
   postId: z.string().uuid(),
   slug: z.string().trim().min(1).max(240),
   parentId: z.string().uuid().optional(),
-  content: z.string().trim().min(1, "评论不能为空。").max(2_000, "评论最多 2000 个字符。"),
+  // 具体是空还是超长由下面的分支区分，zod 只做校验不产出文案。
+  content: z.string().trim().min(1).max(2_000),
 });
 
 export async function createCommentAction(_state: CommentActionState, formData: FormData): Promise<CommentActionState> {
-  if (!areCommentsEnabled()) return { error: "评论功能当前未开放。" };
+  if (!areCommentsEnabled()) return { errorKey: "errors.closed" };
   let user;
   try {
     user = await requireUser();
   } catch {
-    return { error: "请先登录后再发表评论。" };
+    return { errorKey: "errors.signInRequired" };
   }
   const parsed = createSchema.safeParse({
     postId: formData.get("postId"),
@@ -35,8 +53,15 @@ export async function createCommentAction(_state: CommentActionState, formData: 
     parentId: formData.get("parentId") || undefined,
     content: formData.get("content"),
   });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "评论内容不符合要求。" };
-  if (!await allowCommentRequest(user.id)) return { error: "发表得太快了，请稍后再试。" };
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const raw = String(formData.get("content") ?? "").trim();
+    if (issue?.path[0] === "content") {
+      return { errorKey: raw.length === 0 ? "errors.empty" : "errors.tooLong" };
+    }
+    return { errorKey: "errors.invalidContent" };
+  }
+  if (!await allowCommentRequest(user.id)) return { errorKey: "errors.tooFast" };
 
   const { postId, slug, parentId, content } = parsed.data;
   const [post] = await db.select({ id: posts.id }).from(posts).where(and(
@@ -45,16 +70,16 @@ export async function createCommentAction(_state: CommentActionState, formData: 
     isNull(posts.deletedAt),
     or(eq(posts.status, "published"), and(eq(posts.status, "scheduled"), lte(posts.publishedAt, sql<Date>`now()`))),
   )).limit(1);
-  if (!post) return { error: "文章不存在或尚未发布。" };
+  if (!post) return { errorKey: "errors.postMissing" };
 
   const parent = parentId ? (await db.select({ postId: comments.postId, depth: comments.depth })
     .from(comments).where(and(eq(comments.id, parentId), eq(comments.status, "approved"), isNull(comments.deletedAt))).limit(1))[0] ?? null : null;
-  if (parentId && !parent) return { error: "要回复的评论不存在。" };
+  if (parentId && !parent) return { errorKey: "errors.parentMissing" };
   let depth: number;
   try {
     depth = resolveCommentDepth(parent, postId);
   } catch (error) {
-    return { error: error instanceof Error && error.message.includes("MISMATCH") ? "不能跨文章回复评论。" : "评论最多支持一层回复。" };
+    return { errorKey: error instanceof Error && error.message.includes("MISMATCH") ? "errors.crossPost" : "errors.oneLevel" };
   }
   const requestHeaders = await headers();
   await db.insert(comments).values({
@@ -74,19 +99,19 @@ export async function createCommentAction(_state: CommentActionState, formData: 
 const deleteSchema = z.object({ commentId: z.string().uuid(), slug: z.string().trim().min(1).max(240) });
 
 export async function deleteCommentAction(_state: CommentActionState, formData: FormData): Promise<CommentActionState> {
-  if (!areCommentsEnabled()) return { error: "评论功能当前未开放。" };
+  if (!areCommentsEnabled()) return { errorKey: "errors.closed" };
   let user;
   try {
     user = await requireUser();
   } catch {
-    return { error: "请先登录。" };
+    return { errorKey: "errors.mustSignIn" };
   }
   const parsed = deleteSchema.safeParse({ commentId: formData.get("commentId"), slug: formData.get("slug") });
-  if (!parsed.success) return { error: "请求参数无效。" };
+  if (!parsed.success) return { errorKey: "errors.invalidRequest" };
   const [existing] = await db.select({ id: comments.id, userId: comments.userId, deletedAt: comments.deletedAt })
     .from(comments).where(eq(comments.id, parsed.data.commentId)).limit(1);
-  if (!existing) return { error: "评论不存在。" };
-  if (!canDeleteComment(user, existing.userId)) return { error: "没有权限删除这条评论。" };
+  if (!existing) return { errorKey: "errors.notFound" };
+  if (!canDeleteComment(user, existing.userId)) return { errorKey: "errors.noPermission" };
   if (existing.deletedAt) return { success: true };
   const requestHeaders = await headers();
   await db.transaction(async (tx) => {

@@ -1,9 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type { TocItem } from "@/lib/markdown/toc";
 
 export function ArticleToc({ items, compact = false }: { items: TocItem[]; compact?: boolean }) {
+  const t = useTranslations("post");
   const [activeId, setActiveId] = useState(items[0]?.id ?? "");
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export function ArticleToc({ items, compact = false }: { items: TocItem[]; compa
   }, [items]);
 
   return (
-    <nav aria-label="文章目录">
+    <nav aria-label={t("tocLabel")}>
       <ol className={compact ? "space-y-2" : "space-y-1 border-l-2 border-hairline"}>
         {items.map((item) => (
           <li key={item.id} className={item.level === 3 ? "pl-4" : undefined}>

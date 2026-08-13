@@ -1,8 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 export function ShareLinkButton() {
+  const t = useTranslations("post");
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -17,7 +19,7 @@ export function ShareLinkButton() {
       onClick={copy}
       className="rounded-md border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground hover:border-primary hover:text-primary"
     >
-      {copied ? "链接已复制" : "复制文章链接"}
+      {copied ? t("copied") : t("copyLink")}
     </button>
   );
 }

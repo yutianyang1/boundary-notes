@@ -88,7 +88,7 @@ async function SearchResults({ locale, searchParams }: { locale: Locale; searchP
       </h2>
       {posts.length ? (
         <div className="mt-6 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
-          {posts.map((post) => <PostCard key={post.id} post={post} />)}
+          {posts.map((post) => <PostCard locale={locale} key={post.id} post={post} />)}
         </div>
       ) : (
         <p className="mt-8 rounded-lg border bg-card p-6 text-muted-foreground">{t("noResults")}</p>

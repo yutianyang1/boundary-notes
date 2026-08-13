@@ -54,6 +54,7 @@ async function SeriesContent({ params }: PageProps) {
         <div className="mt-10 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
           {result.posts.map((post, index) => (
             <PostCard
+              locale={locale}
               key={post.id}
               post={post}
               sequenceLabel={t("sequenceLabel", { n: post.seriesOrder ?? index + 1 })}

@@ -110,7 +110,7 @@ async function PostArchive({ params, searchParams }: PageProps) {
               </div>
               <div className="mt-6 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
                 {pagePosts.map((post) => (
-                  <PostCard key={post.id} post={post} />
+                  <PostCard locale={locale} key={post.id} post={post} />
                 ))}
               </div>
               {totalPages > 1 ? (

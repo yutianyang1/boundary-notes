@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { copyText } from "@/lib/browser/copy-text";
 
 export function CodeCopyButtons() {
+  const t = useTranslations("post");
   useEffect(() => {
     const article = document.querySelector<HTMLElement>("[data-article-body]");
     if (!article) return;
@@ -22,8 +24,8 @@ export function CodeCopyButtons() {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "code-copy-button";
-        button.textContent = "复制";
-        button.setAttribute("aria-label", "复制代码");
+        button.textContent = t("copy");
+        button.setAttribute("aria-label", t("copyCode"));
         button.setAttribute("aria-live", "polite");
         frame.append(button);
       }
@@ -36,17 +38,17 @@ export function CodeCopyButtons() {
       button.disabled = true;
       try {
         await copyText(code);
-        button.textContent = "已复制";
+        button.textContent = t("copySucceeded");
         button.dataset.state = "success";
       } catch {
-        button.textContent = "复制失败";
+        button.textContent = t("copyFailed");
         button.dataset.state = "error";
       } finally {
         button.disabled = false;
         const previous = resetTimers.get(button);
         if (previous !== undefined) window.clearTimeout(previous);
         resetTimers.set(button, window.setTimeout(() => {
-          button.textContent = "复制";
+          button.textContent = t("copy");
           delete button.dataset.state;
           resetTimers.delete(button);
         }, 1_500));
@@ -66,7 +68,8 @@ export function CodeCopyButtons() {
         if (pre) frame.replaceWith(pre);
       }
     };
-  }, []);
+    // t 随 locale 变化会重挂载，正是我们要的：按钮文案跟着换。
+  }, [t]);
 
   return null;
 }

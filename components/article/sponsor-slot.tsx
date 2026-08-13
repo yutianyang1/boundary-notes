@@ -1,4 +1,7 @@
 import Image from "next/image";
+import { createTranslator } from "next-intl";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 import { readActiveSponsorSlot } from "@/lib/settings/sponsor";
 
 /**
@@ -6,7 +9,14 @@ import { readActiveSponsorSlot } from "@/lib/settings/sponsor";
  * inline 版补移动端——侧栏在窄屏整个不渲染,不补的话赞助位在手机上完全看不见,
  * 而移动端往往才是流量大头。两版共用同一份缓存数据,不会重复查库。
  */
-export async function SponsorSlot({ variant = "sidebar" }: { variant?: "sidebar" | "inline" }) {
+export async function SponsorSlot({
+  locale,
+  variant = "sidebar",
+}: {
+  locale: Locale;
+  variant?: "sidebar" | "inline";
+}) {
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "post" });
   const sponsor = await readActiveSponsorSlot();
   if (!sponsor) return null;
 
@@ -14,7 +24,7 @@ export async function SponsorSlot({ variant = "sidebar" }: { variant?: "sidebar"
 
   return (
     <aside
-      aria-label="赞助内容"
+      aria-label={t("sponsored")}
       className={inline
         ? "mt-12 min-[1040px]:hidden"
         : "mt-6 shrink-0 border-t pt-5"}

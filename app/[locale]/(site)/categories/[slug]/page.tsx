@@ -52,7 +52,7 @@ async function CategoryContent({ params }: PageProps) {
       />
       {result.posts.length ? (
         <div className="mt-10 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
-          {result.posts.map((post) => <PostCard key={post.id} post={post} />)}
+          {result.posts.map((post) => <PostCard locale={locale} key={post.id} post={post} />)}
         </div>
       ) : (
         <p className="rule-anchor mt-12 pt-12 text-muted-foreground">{t("emptyPosts")}</p>
