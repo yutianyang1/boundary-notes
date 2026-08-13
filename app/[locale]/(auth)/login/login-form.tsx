@@ -1,11 +1,14 @@
 "use client";
 
 import { getSession, signIn } from "next-auth/react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function LoginForm({ compactTop = false, redirectTo = "/account" }: { compactTop?: boolean; redirectTo?: string }) {
+  const t = useTranslations("auth.login");
+  const tc = useTranslations("auth.common");
   const router = useRouter();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -23,7 +26,7 @@ export function LoginForm({ compactTop = false, redirectTo = "/account" }: { com
     });
 
     if (result?.error) {
-      setError("邮箱或密码不正确。请检查后重试。");
+      setError(t("invalidCredentials"));
       setPending(false);
       return;
     }
@@ -42,16 +45,16 @@ export function LoginForm({ compactTop = false, redirectTo = "/account" }: { com
   return (
     <form className={`${compactTop ? "" : "mt-7"} space-y-5`} onSubmit={handleSubmit}>
       <label className="block text-sm font-semibold">
-        邮箱
+        {tc("email")}
         <input name="email" type="email" autoComplete="username" required className="mt-2 h-11 w-full rounded-md border bg-card px-3.5 font-normal outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/30" />
       </label>
       <label className="block text-sm font-semibold">
-        密码
+        {tc("password")}
         <input name="password" type="password" autoComplete="current-password" required className="mt-2 h-11 w-full rounded-md border bg-card px-3.5 font-normal outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/30" />
       </label>
       <p className="-mt-2 text-right text-sm">
         <Link href="/forgot-password" className="font-semibold text-primary hover:underline">
-          忘记密码？
+          {t("forgotPassword")}
         </Link>
       </p>
       {error ? (
@@ -60,7 +63,7 @@ export function LoginForm({ compactTop = false, redirectTo = "/account" }: { com
         </p>
       ) : null}
       <button disabled={pending} className="h-11 w-full rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60">
-        {pending ? "正在登录…" : "登录"}
+        {pending ? t("submitting") : t("submit")}
       </button>
     </form>
   );
