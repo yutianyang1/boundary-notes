@@ -38,7 +38,8 @@
 其他事实:
 
 - `package.json` 中**没有任何 i18n 依赖**。
-- **没有 `middleware.ts`**。Next.js App Router 不再提供内置 i18n 路由(那是 Pages Router 时代的 `next.config.i18n`),必须自建。
+- Next.js App Router 不再提供内置 i18n 路由(那是 Pages Router 时代的 `next.config.i18n`),必须自建。
+  **更正**:本仓库根目录已有 `proxy.ts`——Next.js 16 把 `middleware.ts` 改名为 `proxy.ts`,中间件其实是存在的。它承担两件事:注册关闭时对 `/register`、`/verify-email` 返回 404;设置 `x-current-path` 供后台守卫构造 callbackUrl。i18n 路由必须**接进这个文件**,不能新建 `middleware.ts` 覆盖它。
 - 公开路由 `page.tsx` 共 22 个。
 - 需要改为 locale 感知的内部 `href="/..."` 共 23 处。
 
@@ -59,7 +60,11 @@
 
 **推荐 `next-intl`**,理由:服务端组件和客户端组件都支持、自带满足第 4 节要求的路由中间件、ICU 消息格式(复数/插值)、提供 locale 感知的 `<Link>` 和 `redirect`。
 
-**实施前必须先验证**:`next-intl` 对 Next.js 16.2 + React 19.2 的兼容性。本项目生产构建固定走 Webpack(见 README),新依赖需要确认不破坏 standalone 产物的 Windows → Linux 跨平台构建。若不兼容,退路是手写一个最小方案(约 150 行:消息加载 + `t()` + 中间件),代价是失去 ICU 和现成的 `<Link>`。
+**兼容性已验证**(2026-08-13,next-intl 4.13.6):
+
+- peer deps 明确声明 `next: ^16.0.0`、`react: ^19.0.0`。
+- Webpack 生产构建通过。
+- **与 `cacheComponents: true` 共存**:配合 `generateStaticParams` + `setRequestLocale`,`/zh` 与 `/en` 两套路由都保持 `◐ Partial Prerender`,没有退化成动态渲染。这是本项目最需要确认的一点,因为 `next.config.ts` 开着 Cache Components。
 
 ## 6. 路由结构
 
@@ -150,9 +155,21 @@ errors     404、表单校验、服务端动作返回的报错
 
 ## 11. 分期落地
 
-**阶段一 —— 基础设施(不改任何文案)**
-接入 next-intl、写 middleware、路由移入 `[locale]/`、抽出 `zh.json`,`en.json` 先原样复制中文。
-*完成标志:站点行为与现在完全一致,所有现有 URL 不变。这一阶段可以安全上线。*
+**阶段一 —— 基础设施(不改任何文案)** ✅ 已完成
+接入 next-intl、把 i18n 路由接进 `proxy.ts`、路由移入 `[locale]/`。
+
+实测验证(本地生产构建 + `next start`):
+
+| 路径 | 结果 |
+|---|---|
+| `/`、`/posts`、`/posts/flash-attention`、`/categories`、`/tags`、`/about`、`/login` | 200,**无重定向,地址不变** |
+| `/en`、`/en/posts`、`/en/about`、`/en/login` | 200 |
+| `/zh/posts` | 307 → `/posts`(canonical 是不带前缀的) |
+| `/admin`、`/robots.txt` | 不受影响 |
+
+`/feed.xml`、`/sitemap.xml` 返回 500,原因是本地无数据库(`getaddrinfo ENOTFOUND postgres`),与 i18n 无关。
+
+**遗留项**:根布局 `app/layout.tsx` 仍硬编码 `lang="zh-CN"`,`/en` 会声明错误的语言。不能直接在根布局读 `headers()`——`cacheComponents` 下会让整站(含 admin)退化成动态渲染。正确解法是把 `<html>` 移进 `app/[locale]/layout.tsx`,给 admin 单独的根布局,并用 `global-not-found` 替代 `app/not-found.tsx`。**必须在阶段二英文文案上线前完成**;在此之前 `/en` 显示的仍是中文,`lang` 标错不产生实际影响。
 
 **阶段二 —— 英文字典**
 翻译 367 条字符串,`/en` 正式可用。

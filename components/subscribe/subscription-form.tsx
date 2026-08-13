@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { subscribeAction, type SubscribeActionState } from "@/app/(site)/subscribe/actions";
+import { subscribeAction, type SubscribeActionState } from "@/app/[locale]/(site)/subscribe/actions";
 
 const initialState: SubscribeActionState = {};
 

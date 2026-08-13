@@ -1,0 +1,15 @@
+{
+  "nav": {
+    "posts": "Posts",
+    "categories": "Categories",
+    "tags": "Tags",
+    "series": "Series",
+    "about": "About",
+    "searchPlaceholder": "Search posts...",
+    "login": "Sign in",
+    "toggleTheme": "Toggle theme",
+    "toggleLanguage": "Change language",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  }
+}

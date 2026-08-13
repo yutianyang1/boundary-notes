@@ -1,0 +1,15 @@
+{
+  "nav": {
+    "posts": "文章",
+    "categories": "分类",
+    "tags": "标签",
+    "series": "系列",
+    "about": "关于",
+    "searchPlaceholder": "搜索文章...",
+    "login": "登录",
+    "toggleTheme": "切换主题",
+    "toggleLanguage": "切换语言",
+    "openMenu": "打开菜单",
+    "closeMenu": "关闭菜单"
+  }
+}
