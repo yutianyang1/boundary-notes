@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createTranslator } from "next-intl";
 import { localePath } from "@/i18n/href";
+import { displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
@@ -16,6 +17,8 @@ export type PostCardData = {
   pinned?: boolean;
   cover?: string | null;
   categoryName: string | null;
+  /** 英文展示名，可空；空时由 displayName 回退到中文。 */
+  categoryNameEn?: string | null;
   categorySlug?: string | null;
   charCount: number;
 };
@@ -78,11 +81,11 @@ export function PostCard({
               href={localePath(`/categories/${post.categorySlug}`, locale)}
               className="w-fit rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground"
             >
-              {post.categoryName}
+              {displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
             </Link>
           ) : (
             <span className="w-fit rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary">
-              {post.categoryName}
+              {displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
             </span>
           )
         ) : null}

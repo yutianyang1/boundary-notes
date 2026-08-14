@@ -6,6 +6,7 @@ import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { localePath } from "@/i18n/href";
 import { localeAlternates } from "@/i18n/alternates";
+import { displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -177,7 +178,7 @@ async function FeaturedPostList({ locale }: { locale: Locale }) {
             {post.title}
           </span>
           <span className="text-xs font-semibold text-primary">
-            {post.categoryName}
+            {displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
           </span>
         </Link>
       ))}

@@ -7,6 +7,7 @@ import { setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 import { localePath } from "@/i18n/href";
 import { localeAlternates } from "@/i18n/alternates";
+import { displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import { htmlLang, type Locale } from "@/i18n/routing";
 import { ArticleToc } from "@/components/article/article-toc";
@@ -154,7 +155,7 @@ async function PostContent({ params, searchParams }: PageProps) {
               title={post.title}
               label={seriesNavigation
                 ? t("seriesPosition", { name: seriesNavigation.series.name, position: seriesNavigation.position, total: seriesNavigation.total })
-                : post.categoryName}
+                : displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
               alt={t("coverAlt", { title: post.title })}
               seed={post.slug}
               className="absolute inset-0"
@@ -169,11 +170,11 @@ async function PostContent({ params, searchParams }: PageProps) {
                 href={localePath(`/categories/${post.categorySlug}`, locale)}
                 className="inline-flex rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground"
               >
-                {post.categoryName}
+                {displayName({ name: post.categoryName, nameEn: post.categoryNameEn }, locale)}
               </Link>
             ) : (
               <span className="inline-flex rounded-full bg-accent px-3 py-1.5 text-xs font-semibold text-primary">
-                {post.categoryName}
+                {displayName({ name: post.categoryName, nameEn: post.categoryNameEn }, locale)}
               </span>
             )
           ) : null}
@@ -226,7 +227,7 @@ async function PostContent({ params, searchParams }: PageProps) {
                   href={localePath(`/tags/${tag.slug}`, locale)}
                   className="rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground hover:border-primary hover:text-primary"
                 >
-                  #{tag.name}
+                  #{displayName(tag, locale)}
                 </Link>
               ))}
             </div>
@@ -362,7 +363,7 @@ function RelatedPosts({
               href={localePath(`/posts/${post.slug}`, locale)}
               className="home-card group flex h-full flex-col rounded-xl border bg-card p-4 transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]"
             >
-              <span className="eyebrow text-primary">{post.categoryName ?? t("breadcrumbPosts")}</span>
+              <span className="eyebrow text-primary">{post.categoryName ? displayName({ name: post.categoryName, nameEn: post.categoryNameEn }, locale) : t("breadcrumbPosts")}</span>
               <span className="mt-2 block text-sm font-bold leading-6 group-hover:text-primary">{post.title}</span>
               <span className="mt-auto block pt-3 text-xs text-muted-foreground">
                 {t(reading.key, { minutes: reading.minutes, count: reading.count })}

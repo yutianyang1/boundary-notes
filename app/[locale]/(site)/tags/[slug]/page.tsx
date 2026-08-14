@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { localeAlternates } from "@/i18n/alternates";
+import { displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -19,8 +20,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const result = await getPublishedPostsByTag(decodeURIComponent(rawSlug));
   if (!result) return {};
   return {
-    title: `#${result.tag.name}`,
-    description: t("metaFallback", { name: result.tag.name }),
+    title: `#${displayName(result.tag, locale as Locale)}`,
+    description: t("metaFallback", { name: displayName(result.tag, locale as Locale) }),
     alternates: localeAlternates(`/tags/${rawSlug}`, locale as Locale),
   };
 }
@@ -47,7 +48,7 @@ async function TagContent({ params }: PageProps) {
 
   return (
     <div className="shell py-10 sm:py-16">
-      <PageHeader eyebrow={t("eyebrow")} title={`#${result.tag.name}`} countLabel={tc("postCount", { count: result.posts.length })} />
+      <PageHeader eyebrow={t("eyebrow")} title={`#${displayName(result.tag, locale)}`} countLabel={tc("postCount", { count: result.posts.length })} />
       {result.posts.length ? (
         <div className="mt-10 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
           {result.posts.map((post) => <PostCard locale={locale} key={post.id} post={post} />)}

@@ -16,8 +16,11 @@ export type SeriesActionState = { error?: string };
 const seriesInputSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1, "系列名称不能为空").max(120),
+  // 英文名与英文描述留空即回退到中文，因此不做必填校验。
+  nameEn: z.string().trim().max(120).optional().default(""),
   slug: z.string().transform(normalizeSlug).pipe(z.string().min(1, "Slug 不能为空").max(180)),
   description: z.string().trim().max(5_000).optional().default(""),
+  descriptionEn: z.string().trim().max(5_000).optional().default(""),
   cover: z.string().trim().max(300).optional().default(""),
 });
 
@@ -52,8 +55,10 @@ export async function saveSeriesAction(
           .insert(series)
           .values({
             name: input.name,
+            nameEn: input.nameEn || null,
             slug: input.slug,
             description: input.description || null,
+            descriptionEn: input.descriptionEn || null,
             cover: input.cover || null,
           })
           .returning({ id: series.id });
@@ -64,8 +69,10 @@ export async function saveSeriesAction(
           targetId: created.id,
           after: {
             name: input.name,
+            nameEn: input.nameEn || null,
             slug: input.slug,
             description: input.description || null,
+            descriptionEn: input.descriptionEn || null,
             cover: input.cover || null,
           },
         });
@@ -83,6 +90,7 @@ export async function saveSeriesAction(
         .update(series)
         .set({
           name: input.name,
+          nameEn: input.nameEn || null,
           slug: input.slug,
           description: input.description || null,
           cover: input.cover || null,
@@ -102,6 +110,7 @@ export async function saveSeriesAction(
         },
         after: {
           name: input.name,
+          nameEn: input.nameEn || null,
           slug: input.slug,
           description: input.description || null,
           cover: input.cover || null,

@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { localeAlternates } from "@/i18n/alternates";
+import { displayDescription, displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -19,8 +20,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const result = await getPublishedPostsByCategory(decodeURIComponent(rawSlug));
   if (!result) return {};
   return {
-    title: result.category.name,
-    description: result.category.description || t("metaFallback", { name: result.category.name }),
+    title: displayName(result.category, locale as Locale),
+    description: displayDescription(result.category, locale as Locale)
+      || t("metaFallback", { name: displayName(result.category, locale as Locale) }),
     alternates: localeAlternates(`/categories/${rawSlug}`, locale as Locale),
   };
 }
@@ -48,8 +50,8 @@ async function CategoryContent({ params }: PageProps) {
     <div className="shell py-10 sm:py-16">
       <PageHeader
         eyebrow={t("eyebrow")}
-        title={result.category.name}
-        description={result.category.description}
+        title={displayName(result.category, locale)}
+        description={displayDescription(result.category, locale)}
         countLabel={tc("postCount", { count: result.posts.length })}
       />
       {result.posts.length ? (

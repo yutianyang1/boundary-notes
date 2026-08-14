@@ -35,6 +35,7 @@ export async function getPublishedPost(slug: string) {
       publishedAt: posts.publishedAt,
       updatedAt: posts.updatedAt,
       categoryName: categories.name,
+      categoryNameEn: categories.nameEn,
       categorySlug: categories.slug,
       authorName: users.name,
       authorImage: users.image,
@@ -48,7 +49,7 @@ export async function getPublishedPost(slug: string) {
 
   if (post) {
     const tagRows = await db
-      .select({ name: tags.name, slug: tags.slug })
+      .select({ name: tags.name, nameEn: tags.nameEn, slug: tags.slug })
       .from(postTags)
       .innerJoin(tags, eq(postTags.tagId, tags.id))
       .where(and(eq(postTags.postId, post.id), isNull(tags.deletedAt)))
@@ -78,6 +79,7 @@ export async function getRelatedPosts(postId: string, categorySlug: string | nul
       cover: posts.cover,
       publishedAt: posts.publishedAt,
       categoryName: categories.name,
+      categoryNameEn: categories.nameEn,
       categorySlug: categories.slug,
       charCount,
     })
@@ -104,6 +106,7 @@ export async function getPopularPosts(limit = 5, excludePostId?: string) {
       slug: posts.slug,
       title: posts.title,
       categoryName: categories.name,
+      categoryNameEn: categories.nameEn,
       publishedAt: posts.publishedAt,
       viewCount,
     })
@@ -133,6 +136,7 @@ export async function getPublishedPosts(limit = 20) {
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
       categoryName: categories.name,
+      categoryNameEn: categories.nameEn,
       categorySlug: categories.slug,
       charCount,
     })
@@ -169,7 +173,7 @@ export async function getPublishedPostsByTag(tagSlug: string, limit = 100) {
   cacheLife("feed-index");
 
   const [tag] = await db
-    .select({ id: tags.id, name: tags.name, slug: tags.slug })
+    .select({ id: tags.id, name: tags.name, nameEn: tags.nameEn, slug: tags.slug })
     .from(tags)
     .where(and(eq(tags.slug, tagSlug), isNull(tags.deletedAt)))
     .limit(1);
@@ -185,6 +189,7 @@ export async function getPublishedPostsByTag(tagSlug: string, limit = 100) {
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
       categoryName: categories.name,
+      categoryNameEn: categories.nameEn,
       categorySlug: categories.slug,
       charCount,
     })
@@ -207,6 +212,7 @@ export async function getPublishedTagCloud() {
   return db
     .select({
       name: tags.name,
+      nameEn: tags.nameEn,
       slug: tags.slug,
       count: sql<number>`count(${posts.id})`.mapWith(Number),
     })
@@ -214,7 +220,7 @@ export async function getPublishedTagCloud() {
     .innerJoin(postTags, eq(tags.id, postTags.tagId))
     .innerJoin(posts, eq(postTags.postId, posts.id))
     .where(and(isNull(tags.deletedAt), publiclyVisible))
-    .groupBy(tags.id, tags.name, tags.slug)
+    .groupBy(tags.id, tags.name, tags.nameEn, tags.slug)
     .orderBy(desc(sql`count(${posts.id})`), tags.name);
 }
 
@@ -230,14 +236,16 @@ export function buildPublishedCategoryListQuery() {
   return db
     .select({
       name: categories.name,
+      nameEn: categories.nameEn,
       slug: categories.slug,
       description: categories.description,
+      descriptionEn: categories.descriptionEn,
       count: sql<number>`count(${posts.id})`.mapWith(Number),
     })
     .from(categories)
     .innerJoin(posts, eq(categories.id, posts.categoryId))
     .where(and(isNull(categories.deletedAt), publiclyVisible))
-    .groupBy(categories.id, categories.name, categories.slug, categories.description)
+    .groupBy(categories.id, categories.name, categories.nameEn, categories.slug, categories.description, categories.descriptionEn)
     .orderBy(desc(sql`count(${posts.id})`), categories.name);
 }
 
@@ -250,8 +258,10 @@ export async function getPublishedPostsByCategory(categorySlug: string, limit = 
     .select({
       id: categories.id,
       name: categories.name,
+      nameEn: categories.nameEn,
       slug: categories.slug,
       description: categories.description,
+      descriptionEn: categories.descriptionEn,
     })
     .from(categories)
     .where(and(eq(categories.slug, categorySlug), isNull(categories.deletedAt)))
@@ -274,6 +284,7 @@ export function buildPublishedPostsForCategoryQuery(categoryId: string, limit = 
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
       categoryName: categories.name,
+      categoryNameEn: categories.nameEn,
       categorySlug: categories.slug,
       charCount,
     })
@@ -296,15 +307,17 @@ export function buildPublishedSeriesListQuery() {
   return db
     .select({
       name: series.name,
+      nameEn: series.nameEn,
       slug: series.slug,
       description: series.description,
+      descriptionEn: series.descriptionEn,
       cover: series.cover,
       count: sql<number>`count(${posts.id})`.mapWith(Number),
     })
     .from(series)
     .innerJoin(posts, eq(series.id, posts.seriesId))
     .where(and(isNull(series.deletedAt), publiclyVisible))
-    .groupBy(series.id, series.name, series.slug, series.description, series.cover)
+    .groupBy(series.id, series.name, series.nameEn, series.slug, series.description, series.descriptionEn, series.cover)
     .orderBy(desc(sql`count(${posts.id})`), series.name);
 }
 
@@ -317,8 +330,10 @@ export async function getPublishedSeries(seriesSlug: string, limit = 100) {
     .select({
       id: series.id,
       name: series.name,
+      nameEn: series.nameEn,
       slug: series.slug,
       description: series.description,
+      descriptionEn: series.descriptionEn,
       cover: series.cover,
     })
     .from(series)
@@ -342,6 +357,7 @@ export function buildPublishedSeriesPostsQuery(seriesId: string, limit = 100) {
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
       categoryName: categories.name,
+      categoryNameEn: categories.nameEn,
       categorySlug: categories.slug,
       charCount,
       seriesOrder: posts.seriesOrder,
@@ -382,6 +398,7 @@ export async function getSeriesNavForPost(postId: string) {
     .select({
       seriesId: series.id,
       name: series.name,
+      nameEn: series.nameEn,
       slug: series.slug,
     })
     .from(posts)
@@ -437,6 +454,7 @@ export async function searchPublishedPosts(query: string, limit = 50) {
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
       categoryName: categories.name,
+      categoryNameEn: categories.nameEn,
       categorySlug: categories.slug,
       charCount,
     })

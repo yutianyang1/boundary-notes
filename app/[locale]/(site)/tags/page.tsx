@@ -5,6 +5,7 @@ import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { localePath } from "@/i18n/href";
 import { localeAlternates } from "@/i18n/alternates";
+import { displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -57,7 +58,7 @@ async function TagCloud({ locale }: { locale: Locale }) {
           href={localePath(`/tags/${tag.slug}`, locale)}
           className="group inline-flex items-center gap-2 rounded-full border bg-card px-5 py-3 font-semibold transition-[border-color,box-shadow,color] hover:border-primary hover:text-primary hover:[box-shadow:var(--shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <span>#{tag.name}</span>
+          <span>#{displayName(tag, locale)}</span>
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground transition-colors group-hover:bg-accent group-hover:text-primary">
             {tag.count}
           </span>

@@ -78,6 +78,13 @@
       "when": 1786326316054,
       "tag": "0010_melted_diamondback",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786679049393,
+      "tag": "0011_adorable_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

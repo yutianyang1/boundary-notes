@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createTranslator } from "next-intl";
 import { localePath } from "@/i18n/href";
+import { displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
@@ -66,11 +67,11 @@ export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardD
                 href={localePath(`/categories/${post.categorySlug}`, locale)}
                 className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground"
               >
-                {post.categoryName}
+                {displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
               </Link>
             ) : (
               <span className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary">
-                {post.categoryName}
+                {displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
               </span>
             )
           ) : null}

@@ -8,8 +8,10 @@ import { normalizeSlug } from "@/lib/posts/slug";
 type EditableSeries = {
   id?: string;
   name?: string;
+  nameEn?: string | null;
   slug?: string;
   description?: string | null;
+  descriptionEn?: string | null;
   cover?: string | null;
 };
 
@@ -52,6 +54,16 @@ export function SeriesForm({ series }: { series?: EditableSeries }) {
             className={`${fieldClass} font-mono`}
           />
         </label>
+        <label className="text-sm font-medium">
+          英文名称
+          <input
+            name="nameEn"
+            defaultValue={series?.nameEn ?? ""}
+            maxLength={120}
+            placeholder="留空则英文站沿用中文名"
+            className={fieldClass}
+          />
+        </label>
         <label className="text-sm font-medium sm:col-span-2">
           系列描述
           <textarea
@@ -60,6 +72,16 @@ export function SeriesForm({ series }: { series?: EditableSeries }) {
             maxLength={5000}
             rows={5}
             className="mt-2 w-full rounded-md border bg-background p-3 outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/30"
+          />
+        </label>
+        <label className="text-sm font-medium sm:col-span-2">
+          英文描述
+          <textarea
+            name="descriptionEn"
+            defaultValue={series?.descriptionEn ?? ""}
+            maxLength={5000}
+            placeholder="留空则英文站沿用中文描述"
+            className={`${fieldClass} h-24 py-2`}
           />
         </label>
         <CoverUploader initialUrl={series?.cover} altText="当前系列封面" />

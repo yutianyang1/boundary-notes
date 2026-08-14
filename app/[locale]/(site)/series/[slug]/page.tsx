@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { localeAlternates } from "@/i18n/alternates";
+import { displayDescription, displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -19,8 +20,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const result = await getPublishedSeries(decodeURIComponent(rawSlug));
   if (!result) return {};
   return {
-    title: result.series.name,
-    description: result.series.description || t("metaFallback", { name: result.series.name }),
+    title: displayName(result.series, locale as Locale),
+    description: displayDescription(result.series, locale as Locale)
+      || t("metaFallback", { name: displayName(result.series, locale as Locale) }),
     alternates: localeAlternates(`/series/${rawSlug}`, locale as Locale),
   };
 }
@@ -48,8 +50,8 @@ async function SeriesContent({ params }: PageProps) {
     <div className="shell py-10 sm:py-16">
       <PageHeader
         eyebrow={t("eyebrow")}
-        title={result.series.name}
-        description={result.series.description}
+        title={displayName(result.series, locale)}
+        description={displayDescription(result.series, locale)}
         countLabel={tc("postCount", { count: result.posts.length })}
       />
       {result.posts.length ? (

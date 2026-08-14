@@ -4,6 +4,7 @@ import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { localePath } from "@/i18n/href";
 import { localeAlternates } from "@/i18n/alternates";
+import { displayDescription, displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -58,8 +59,8 @@ async function CategoryList({ locale }: { locale: Locale }) {
         <TermCard
           key={category.slug}
           href={localePath(`/categories/${category.slug}`, locale)}
-          name={category.name}
-          description={category.description}
+          name={displayName(category, locale)}
+          description={displayDescription(category, locale)}
           countLabel={tc("postCount", { count: category.count })}
           seed={category.slug}
           label={t("title")}

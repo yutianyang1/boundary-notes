@@ -167,7 +167,10 @@ export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: varchar("slug", { length: 180 }).notNull(),
   name: varchar("name", { length: 120 }).notNull(),
+  // 英文展示名，可空：留空时回退到中文 name，英文站因此不会出现空标签。
+  nameEn: varchar("name_en", { length: 120 }),
   description: text("description"),
+  descriptionEn: text("description_en"),
   ...timestamps,
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (table) => [
@@ -178,6 +181,7 @@ export const tags = pgTable("tags", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: varchar("slug", { length: 180 }).notNull(),
   name: varchar("name", { length: 120 }).notNull(),
+  nameEn: varchar("name_en", { length: 120 }),
   ...timestamps,
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 }, (table) => [
@@ -188,7 +192,9 @@ export const series = pgTable("series", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: varchar("slug", { length: 180 }).notNull(),
   name: varchar("name", { length: 120 }).notNull(),
+  nameEn: varchar("name_en", { length: 120 }),
   description: text("description"),
+  descriptionEn: text("description_en"),
   cover: text("cover"),
   ...timestamps,
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
