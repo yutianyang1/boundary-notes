@@ -1,7 +1,11 @@
 # 前台 UI 双语(zh / en)
 
-状态:草案,未实施
-最后更新:2026-08-13
+状态:**已完成并上线**(全部五个阶段)
+最后更新:2026-08-14
+
+> 本文前半部分是实施前的设计,保留原样以便追溯当时的判断;
+> 第 11 节起记录实际落地情况,第 14 节记录踩过的坑。
+> 设计与实现有出入的地方已就地标注。
 
 ## 1. 目标
 
@@ -140,6 +144,10 @@ errors     404、表单校验、服务端动作返回的报错
 
 **建议**:阶段一到三先用 A,把 slug 迁移(C)作为独立任务排后面。理由是 slug 迁移会动到已发布 URL,属于第 4 节的硬约束范围,不应该和 i18n 混在一个变更里。
 
+> **实际采用 C,已上线。** 15 个中文 slug 全部迁为英文,旧地址由 `proxy.ts` 301 到新地址(保留 locale 前缀与查询参数)。
+> 没有新建重定向表:这是一次性重命名,映射此后不再变化,而分类/标签没有后台改名入口。
+> 映射写在 `lib/posts/slug-redirects.ts`,迁移脚本读同一份数据,301 与改名因此不会走偏。
+
 ## 9. 语言切换与检测
 
 - 顶栏放语言切换器,挨着主题切换按钮;切换时**保持当前路径**。
@@ -150,51 +158,95 @@ errors     404、表单校验、服务端动作返回的报错
 
 - 每个页面 `<head>` 输出双向 `hreflang` alternate,外加 `x-default` 指向中文。
 - `<html lang>` 跟随当前 locale。
-- `sitemap.xml` 同时输出两个 locale 的 URL(顺带修掉当前 sitemap 漏掉 `/categories` 和 `/series` 的问题)。
+- `sitemap.xml` 同时输出两个 locale 的 URL。
+  > **更正**:「sitemap 漏掉 `/categories` 和 `/series`」的说法来自对着**线上旧构建**做的 QA,工作区当时早已包含它们。此处无需修复。
 - **RSS 保持单一中文源**。内容本身是中文,出英文 feed 没有意义。
 
-## 11. 分期落地
+## 11. 实际落地
 
-**阶段一 —— 基础设施(不改任何文案)** ✅ 已完成
-接入 next-intl、把 i18n 路由接进 `proxy.ts`、路由移入 `[locale]/`。
+五个阶段全部完成并部署到生产。
 
-实测验证(本地生产构建 + `next start`):
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| 一 | next-intl 接入、i18n 路由接进 `proxy.ts`、路由移入 `[locale]/` | ✅ 已上线 |
+| 二 | 前台 UI 双语,**411 条字典**(计划估的是 367 条) | ✅ 已上线 |
+| 三 | 分类/标签/系列英文名(`name_en` 回退) | ✅ 已上线 |
+| 四 | hreflang + 双语 sitemap | ✅ 已上线 |
+| 后续 | 中文 slug 迁移 + 301 | ✅ 已上线 |
 
-| 路径 | 结果 |
+### 与设计的偏差
+
+**字典 411 条 vs 估算 367 条。** 估算按「字符串字面量 + JSX 裸文本」数,漏掉了 `aria-label`、`alt`、`placeholder`、`metadata` 里的文案,以及服务端动作的报错。
+
+**服务端动作返回字典 key 而非文案。** 设计里写的是「动作返回的文案也走字典」,实际做法是动作返回 `"errors.resendCooldown"` 这样的 key,由表单在渲染时翻译。原因:动作自己没有 locale,要拿到就得再读一次请求状态,而那正是 `cacheComponents` 禁止的。副作用是动作更好测——断言返回的 key 是在测行为,断言返回的句子是在测文案。
+
+**查询层同时取中英两列,不在 SQL 里按 locale 取值。** 设计里没写这一层。这样做的好处是查询结果与语言无关,`cacheComponents` 下两种语言共用同一份缓存,而不是各缓存一份。
+
+**服务端组件用原生 `next/link` 加 `localePath()`,不用 next-intl 的 `<Link>`。** 原因见第 14 节。
+
+### 生产验证(2026-08-14)
+
+| 项 | 结果 |
 |---|---|
-| `/`、`/posts`、`/posts/flash-attention`、`/categories`、`/tags`、`/about`、`/login` | 200,**无重定向,地址不变** |
-| `/en`、`/en/posts`、`/en/about`、`/en/login` | 200 |
-| `/zh/posts` | 307 → `/posts`(canonical 是不带前缀的) |
-| `/admin`、`/robots.txt` | 不受影响 |
+| 中文 URL | `/`、`/posts`、`/about` 等 200,**无重定向,地址未变** |
+| 英文 URL | `/en/*` 全部 200 |
+| `/zh/posts` | 307 → `/posts` |
+| 旧中文标签地址 | 301 → 英文 slug,保留 `/en` 前缀与查询参数 |
+| `/en/tags`、`/en/categories` | 纯英文名,零中文 |
+| `/tags`、`/categories` | 纯中文名,零英文 |
+| `/en/posts/<slug>` | `<html lang="en">` + 正文 `lang="zh-CN"` |
+| hreflang | 每页三条 alternate,双向对称,`x-default` 指向中文 |
+| sitemap | 86 条 URL(两个 locale 各 43),258 条 `xhtml:link`,中文 slug 归零 |
+| 全站回归 | 17 条路径零异常,含 `/admin`、`/feed.xml`、`/robots.txt` |
 
-`/feed.xml`、`/sitemap.xml` 返回 500,原因是本地无数据库(`getaddrinfo ENOTFOUND postgres`),与 i18n 无关。
+## 12. 风险(回顾)
 
-**遗留项**:根布局 `app/layout.tsx` 仍硬编码 `lang="zh-CN"`,`/en` 会声明错误的语言。不能直接在根布局读 `headers()`——`cacheComponents` 下会让整站(含 admin)退化成动态渲染。正确解法是把 `<html>` 移进 `app/[locale]/layout.tsx`,给 admin 单独的根布局,并用 `global-not-found` 替代 `app/not-found.tsx`。**必须在阶段二英文文案上线前完成**;在此之前 `/en` 显示的仍是中文,`lang` 标错不产生实际影响。
+| 计划中的风险 | 实际情况 |
+|---|---|
+| 大 diff | 如预期。路由移动单独成一个提交,不掺文案改动 |
+| 链接遗漏 | **真实发生**。`npm run lint` 的「导入未使用」警告牵出标签页链接没加前缀;全量审计又查出 8 处服务端组件同样问题,其中 `PostCard` / `FeaturedPost` 影响最大——它们在首页和所有列表页,英文站每张卡片点进去都掉回中文站 |
+| 认证重定向 | 如预期,逐一处理 |
+| 生产落后于工作区 | 如预期。先部署既有改动,再开始 i18n |
 
-**阶段二 —— 英文字典**
-翻译 367 条字符串,`/en` 正式可用。
-*完成标志:英文站可完整走通浏览、搜索、注册、登录、找回密码。*
-
-**阶段三 —— 数据库显示名**
-三张表加 `_en` 列 + 迁移 + 后台编辑字段。
-
-**阶段四 —— SEO**
-hreflang、双语 sitemap。
-
-**后续独立任务** —— taxonomy slug 迁移(第 8.1 节方案 C)。
-
-## 12. 风险
-
-- **大 diff**:41 个路由文件移动 + 55 个文件的文案替换。必须拆成多个提交。
-- **链接遗漏**:23 处硬编码 `href` 若漏改,英文站点击后会掉回中文站。建议加一条 lint 规则或测试,禁止在 `[locale]` 下直接使用 `next/link`。
-- **认证重定向**:`auth.ts` 的 `pages.signIn: "/login"`、各处守卫的 `redirect("/login")`、`safeLocalRedirect` 默认值 `/account` 都不是 locale 感知的,需逐一处理。
-- **生产落后于工作区**:当前线上跑的构建旧于本仓库(例如 `/reset-password` 不带 token 时线上仍渲染完整表单,而本地已有「链接无效」分支)。**在部署这些既有改动之前不要开始 i18n**,否则一次上线会同时引入两批未验证的变更。
+**计划外的风险**:`cacheComponents` 与 next-intl 服务端 API 的冲突,见下节。这是整个项目里最耗时的部分。
 
 ## 13. 验收
 
-- [ ] 所有现有中文 URL 保持可访问,响应内容不变
-- [ ] `/en` 下 22 个公开页面无中文残留(文章标题/正文除外)
-- [ ] 语言切换保持当前路径
-- [ ] 中英文 hreflang 互指且各自 canonical 正确
-- [ ] `npm run check` 通过
-- [ ] `/admin`、`/api`、`/internal`、RSS 行为不受影响
+- [x] 所有现有中文 URL 保持可访问,响应内容不变
+- [x] `/en` 下公开页面无中文残留(文章标题/正文、品牌名除外)
+- [x] 语言切换保持当前路径
+- [x] 中英文 hreflang 互指且各自 canonical 正确
+- [x] `npm run check` 通过(126 个测试)
+- [x] `/admin`、`/api`、`/internal`、RSS 行为不受影响
+
+## 14. 实施记录:cacheComponents 的坑
+
+本项目 `next.config.ts` 开着 `cacheComponents: true`。next-intl 的服务端 API 大多会触碰请求上下文,在这个模式下会被判为「未缓存数据访问」。**顶栏和页脚位于布局链上,外面包 `<Suspense>` 救不回来**——这一点最反直觉,排查时先试的就是这条,白费一轮。
+
+按发现顺序:
+
+1. **`getTranslations()` 不带 locale 会回落到读 `headers()`。** 解法:locale 从 `params` 显式取,再显式传下去。
+2. **就算显式传了 locale,`getTranslations()` 仍要 await 请求配置。** 解法:换成 `createTranslator()`,它是纯函数,不碰请求上下文。
+3. **用模板字面量做动态 `import()` 加载字典,没法被 `"use cache"` 缓存**——模板字面量不可静态分析。解法:字典就几 KB,改成静态导入 + 同步查表,顶栏页脚一个 `await` 都不剩。
+4. **next-intl 的 `<Link>` 在服务端渲染时会从请求上下文取 locale。** 解法:服务端组件改用原生 `next/link` 配 `localePath()` helper;客户端组件继续用 next-intl 的 `<Link>`,它们从 Provider 拿 locale,没这问题。
+5. **`LanguageToggle` 确实需要当前路径**,这个躲不掉。解法:给它自己包一层 `<Suspense>`。
+
+前四条是逐个排除掉的嫌疑,第五条才是真凶。
+
+**结论**:在 `cacheComponents` 下,静态外壳里的翻译要走「静态导入字典 + `createTranslator` + 显式 locale」这条全同步路径。任何 `await` 都会让组件退出静态外壳。
+
+`--debug-prerender` 是排查这类问题的关键——默认的生产构建错误信息里没有组件堆栈。
+
+## 15. 已知限制
+
+- **`/en` 的 404 正文仍是中文。** `not-found.tsx` 拿不到路由参数,而 `getTranslations()` 和 `headers()` 在那里都会抛错、让响应变成 **500**(两条路都实测过,发现后已回退)。`<html lang>` 仍然正确。要真正修好得等 Next 的 `global-not-found` 从 experimental 转正。
+- **文章正文、后台、邮件模板保持中文**,这是第 2 节的非目标,不是遗漏。
+- **品牌名「边界笔记」不翻译**,它是品牌不是文案。
+
+## 16. 关联改动
+
+实施过程中发现并修复的、不属于本方案范围的问题:
+
+- **`post_redirects` 只写不读。** 文章改 slug 时会往表里插记录,但没有任何地方查它,旧地址直接 404。已接线,返回 308(`permanentRedirect` 在 Next.js 里的规范值)。
+- **`localePath("/", "en")` 产出 `/en/`**,而实际路由是 `/en`。在链接里无害,在 canonical 和 sitemap 里就是两个不同地址。已修并加测试。
+- **字典同步测试**。四条不变量:key 集合一致、无空文案、占位符与富文本标签匹配、英文文件无残留中文。到目前为止拦下过三次真实错误,其中两次是 ICU 复数语法把测试自己的解析器打穿。
