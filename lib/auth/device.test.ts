@@ -11,7 +11,19 @@ test("describes common browser and operating system combinations", () => {
     describeDevice("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Version/17.5 Safari/605.1.15"),
     "Safari · macOS",
   );
-  assert.equal(describeDevice(null), "未知设备");
+});
+
+test("设备描述不含任何语言相关的文案", () => {
+  // 这个值会写进数据库，含中文的话英文站的设备列表会漏中文，
+  // 而且是存量数据，改文案修不掉。
+  assert.equal(describeDevice(null), null);
+  assert.equal(describeDevice(""), null);
+  assert.equal(describeDevice("Mozilla/5.0 (X11; SomethingUnheardOf)"), null);
+});
+
+test("只认出一半时给出认出的那半", () => {
+  assert.equal(describeDevice("Mozilla/5.0 (Windows NT 10.0) SomeUnknownBrowser/1.0"), "Windows");
+  assert.equal(describeDevice("Mozilla/5.0 (FutureOS) Chrome/126.0"), "Chrome");
 });
 
 test("accepts only valid proxy IP values", () => {

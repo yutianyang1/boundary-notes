@@ -17,8 +17,26 @@ test("registration requires matching password confirmation", () => {
 
   assert.equal(result.success, false);
   if (!result.success) {
-    assert.equal(result.error.issues[0]?.message, "两次输入的密码不一致");
+    // path 才是调用方用来选文案的依据，message 已从 schema 移除。
     assert.deepEqual(result.error.issues[0]?.path, ["confirmPassword"]);
+  }
+});
+
+test("每种校验失败都落在自己的字段上", () => {
+  // 调用方按 path[0] 映射字典 key，落错字段就会报出无关的错误。
+  const cases: Array<[Partial<typeof validInput>, string]> = [
+    [{ name: "" }, "name"],
+    [{ name: "x".repeat(121) }, "name"],
+    [{ email: "not-an-email" }, "email"],
+    [{ password: "short", confirmPassword: "short" }, "password"],
+    [{ confirmPassword: "mismatch" }, "confirmPassword"],
+  ];
+  for (const [patch, field] of cases) {
+    const result = registrationInputSchema.safeParse({ ...validInput, ...patch });
+    assert.equal(result.success, false, `${field} 应当校验失败`);
+    if (!result.success) {
+      assert.equal(result.error.issues[0]?.path[0], field, `期望落在 ${field}`);
+    }
   }
 });
 

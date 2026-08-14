@@ -52,7 +52,11 @@ export type RegisterMessageKey =
   | "errors.checkInboxMessage"
   | "errors.registrationLinkInvalid"
   | "errors.registrationAlreadyDone"
-  | "errors.passwordTooCommon";
+  | "errors.passwordTooCommon"
+  | "errors.passwordMismatch"
+  | "errors.passwordTooShort"
+  | "errors.nameRequired"
+  | "errors.nameTooLong";
 
 export type CompleteRegistrationState = { errorKey?: RegisterMessageKey };
 
@@ -63,6 +67,15 @@ function maskEmail(email: string) {
   if (!local || !domain) return email;
   const visible = local.slice(0, Math.min(2, local.length));
   return `${visible}${"*".repeat(Math.max(2, Math.min(6, local.length - visible.length)))}@${domain}`;
+}
+
+/** 把 schema 的失败字段映射到字典 key，让报错落在用户真正填错的那一栏。 */
+function registrationIssueKey(issue: { path: PropertyKey[]; code: string } | undefined): RegisterMessageKey {
+  const field = issue?.path[0];
+  if (field === "confirmPassword") return "errors.passwordMismatch";
+  if (field === "password") return "errors.passwordTooShort";
+  if (field === "name") return issue?.code === "too_big" ? "errors.nameTooLong" : "errors.nameRequired";
+  return "errors.invalidEmail";
 }
 
 function throttleKey(gate: Extract<RegistrationGate, { allowed: false }>): RegisterMessageKey {
@@ -177,7 +190,7 @@ export async function completeRegistrationAction(
     password: formData.get("password"),
     confirmPassword: formData.get("confirmPassword"),
   });
-  if (!parsed.success) return { errorKey: "errors.invalidEmail" };
+  if (!parsed.success) return { errorKey: registrationIssueKey(parsed.error.issues[0]) };
   if (isBlockedPassword(parsed.data.password, { email: pending.email, name: parsed.data.name })) {
     return { errorKey: "errors.passwordTooCommon" };
   }

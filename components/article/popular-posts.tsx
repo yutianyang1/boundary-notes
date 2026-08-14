@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createTranslator } from "next-intl";
 import { localePath } from "@/i18n/href";
+import { displayName } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import type { getPopularPosts } from "@/lib/posts/queries";
@@ -31,11 +32,12 @@ export function PopularPosts({
                 {index + 1}
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-semibold leading-6 group-hover:text-primary">
+                {/* 标题是文章内容，语言随正文而非界面，浏览器据此提示翻译。 */}
+                <span lang="zh-CN" className="block text-sm font-semibold leading-6 group-hover:text-primary">
                   {post.title}
                 </span>
                 <span className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                  {post.categoryName ? <span>{post.categoryName}</span> : null}
+                  {post.categoryName ? <span>{displayName({ name: post.categoryName, nameEn: post.categoryNameEn }, locale)}</span> : null}
                   <span>{t("readCount", { count: post.viewCount })}</span>
                 </span>
               </span>

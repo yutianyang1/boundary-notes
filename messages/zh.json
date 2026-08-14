@@ -189,7 +189,10 @@
       "githubAccountConflict": "GitHub 账号与站内账号关联冲突，请联系管理员。",
       "githubFailed": "GitHub 登录失败，请稍后重试。",
       "mfaCodeIncorrect": "验证码不正确，请确认设备时间后重试。",
-      "mfaCodeOrRecoveryIncorrect": "验证码或恢复码不正确。"
+      "mfaCodeOrRecoveryIncorrect": "验证码或恢复码不正确。",
+      "nameRequired": "请输入昵称",
+      "nameTooLong": "昵称不能超过 120 个字符。",
+      "passwordTooShort": "密码至少需要 8 个字符。"
     }
   },
   "common": {
@@ -404,7 +407,13 @@
     "signedInAt": "登录于 {time}",
     "expiresAt": " · {time} 到期",
     "avatarAlt": "{name}的头像",
-    "avatarFile": "头像文件"
+    "avatarFile": "头像文件",
+    "roles": {
+      "reader": "读者",
+      "author": "作者",
+      "editor": "编辑",
+      "admin": "管理员"
+    }
   },
   "about": {
     "metaTitle": "关于",

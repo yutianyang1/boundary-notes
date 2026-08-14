@@ -210,7 +210,7 @@ async function PostContent({
           <h1 lang="zh-CN" className="headline mt-4 max-w-[20em] text-[2.25rem] sm:text-5xl">{post.title}</h1>
 
           {post.summary ? (
-            <p className="mt-6 max-w-[38em] text-lg leading-[1.8] text-muted-foreground">
+            <p lang="zh-CN" className="mt-6 max-w-[38em] text-lg leading-[1.8] text-muted-foreground">
               {post.summary}
             </p>
           ) : null}
@@ -231,7 +231,7 @@ async function PostContent({
               </span>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-semibold">{post.authorName}</p>
+              <p lang="zh-CN" className="text-sm font-semibold">{post.authorName}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground">
                 {post.publishedAt ? (
                   <time dateTime={post.publishedAt.toISOString()}>
@@ -391,7 +391,7 @@ function RelatedPosts({
               className="home-card group flex h-full flex-col rounded-xl border bg-card p-4 transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]"
             >
               <span className="eyebrow text-primary">{post.categoryName ? displayName({ name: post.categoryName, nameEn: post.categoryNameEn }, locale) : t("breadcrumbPosts")}</span>
-              <span className="mt-2 block text-sm font-bold leading-6 group-hover:text-primary">{post.title}</span>
+              <span lang="zh-CN" className="mt-2 block text-sm font-bold leading-6 group-hover:text-primary">{post.title}</span>
               <span className="mt-auto block pt-3 text-xs text-muted-foreground">
                 {t(reading.key, { minutes: reading.minutes, count: reading.count })}
               </span>

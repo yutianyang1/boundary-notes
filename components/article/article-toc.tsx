@@ -64,7 +64,8 @@ export function ArticleToc({ items, compact = false }: { items: TocItem[]; compa
                   : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
               }`}
             >
-              {item.label}
+              {/* 目录条目取自文章标题，语言随正文。 */}
+              <span lang="zh-CN">{item.label}</span>
             </a>
           </li>
         ))}

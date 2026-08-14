@@ -19,7 +19,6 @@ import {
   RevokeOthersForm,
 } from "./account-forms";
 import { listActiveUserSessions } from "@/lib/auth/session-registry";
-import { roleLabels } from "@/lib/auth/roles";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 
@@ -94,7 +93,7 @@ async function AccountContent({ params }: PageProps) {
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <span>{profile.email}</span>
                 <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-foreground">
-                  {roleLabels[session.user.role]}
+                  {t(`roles.${session.user.role}`)}
                 </span>
               </div>
             </div>

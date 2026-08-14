@@ -189,7 +189,10 @@
       "githubAccountConflict": "This GitHub account conflicts with an existing account. Contact an administrator.",
       "githubFailed": "GitHub sign-in failed. Try again shortly.",
       "mfaCodeIncorrect": "That code is not correct. Check your device clock and try again.",
-      "mfaCodeOrRecoveryIncorrect": "That code or recovery code is not correct."
+      "mfaCodeOrRecoveryIncorrect": "That code or recovery code is not correct.",
+      "nameRequired": "A display name is required.",
+      "nameTooLong": "Display names are limited to 120 characters.",
+      "passwordTooShort": "Passwords need at least 8 characters."
     }
   },
   "common": {
@@ -404,7 +407,13 @@
     "signedInAt": "Signed in {time}",
     "expiresAt": " · expires {time}",
     "avatarAlt": "Avatar for {name}",
-    "avatarFile": "Avatar file"
+    "avatarFile": "Avatar file",
+    "roles": {
+      "reader": "Reader",
+      "author": "Author",
+      "editor": "Editor",
+      "admin": "Admin"
+    }
   },
   "about": {
     "metaTitle": "About",

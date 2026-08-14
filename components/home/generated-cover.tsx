@@ -41,7 +41,8 @@ export function GeneratedCover({
               {label}
             </span>
           ) : null}
-          <span className="line-clamp-2 block text-base font-extrabold leading-tight text-balance sm:text-xl">
+          {/* 标题来自文章内容，语言随正文而非界面。 */}
+          <span lang="zh-CN" className="line-clamp-2 block text-base font-extrabold leading-tight text-balance sm:text-xl">
             {title}
           </span>
         </div>
