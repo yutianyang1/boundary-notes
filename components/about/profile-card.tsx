@@ -1,21 +1,29 @@
+import { createTranslator } from "next-intl";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 import { BriefcaseBusiness, FileText, Github, Mail, MapPin, Rss } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { GeneratedCover } from "@/components/home/generated-cover";
 
 export function ProfileCard({
+  locale,
   name,
   image,
   postCount,
   email,
   githubUrl,
 }: {
+  locale: Locale;
   name: string;
   image?: string | null;
   postCount: number;
   email?: string;
   githubUrl?: string;
 }) {
+  const messages = messagesFor(locale);
+  const t = createTranslator({ locale, messages, namespace: "about" });
+  const tc = createTranslator({ locale, messages, namespace: "common" });
   return (
     <aside className="overflow-hidden rounded-[var(--radius-card)] border bg-card [box-shadow:var(--shadow)]">
       <div className="relative h-24">
@@ -43,17 +51,17 @@ export function ProfileCard({
 
       <div className="px-5 pb-5 pt-10">
         <h2 className="headline-sm text-lg">{name}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">实时语音 · 系统架构</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("profileTagline")}</p>
 
         <dl className="mt-5 space-y-3 border-t border-hairline pt-5 text-sm">
-          <Fact icon={MapPin} label="坐标" value="中国" />
-          <Fact icon={BriefcaseBusiness} label="在做" value="Barge-in 实时语音" />
-          <Fact icon={FileText} label="已发布" value={`${postCount} 篇`} />
+          <Fact icon={MapPin} label={t("location")} value={t("locationValue")} />
+          <Fact icon={BriefcaseBusiness} label={t("working")} value={t("workingValue")} />
+          <Fact icon={FileText} label={t("published")} value={tc("postCount", { count: postCount })} />
         </dl>
 
         <div className="mt-5 flex flex-wrap gap-2">
           {email ? (
-            <ProfileLink href={`mailto:${email}`} icon={Mail} label="邮箱" />
+            <ProfileLink href={`mailto:${email}`} icon={Mail} label={t("email")} />
           ) : null}
           {githubUrl ? (
             <ProfileLink href={githubUrl} icon={Github} label="GitHub" external />

@@ -1,18 +1,27 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { createTranslator } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
+import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/browse/page-header";
 import { isSubscriptionEnabled } from "@/lib/features";
 import { confirmSubscription } from "@/lib/subscribe/service";
 
-type PageProps = { searchParams: Promise<{ token?: string }> };
+type PageProps = { params: Promise<{ locale: string }>; searchParams: Promise<{ token?: string }> };
 
-export default function ConfirmSubscriptionPage({ searchParams }: PageProps) {
-  return <Suspense fallback={<ResultSkeleton />}><ConfirmResult searchParams={searchParams} /></Suspense>;
+export default function ConfirmSubscriptionPage(props: PageProps) {
+  return <Suspense fallback={<ResultSkeleton />}><ConfirmResult {...props} /></Suspense>;
 }
 
-async function ConfirmResult({ searchParams }: PageProps) {
+async function ConfirmResult({ params, searchParams }: PageProps) {
+  const { locale: rawLocale } = await params;
+  const locale = rawLocale as Locale;
+  setRequestLocale(locale);
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "subscribe" });
   await connection();
   if (!isSubscriptionEnabled()) notFound();
   const { token = "" } = await searchParams;
@@ -21,14 +30,12 @@ async function ConfirmResult({ searchParams }: PageProps) {
   return (
     <div className="shell py-12 sm:py-20">
       <PageHeader
-        eyebrow="邮件订阅"
-        title={confirmed ? "订阅已确认" : "确认链接无效或已过期"}
-        description={confirmed
-          ? "下一篇文章发布时，我们会把通知送到你的邮箱。"
-          : "这条链接可能已使用或已超过有效期。你可以回到首页重新订阅。"}
+        eyebrow={t("eyebrow")}
+        title={confirmed ? t("confirmedTitle") : t("invalidTitle")}
+        description={confirmed ? t("confirmedDescription") : t("invalidDescription")}
       />
       <div className="mt-8 max-w-[52rem] rounded-[var(--radius-card)] border bg-card p-6 [box-shadow:var(--shadow)]">
-        <Link href="/" className="text-sm font-semibold text-primary hover:underline">返回首页</Link>
+        <Link href={localePath("/", locale)} className="text-sm font-semibold text-primary hover:underline">{t("backHome")}</Link>
       </div>
     </div>
   );

@@ -1,19 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { createTranslator } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
+import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
+import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/browse/page-header";
 import { SubscriptionForm } from "@/components/subscribe/subscription-form";
 import { isSubscriptionEnabled } from "@/lib/features";
 import { unsubscribe } from "@/lib/subscribe/service";
 
-type PageProps = { searchParams: Promise<{ id?: string; token?: string }> };
+type PageProps = { params: Promise<{ locale: string }>; searchParams: Promise<{ id?: string; token?: string }> };
 
-export default function UnsubscribePage({ searchParams }: PageProps) {
-  return <Suspense fallback={<ResultSkeleton />}><UnsubscribeResult searchParams={searchParams} /></Suspense>;
+export default function UnsubscribePage(props: PageProps) {
+  return <Suspense fallback={<ResultSkeleton />}><UnsubscribeResult {...props} /></Suspense>;
 }
 
-async function UnsubscribeResult({ searchParams }: PageProps) {
+async function UnsubscribeResult({ params, searchParams }: PageProps) {
+  const { locale: rawLocale } = await params;
+  const locale = rawLocale as Locale;
+  setRequestLocale(locale);
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "subscribe" });
   await connection();
   if (!isSubscriptionEnabled()) notFound();
   const { id = "", token = "" } = await searchParams;
@@ -22,16 +31,16 @@ async function UnsubscribeResult({ searchParams }: PageProps) {
   return (
     <div className="shell py-12 sm:py-20">
       <PageHeader
-        eyebrow="邮件订阅"
-        title={success ? "已经退订" : "退订链接无效"}
+        eyebrow={t("eyebrow")}
+        title={success ? t("unsubscribedTitle") : t("unsubscribeInvalidTitle")}
         description={success
-          ? "之后不会再向这个邮箱发送新文章通知。"
-          : "无法验证这条退订链接，请使用最近一封文章通知中的链接。"}
+          ? t("unsubscribedDescription")
+          : t("unsubscribeInvalidDescription")}
       />
       <div className="mt-8 max-w-[52rem]">
         {success ? <SubscriptionForm /> : (
           <div className="rounded-[var(--radius-card)] border bg-card p-6 [box-shadow:var(--shadow)]">
-            <Link href="/" className="text-sm font-semibold text-primary hover:underline">返回首页</Link>
+            <Link href={localePath("/", locale)} className="text-sm font-semibold text-primary hover:underline">{t("backHome")}</Link>
           </div>
         )}
       </div>

@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { hasLocale, NextIntlClientProvider } from "next-intl";
+import { createTranslator, hasLocale, NextIntlClientProvider } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { ThemeProvider } from "@/components/theme-provider";
 import { messagesFor } from "@/i18n/messages";
-import { htmlLang, locales, routing } from "@/i18n/routing";
+import { htmlLang, locales, routing, type Locale } from "@/i18n/routing";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/noto-sans-sc";
 import "../globals.css";
@@ -12,11 +12,15 @@ import "../globals.css";
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? "边界笔记";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: { default: siteName, template: `%s · ${siteName}` },
-  description: "关于软件架构、工程实践与长期主义的写作。",
-};
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = createTranslator({ locale, messages: messagesFor(locale as Locale), namespace: "site" });
+  return {
+    metadataBase: new URL(siteUrl),
+    title: { default: siteName, template: `%s · ${siteName}` },
+    description: t("description"),
+  };
+}
 
 export const viewport: Viewport = {
   colorScheme: "light dark",

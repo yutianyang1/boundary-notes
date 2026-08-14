@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { loadOgFonts } from "@/lib/og/fonts";
 import { getPublishedPost } from "@/lib/posts/queries";
 
-export const alt = "文章社交分享卡片";
+export const alt = "Social sharing card";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -22,7 +22,8 @@ export default async function PostOpenGraphImage({ params }: ImageProps) {
   if (!post) notFound();
 
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME ?? "边界笔记";
-  const category = post.categoryName ?? "技术文章";
+  // OG 图是给外部抓取器看的，分类名来自数据库(中文)，兜底用中性词。
+  const category = post.categoryName ?? "Article";
   const displayTitle = Array.from(post.title).slice(0, 72).join("");
   const { fonts, family } = await loadOgFonts();
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useActionState, useRef, useState } from "react";
 import {
@@ -17,32 +18,36 @@ const primaryButtonClass = "h-11 rounded-md bg-primary px-4 text-sm font-semibol
 const secondaryButtonClass = "h-10 rounded-md border bg-card px-3 text-sm font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60";
 
 function ActionMessage({ state }: { state: AccountActionState }) {
-  if (state.error) {
-    return <p role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{state.error}</p>;
+  // 动作返回的是 account 命名空间下的 key，翻译在这里发生。
+  const t = useTranslations("account");
+  if (state.errorKey) {
+    return <p role="alert" className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{t(state.errorKey)}</p>;
   }
-  if (state.success) {
-    return <p role="status" className="rounded-md border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">{state.success}</p>;
+  if (state.successKey) {
+    return <p role="status" className="rounded-md border border-ok/30 bg-ok/10 px-3 py-2 text-sm text-ok">{t(state.successKey, { count: state.count ?? 0 })}</p>;
   }
   return null;
 }
 
 export function ProfileForm({ name }: { name: string }) {
+  const t = useTranslations("account");
   const [state, action, pending] = useActionState(updateProfileAction, initialState);
   return (
     <form action={action} className="space-y-4">
       <label className="block text-sm font-semibold">
-        昵称
+        {t("nickname")}
         <input name="name" required maxLength={120} defaultValue={name} autoComplete="nickname" className={inputClass} />
       </label>
       <ActionMessage state={state} />
       <button disabled={pending} className={primaryButtonClass}>
-        {pending ? "正在保存…" : "保存资料"}
+        {pending ? t("saving") : t("saveProfile")}
       </button>
     </form>
   );
 }
 
 export function AvatarForm({ image, name }: { image: string | null; name: string }) {
+  const t = useTranslations("account");
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState(image);
@@ -52,7 +57,7 @@ export function AvatarForm({ image, name }: { image: string | null; name: string
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const file = inputRef.current?.files?.[0];
-    if (!file) return setMessage({ error: "请选择头像文件。" });
+    if (!file) return setMessage({ errorKey: "errors.avatarMissing" });
     setPending(true);
     setMessage({});
     const formData = new FormData();
@@ -61,15 +66,15 @@ export function AvatarForm({ image, name }: { image: string | null; name: string
       const response = await fetch("/api/account/avatar", { method: "POST", body: formData });
       const result = await response.json() as { url?: string; error?: string };
       if (!response.ok || !result.url) {
-        setMessage({ error: result.error ?? "头像上传失败。" });
+        setMessage({ errorKey: "errors.avatarFailed" });
         return;
       }
       setPreview(result.url);
-      setMessage({ success: "头像已更新。" });
+      setMessage({ successKey: "avatarUpdated" });
       if (inputRef.current) inputRef.current.value = "";
       router.refresh();
     } catch {
-      setMessage({ error: "头像上传失败，请稍后重试。" });
+      setMessage({ errorKey: "errors.avatarFailedRetry" });
     } finally {
       setPending(false);
     }
@@ -81,7 +86,7 @@ export function AvatarForm({ image, name }: { image: string | null; name: string
         {preview ? (
           <Image
             src={preview}
-            alt={`${name}的头像`}
+            alt={t("avatarAlt", { name })}
             width={64}
             height={64}
             unoptimized
@@ -94,7 +99,7 @@ export function AvatarForm({ image, name }: { image: string | null; name: string
         )}
         <div className="min-w-0 flex-1">
           <label className="block text-sm font-semibold">
-            头像文件
+            {t("avatarFile")}
             <input
               ref={inputRef}
               name="avatar"
@@ -103,49 +108,51 @@ export function AvatarForm({ image, name }: { image: string | null; name: string
               className="mt-2 block w-full rounded-md text-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-2 file:font-semibold file:text-foreground"
             />
           </label>
-          <p className="mt-2 text-xs text-muted-foreground">JPEG、PNG、WebP、AVIF 或 HEIC，最大 2 MB；HEIC 会转为 WebP。</p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("avatarHint")}</p>
         </div>
       </div>
       <ActionMessage state={message} />
       <button disabled={pending} className={secondaryButtonClass}>
-        {pending ? "正在上传…" : "更新头像"}
+        {pending ? t("uploading") : t("uploadAvatar")}
       </button>
     </form>
   );
 }
 
 export function PasswordForm() {
+  const t = useTranslations("account");
   const [state, action, pending] = useActionState(changePasswordAction, initialState);
   return (
     <form action={action} className="space-y-4">
       <label className="block text-sm font-semibold">
-        当前密码
+        {t("currentPassword")}
         <input name="currentPassword" type="password" required autoComplete="current-password" className={inputClass} />
       </label>
       <label className="block text-sm font-semibold">
-        新密码
+        {t("newPassword")}
         <input name="newPassword" type="password" required minLength={8} autoComplete="new-password" className={inputClass} />
-        <span className="mt-2 block font-normal text-muted-foreground">至少 8 个字符，不能使用常见密码或账户资料。</span>
+        <span className="mt-2 block font-normal text-muted-foreground">{t("passwordHint")}</span>
       </label>
       <label className="block text-sm font-semibold">
-        确认新密码
+        {t("confirmNewPassword")}
         <input name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" className={inputClass} />
       </label>
       <ActionMessage state={state} />
       <button disabled={pending} className={primaryButtonClass}>
-        {pending ? "正在更新…" : "修改密码"}
+        {pending ? t("updating") : t("changePassword")}
       </button>
     </form>
   );
 }
 
 export function RevokeDeviceForm({ sessionId }: { sessionId: string }) {
+  const t = useTranslations("account");
   const [state, action, pending] = useActionState(revokeDeviceAction, initialState);
   return (
     <form action={action} className="flex flex-col items-end gap-2">
       <input type="hidden" name="sessionId" value={sessionId} />
       <button disabled={pending} className={secondaryButtonClass}>
-        {pending ? "正在下线…" : "下线"}
+        {pending ? t("signingOutDevice") : t("signOutDevice")}
       </button>
       <ActionMessage state={state} />
     </form>
@@ -153,11 +160,12 @@ export function RevokeDeviceForm({ sessionId }: { sessionId: string }) {
 }
 
 export function RevokeOthersForm({ disabled }: { disabled: boolean }) {
+  const t = useTranslations("account");
   const [state, action, pending] = useActionState(revokeOtherDevicesAction, initialState);
   return (
     <form action={action} className="flex flex-wrap items-center gap-3">
       <button disabled={disabled || pending} className={secondaryButtonClass}>
-        {pending ? "正在退出…" : "退出其他设备"}
+        {pending ? t("signingOut") : t("signOutOthers")}
       </button>
       <ActionMessage state={state} />
     </form>

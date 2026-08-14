@@ -19,12 +19,42 @@ import { db } from "@/lib/db";
 import { auditLogs, mailOutbox, userSessions, users } from "@/lib/db/schema";
 import { encryptOutboxPayload } from "@/lib/mail/outbox";
 
+/** 返回字典 key 而非文案，翻译交给 UI。 */
+export type AccountErrorKey =
+  | "errors.nameEmpty"
+  | "errors.nameTooLong"
+  | "errors.avatarMissing"
+  | "errors.avatarFailed"
+  | "errors.avatarFailedRetry"
+  | "errors.currentPasswordRequired"
+  | "errors.currentPasswordWrong"
+  | "errors.noPasswordCredential"
+  | "errors.passwordMismatch"
+  | "errors.passwordSameAsCurrent"
+  | "errors.passwordTooCommon"
+  | "errors.passwordTooShort"
+  | "errors.sessionInvalid"
+  | "errors.sessionMissing"
+  | "errors.cannotSignOutCurrent";
+
+export type AccountSuccessKey =
+  | "profileUpdated"
+  | "avatarUpdated"
+  | "passwordChanged"
+  | "deviceSignedOut"
+  | "signedOutOthers"
+  | "passwordUpdated"
+  | "noOtherDevices";
+
 export type AccountActionState = {
-  error?: string;
-  success?: string;
+  errorKey?: AccountErrorKey;
+  successKey?: AccountSuccessKey;
+  /** signedOutOthers 的插值。 */
+  count?: number;
 };
 
-const nameSchema = z.string().trim().min(1, "昵称不能为空。").max(120, "昵称不能超过 120 个字符。");
+// 空与超长由调用处分开判断，schema 不产出文案。
+const nameSchema = z.string().trim().min(1).max(120);
 
 export async function updateProfileAction(
   _state: AccountActionState,
@@ -32,7 +62,11 @@ export async function updateProfileAction(
 ): Promise<AccountActionState> {
   const session = await requireFullSession();
   const parsed = nameSchema.safeParse(formData.get("name"));
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (!parsed.success) {
+    // 空与超长分开判断，schema 不再承担文案。
+    const raw = String(formData.get("name") ?? "").trim();
+    return { errorKey: raw.length === 0 ? "errors.nameEmpty" : "errors.nameTooLong" };
+  }
 
   await db.transaction(async (tx) => {
     await tx.update(users).set({
@@ -50,7 +84,7 @@ export async function updateProfileAction(
 
   await invalidateUserSessionCache(session.user.id);
   revalidatePath("/account");
-  return { success: "资料已更新。" };
+  return { successKey: "profileUpdated" };
 }
 
 export async function changePasswordAction(
@@ -61,10 +95,10 @@ export async function changePasswordAction(
   const currentPassword = z.string().min(1).max(1_024).safeParse(formData.get("currentPassword"));
   const newPassword = passwordSchema.safeParse(formData.get("newPassword"));
   const confirmation = z.string().safeParse(formData.get("confirmPassword"));
-  if (!currentPassword.success) return { error: "请输入当前密码。" };
-  if (!newPassword.success) return { error: newPassword.error.issues[0]?.message };
+  if (!currentPassword.success) return { errorKey: "errors.currentPasswordRequired" };
+  if (!newPassword.success) return { errorKey: "errors.passwordTooShort" };
   if (!confirmation.success || confirmation.data !== newPassword.data) {
-    return { error: "两次输入的新密码不一致。" };
+    return { errorKey: "errors.passwordMismatch" };
   }
 
   const [user] = await db
@@ -76,20 +110,21 @@ export async function changePasswordAction(
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
-  if (!user?.passwordHash) return { error: "当前账户没有可修改的密码凭据。" };
+  if (!user?.passwordHash) return { errorKey: "errors.noPasswordCredential" };
 
   const currentResult = await verifyPassword(currentPassword.data, user.passwordHash);
-  if (!currentResult.valid) return { error: "当前密码不正确。" };
+  if (!currentResult.valid) return { errorKey: "errors.currentPasswordWrong" };
   if ((await verifyPassword(newPassword.data, user.passwordHash)).valid) {
-    return { error: "新密码不能与当前密码相同。" };
+    return { errorKey: "errors.passwordSameAsCurrent" };
   }
   if (isBlockedPassword(newPassword.data, { name: user.name, email: user.email })) {
-    return { error: "这个密码过于常见，或与账户资料过于接近。" };
+    return { errorKey: "errors.passwordTooCommon" };
   }
 
   const passwordHash = await hashPassword(newPassword.data);
   const changedAt = new Date();
   const requestHeaders = await headers();
+  // 安全提醒邮件是中文模板，动作名跟着保持中文。
   const payloadEnc = encryptOutboxPayload(securityAlertPayload(requestHeaders, "密码已修改", changedAt));
   const revokedJtis = await db.transaction(async (tx) => {
     await tx.update(users).set({
@@ -125,7 +160,8 @@ export async function changePasswordAction(
 
   revalidatePath("/account");
   return {
-    success: `密码已更新${revokedJtis.length ? `，并退出了 ${revokedJtis.length} 个其他设备` : ""}。`,
+    successKey: "passwordUpdated",
+    count: revokedJtis.length,
   };
 }
 
@@ -135,11 +171,11 @@ export async function revokeDeviceAction(
 ): Promise<AccountActionState> {
   const session = await requireFullSession();
   const parsed = z.string().uuid().safeParse(formData.get("sessionId"));
-  if (!parsed.success) return { error: "会话标识无效。" };
-  if (parsed.data === session.sessionId) return { error: "不能在这里下线当前设备。" };
+  if (!parsed.success) return { errorKey: "errors.sessionInvalid" };
+  if (parsed.data === session.sessionId) return { errorKey: "errors.cannotSignOutCurrent" };
 
   const revoked = await revokeUserSession(session.user.id, parsed.data);
-  if (!revoked) return { error: "该会话不存在或已经失效。" };
+  if (!revoked) return { errorKey: "errors.sessionMissing" };
   await db.insert(auditLogs).values({
     actorId: session.user.id,
     action: "account.session.revoke",
@@ -147,7 +183,7 @@ export async function revokeDeviceAction(
     targetId: parsed.data,
   });
   revalidatePath("/account");
-  return { success: "设备已下线。" };
+  return { successKey: "deviceSignedOut" };
 }
 
 export async function revokeOtherDevicesAction(
@@ -166,5 +202,5 @@ export async function revokeOtherDevicesAction(
     after: { revokedSessions: count },
   });
   revalidatePath("/account");
-  return { success: count ? `已退出 ${count} 个其他设备。` : "没有其他登录设备。" };
+  return count ? { successKey: "signedOutOthers", count } : { successKey: "noOtherDevices" };
 }

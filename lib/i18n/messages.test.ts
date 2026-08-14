@@ -39,8 +39,10 @@ test("placeholders and rich-text tags match across locales", () => {
   // 只取变量名：ICU 的复数写法 `{count, plural, one {# post} other {# posts}}`
   // 里，中文通常没有复数分支（`{count} 篇`），两边的分支结构本就不该一致，
   // 需要一致的是它们引用的变量。
+  // 变量名后面必须紧跟 `,` 或 `}`，否则 plural 分支里的
+  // `{Signed out # other device.}` 会被误读成一个叫 Signed 的变量。
   const tokens = (value: string) => [...new Set(
-    [...value.matchAll(/\{\s*(\w+)\s*(?:,[^{}]*)?[\s\S]*?\}|<\/?(\w+)>/g)]
+    [...value.matchAll(/\{\s*(\w+)\s*(?=[,}])|<\/?(\w+)>/g)]
       .map((m) => m[1] ?? m[2]),
   )].sort();
 
