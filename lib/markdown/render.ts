@@ -68,7 +68,7 @@ const sanitizeSchema = {
  * v6: Mermaid 单图渲染失败时保留已转义的原始代码块，不阻断文章保存或重刷。
  * v7: 加入 remark-math + rehype-katex 数学公式。
  */
-export const rendererVersion = 7;
+export const rendererVersion = 8;
 
 export async function renderMarkdown(markdown: string) {
   const result = await unified()

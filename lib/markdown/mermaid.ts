@@ -112,6 +112,36 @@ function parseSvg(svg: string): HastNode {
   const root = fromHtml(svg, { fragment: true }) as HastNode;
   const element = root.children?.find((child) => child.tagName === "svg");
   if (!element) throw new Error("Mermaid SVG 解析失败。");
+  return withIntrinsicWidth(element);
+}
+
+/**
+ * 把 viewBox 的宽度写成显式像素值。
+ *
+ * mermaid 输出的 SVG 只带 viewBox 和 `max-width`，浏览器把它当替换元素处理：
+ * 没有显式宽度时一律填满容器，于是 1899px 的图被压进 630px 的正文栏，
+ * 节点文字的有效字号只剩约 5px（实测）。
+ *
+ * CSS 侧无解——`width: auto` / `max-content` / `fit-content` 对带 viewBox 的
+ * SVG 全都解析成「填满容器」，三个值都实测过。只有显式像素宽度有效。
+ *
+ * 写上之后图按 1:1 渲染，超出正文栏时由容器的 overflow-x 横向滚动，
+ * 这也正是那条 overflow-x 原本的意图。
+ */
+function withIntrinsicWidth(element: HastNode): HastNode {
+  const viewBox = element.properties?.viewBox;
+  if (typeof viewBox !== "string") return element;
+
+  // viewBox = "minX minY width height"
+  const width = Number.parseFloat(viewBox.trim().split(/\s+/)[2] ?? "");
+  if (!Number.isFinite(width) || width <= 0) return element;
+
+  const style = typeof element.properties?.style === "string" ? element.properties.style : "";
+  element.properties = {
+    ...element.properties,
+    // 保留 mermaid 自带的 max-width，再补上显式宽度；显式宽度在后，优先生效。
+    style: `${style}${style && !style.trimEnd().endsWith(";") ? ";" : ""}width:${Math.round(width)}px;`,
+  };
   return element;
 }
 

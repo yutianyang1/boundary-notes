@@ -483,9 +483,11 @@ button {
 
 .article-body .mermaid-diagram svg {
   display: block;
-  width: 100%;
-  min-width: 0;
+  /* 宽度由渲染管线按 viewBox 写成内联像素值，见 lib/markdown/mermaid.ts。
+     这里不要再写 width：带 viewBox 的 SVG 是替换元素，任何 CSS 宽度
+     （含 auto / max-content / fit-content）都会让它填满容器并被压扁。 */
   height: auto;
+  /* 图比正文栏窄时居中，宽时由容器 overflow-x 横向滚动。 */
   margin-inline: auto;
 }
 
