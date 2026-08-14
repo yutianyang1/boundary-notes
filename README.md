@@ -346,7 +346,6 @@ docs/
 - Production builds must use Webpack, for the reason given above
 - Playwright is installed but there are no end-to-end specs yet; regression testing is manual
 - Full-text search needs PGroonga, which the offline profile omits — search can only be exercised against the main Compose database
-- The 404 body renders Chinese under `/en`. A `not-found` file receives no route params, and both `getTranslations()` and `headers()` throw there, turning the response into a 500. `<html lang>` is still correct. The fix is Next's `global-not-found`, currently behind an experimental flag
 - Article prose, the admin dashboard and the mail templates are Chinese by design. Translating article bodies would turn every publish into a second writing job, and machine translation mangles the kind of detail these posts are made of — browser translation covers that case, which is why bodies carry their own `lang`
 
 ---

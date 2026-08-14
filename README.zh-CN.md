@@ -346,7 +346,6 @@ docs/
 - 生产构建必须走 Webpack,原因见上文
 - 已装 Playwright 但尚无 e2e 用例,端到端目前靠手工回归
 - 全文检索依赖 PGroonga,离线开发配置里没有,搜索功能需连主 Compose 的 Postgres 才能验证
-- **`/en` 下的 404 正文仍是中文**。`not-found` 拿不到路由参数,`getTranslations()` 和 `headers()` 在那里都会抛错、让响应变成 500(两条路都实测过)。`<html lang>` 仍然正确。要真正修好得等 Next 的 `global-not-found` 从 experimental 转正
 - 文章正文、后台和邮件模板保持中文,这是设计取舍而非遗漏。翻译正文意味着每发一篇就多一份写作工作量,而机翻会毁掉这类文章赖以成立的细节——正文标注了自己的 `lang`,浏览器翻译覆盖这个场景
 
 ---

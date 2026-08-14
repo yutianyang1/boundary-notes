@@ -233,13 +233,28 @@ errors     404、表单校验、服务端动作返回的报错
 
 前四条是逐个排除掉的嫌疑,第五条才是真凶。
 
+### 14.1 not-found 的语言
+
+`not-found.tsx` 拿不到路由参数,一度被当成无解,记为「`/en` 的 404 正文只能是中文」。三次尝试:
+
+| 做法 | 结果 |
+|---|---|
+| `getTranslations()` | **500** —— 没有请求配置 |
+| `headers()` 读 `x-locale` | **500** —— 同样是未缓存数据访问 |
+| 包 `<Suspense>` 再读 `headers()` | 不再 500,但仍是中文 |
+
+第三次不 500 了却拿不到语言,原因是 **proxy 把 `x-locale` 设在响应头上,而服务端的 `headers()` 读的是请求头**——这个头从一开始就不可能被读到。
+
+**正解:改成客户端组件。** `not-found.tsx` 渲染在 `app/[locale]/layout.tsx` 内部,那里的 `NextIntlClientProvider` 已经带着 locale 和字典,`useLocale()` / `useTranslations()` 直接可用。不需要请求头,不需要 experimental 开关。
+
+教训:遇到「服务端拿不到 X」时,先确认 X 是不是已经在客户端上下文里了。
+
 **结论**:在 `cacheComponents` 下,静态外壳里的翻译要走「静态导入字典 + `createTranslator` + 显式 locale」这条全同步路径。任何 `await` 都会让组件退出静态外壳。
 
 `--debug-prerender` 是排查这类问题的关键——默认的生产构建错误信息里没有组件堆栈。
 
 ## 15. 已知限制
 
-- **`/en` 的 404 正文仍是中文。** `not-found.tsx` 拿不到路由参数,而 `getTranslations()` 和 `headers()` 在那里都会抛错、让响应变成 **500**(两条路都实测过,发现后已回退)。`<html lang>` 仍然正确。要真正修好得等 Next 的 `global-not-found` 从 experimental 转正。
 - **文章正文、后台、邮件模板保持中文**,这是第 2 节的非目标,不是遗漏。
 - **品牌名「边界笔记」不翻译**,它是品牌不是文案。
 
