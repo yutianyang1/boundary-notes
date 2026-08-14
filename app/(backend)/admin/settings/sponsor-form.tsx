@@ -33,13 +33,29 @@ export function SponsorForm({ initial }: { initial: SponsorSlot }) {
       </div>
 
       <div>
+        <label className={label} htmlFor="sponsor-label-en">小标题（英文）</label>
+        <input id="sponsor-label-en" name="labelEn" maxLength={12} defaultValue={initial.labelEn} className={field} />
+        <p className={hint}>英文站显示。以下四个英文字段留空即沿用中文。</p>
+      </div>
+
+      <div>
         <label className={label} htmlFor="sponsor-title">标题</label>
         <input id="sponsor-title" name="title" required maxLength={60} defaultValue={initial.title} className={field} />
       </div>
 
       <div>
+        <label className={label} htmlFor="sponsor-title-en">标题（英文）</label>
+        <input id="sponsor-title-en" name="titleEn" maxLength={60} defaultValue={initial.titleEn} className={field} />
+      </div>
+
+      <div>
         <label className={label} htmlFor="sponsor-description">一句话说明</label>
         <textarea id="sponsor-description" name="description" rows={3} maxLength={160} defaultValue={initial.description} className={field} />
+      </div>
+
+      <div>
+        <label className={label} htmlFor="sponsor-description-en">一句话说明（英文）</label>
+        <textarea id="sponsor-description-en" name="descriptionEn" rows={3} maxLength={160} defaultValue={initial.descriptionEn} className={field} />
       </div>
 
       <div>
@@ -60,6 +76,11 @@ export function SponsorForm({ initial }: { initial: SponsorSlot }) {
       <div>
         <label className={label} htmlFor="sponsor-cta">行动文案</label>
         <input id="sponsor-cta" name="ctaText" required maxLength={20} defaultValue={initial.ctaText} className={field} />
+      </div>
+
+      <div>
+        <label className={label} htmlFor="sponsor-cta-en">行动文案（英文）</label>
+        <input id="sponsor-cta-en" name="ctaTextEn" maxLength={20} defaultValue={initial.ctaTextEn} className={field} />
       </div>
 
       {state.error ? (

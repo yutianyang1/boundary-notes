@@ -24,6 +24,10 @@ export async function saveSponsorSlotAction(
     imageUrl: String(formData.get("imageUrl") ?? "").trim(),
     linkUrl: String(formData.get("linkUrl") ?? ""),
     ctaText: String(formData.get("ctaText") ?? ""),
+    labelEn: String(formData.get("labelEn") ?? ""),
+    titleEn: String(formData.get("titleEn") ?? ""),
+    descriptionEn: String(formData.get("descriptionEn") ?? ""),
+    ctaTextEn: String(formData.get("ctaTextEn") ?? ""),
   });
 
   if (!parsed.success) {
