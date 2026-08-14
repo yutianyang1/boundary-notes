@@ -8,12 +8,10 @@ export function readingMinutes(charCount: number): number {
   return Math.max(1, Math.round(charCount / CHARS_PER_MINUTE));
 }
 
-/** "8 分钟 · 3.2 千字"，字数不足一千时显示具体数字。 */
-export function readingMeta(charCount: number): string {
+/** 供界面字典格式化阅读时长；字数不足一千时保留具体数字。 */
+export function readingMetaValues(charCount: number) {
   const minutes = readingMinutes(charCount);
-  const words =
-    charCount >= 1000
-      ? `${(charCount / 1000).toFixed(1)} 千字`
-      : `${charCount} 字`;
-  return `${minutes} 分钟 · ${words}`;
+  return charCount >= 1000
+    ? { key: "readingMetaThousands" as const, minutes, count: (charCount / 1000).toFixed(1) }
+    : { key: "readingMeta" as const, minutes, count: charCount };
 }

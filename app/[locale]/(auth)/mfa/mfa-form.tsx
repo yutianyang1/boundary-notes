@@ -1,7 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import Link from "next/link";
+import { localePath } from "@/i18n/href";
+import type { Locale } from "@/i18n/routing";
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -13,16 +15,16 @@ import {
 
 const initialState: MfaActionState = {};
 
-export function MfaChallengeForm({ redirectTo }: { redirectTo: string }) {
+export function MfaChallengeForm({ locale, redirectTo }: { locale: Locale; redirectTo: string }) {
   const t = useTranslations("auth.mfa");
   const [state, action, pending] = useActionState(verifyMfaChallengeAction, initialState);
   const router = useRouter();
   useEffect(() => {
     if (state.success) {
-      router.replace(redirectTo);
+      router.replace(localePath(redirectTo, locale));
       router.refresh();
     }
-  }, [redirectTo, router, state.success]);
+  }, [locale, redirectTo, router, state.success]);
   return <CodeForm action={action} pending={pending} errorKey={state.errorKey} label={t("challengeCodeLabel")} button={t("submit")} />;
 }
 

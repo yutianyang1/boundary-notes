@@ -18,18 +18,20 @@ export function GeneratedCover({
   seed,
   className = "",
   patternOnly = false,
+  alt,
 }: {
   title: string;
   label?: string | null;
   seed: string;
   className?: string;
   patternOnly?: boolean;
+  alt?: string;
 }) {
   return (
     <div
       role={patternOnly ? undefined : "img"}
       aria-hidden={patternOnly || undefined}
-      aria-label={patternOnly ? undefined : `${title}的程序化封面`}
+      aria-label={patternOnly ? undefined : alt ?? title}
       className={`generated-cover ${seedVariant(seed)} ${className}`}
     >
       {patternOnly ? null : (

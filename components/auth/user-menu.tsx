@@ -5,10 +5,21 @@ import Link from "next/link";
 import { ChevronDown, LayoutDashboard, LogOut, SquarePen, UserRound } from "lucide-react";
 import type { Session } from "next-auth";
 import { signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { roleLabels, type UserRole } from "@/lib/auth/roles";
+import { localePath } from "@/i18n/href";
+import type { Locale } from "@/i18n/routing";
+import type { UserRole } from "@/lib/auth/roles";
 
-export function UserMenu({ session }: { session: Session | null }) {
+const roleMessageKeys = {
+  reader: "roles.reader",
+  author: "roles.author",
+  editor: "roles.editor",
+  admin: "roles.admin",
+} as const satisfies Record<UserRole, string>;
+
+export function UserMenu({ locale, session }: { locale: Locale; session: Session | null }) {
+  const t = useTranslations("userMenu");
   const [isOpen, setIsOpen] = useState(false);
   const menuRootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -39,16 +50,16 @@ export function UserMenu({ session }: { session: Session | null }) {
   if (!session?.user) {
     return (
       <Link
-        href="/login"
+        href={localePath("/login", locale)}
         className="inline-flex h-9 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none sm:w-28"
       >
-        登录
+        {t("signIn")}
       </Link>
     );
   }
 
   const user = session.user;
-  const displayName = user.name?.trim() || "用户";
+  const displayName = user.name?.trim() || t("userFallback");
   const initial = displayName.slice(0, 1).toUpperCase();
   const role = user.role as UserRole;
 
@@ -101,7 +112,7 @@ export function UserMenu({ session }: { session: Session | null }) {
         <div
           id="site-user-menu"
           role="menu"
-          aria-label="用户菜单"
+          aria-label={t("menu")}
           className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-60 origin-top-right overflow-hidden rounded-[var(--radius-card)] border bg-card [animation:overlay-in_140ms_ease-out] [box-shadow:var(--shadow)] motion-reduce:animate-none"
         >
           <div className="border-b border-hairline px-4 py-3.5">
@@ -111,25 +122,25 @@ export function UserMenu({ session }: { session: Session | null }) {
                 <span className="min-w-0 truncate text-xs text-muted-foreground">{user.email}</span>
               ) : null}
               <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-[0.6875rem] font-bold text-accent-foreground">
-                {roleLabels[role]}
+                {t(roleMessageKeys[role])}
               </span>
             </div>
           </div>
 
           <div className="p-1.5">
-            <MenuLink href="/account" onNavigate={() => setIsOpen(false)}>
+            <MenuLink href={localePath("/account", locale)} onNavigate={() => setIsOpen(false)}>
               <UserRound aria-hidden className="size-4 text-muted-foreground" />
-              账户中心
+              {t("account")}
             </MenuLink>
             {role !== "reader" ? (
               <>
                 <MenuLink href="/admin/posts/new" onNavigate={() => setIsOpen(false)}>
                   <SquarePen aria-hidden className="size-4 text-muted-foreground" />
-                  写文章
+                  {t("writePost")}
                 </MenuLink>
                 <MenuLink href="/admin" onNavigate={() => setIsOpen(false)}>
                   <LayoutDashboard aria-hidden className="size-4 text-muted-foreground" />
-                  返回后台
+                  {t("dashboard")}
                 </MenuLink>
               </>
             ) : null}
@@ -137,11 +148,11 @@ export function UserMenu({ session }: { session: Session | null }) {
             <button
               type="button"
               role="menuitem"
-              onClick={() => void signOut({ redirectTo: "/" })}
+              onClick={() => void signOut({ redirectTo: localePath("/", locale) })}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-danger transition-colors hover:bg-danger/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
             >
               <LogOut aria-hidden className="size-4" />
-              退出登录
+              {t("signOut")}
             </button>
           </div>
         </div>

@@ -1,8 +1,12 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, pool } from "@/lib/db";
-import { mailOutbox } from "@/lib/db/schema";
+import { mailOutbox, pendingRegistrations } from "@/lib/db/schema";
 import { type ClaimedMail, normalizeMail } from "@/lib/mail/message";
 import { getMailSender, MailSenderError } from "@/lib/mail/sender";
+import {
+  isCurrentPendingVerificationMail,
+  SUPERSEDED_VERIFICATION_MAIL_ERROR,
+} from "@/lib/mail/verification";
 
 export { normalizeMail, renderMail } from "@/lib/mail/message";
 
@@ -52,6 +56,28 @@ export function nextMailAttemptAt(error: unknown, attempts: number, now = new Da
   return new Date(now.getTime() + Math.min(60, 2 ** attempts) * 60_000);
 }
 
+async function verificationMailIsCurrent(mail: ClaimedMail, normalized: ReturnType<typeof normalizeMail>) {
+  if (normalized.template !== "verify_email") return true;
+  const [pending] = await db.select({
+    email: pendingRegistrations.email,
+    tokenDigest: pendingRegistrations.tokenDigest,
+    expiresAt: pendingRegistrations.expiresAt,
+    verifiedAt: pendingRegistrations.verifiedAt,
+    consumedAt: pendingRegistrations.consumedAt,
+  }).from(pendingRegistrations).where(eq(pendingRegistrations.email, mail.recipient)).limit(1);
+  return isCurrentPendingVerificationMail(normalized, mail.recipient, pending);
+}
+
+async function redactSupersededVerificationMail(id: string) {
+  const now = new Date();
+  await db.update(mailOutbox).set({
+    status: "failed",
+    payloadEnc: null,
+    redactedAt: now,
+    lastError: SUPERSEDED_VERIFICATION_MAIL_ERROR,
+  }).where(and(eq(mailOutbox.id, id), eq(mailOutbox.status, "sending")));
+}
+
 export async function processMailOutbox(limit = 10) {
   const due = await pool.query(`
     SELECT 1 FROM mail_outbox
@@ -77,6 +103,12 @@ export async function processMailOutbox(limit = 10) {
   for (const mail of result.rows) {
     try {
       const normalized = normalizeMail(mail);
+      // 行可能在认领后、真正调用 SES 前被一次重发取代；最后再以数据库里的当前
+      // token 为准，避免把必然失效的旧链接发送出去。
+      if (!await verificationMailIsCurrent(mail, normalized)) {
+        await redactSupersededVerificationMail(mail.id);
+        continue;
+      }
       await sender.send({ to: mail.recipient, ...normalized });
       await db.update(mailOutbox).set({
         status: "sent",

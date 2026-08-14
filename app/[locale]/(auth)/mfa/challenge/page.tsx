@@ -43,7 +43,7 @@ async function MfaChallengeContent({ params, searchParams }: PageProps) {
         <p className="eyebrow text-primary">{t("challengeEyebrow")}</p>
         <h1 className="headline-sm mt-3 text-3xl">{t("challengePanelTitle")}</h1>
         <p className="mt-3 leading-7 text-muted-foreground">{t("challengeLead")}</p>
-        <MfaChallengeForm redirectTo={redirectTo} />
+        <MfaChallengeForm locale={locale} redirectTo={redirectTo} />
         <div className="mt-4 text-center">
           <SignOutButton redirectTo={localePath("/login", locale)} className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-60">{t("cancelAndSignOut")}</SignOutButton>
         </div>

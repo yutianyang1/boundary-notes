@@ -2,6 +2,7 @@
 
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { localePath, normalizeLocale } from "@/i18n/href";
 import { digestActionToken } from "@/lib/auth/action-tokens";
 import { db } from "@/lib/db";
 import { pendingRegistrations, userActionTokens, users } from "@/lib/db/schema";
@@ -9,6 +10,7 @@ import { isPublicRegistrationEnabled } from "@/lib/features";
 
 export async function verifyEmailAction(formData: FormData) {
   if (!isPublicRegistrationEnabled()) return;
+  const locale = normalizeLocale(formData.get("locale"));
   const token = String(formData.get("token") ?? "");
   if (token.length < 20) return;
   const digest = digestActionToken(token);
@@ -34,7 +36,7 @@ export async function verifyEmailAction(formData: FormData) {
     await tx.update(users).set({ emailVerified: new Date(), updatedAt: new Date() }).where(eq(users.id, consumed.userId));
     return "legacy" as const;
   });
-  if (result === "pending") redirect(`/register/complete?token=${encodeURIComponent(token)}`);
-  if (result === "legacy") redirect("/login?verified=success");
-  redirect("/register?verification=invalid");
+  if (result === "pending") redirect(localePath(`/register/complete?token=${encodeURIComponent(token)}`, locale));
+  if (result === "legacy") redirect(localePath("/login?verified=success", locale));
+  redirect(localePath("/register?verification=invalid", locale));
 }

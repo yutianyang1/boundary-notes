@@ -8,7 +8,7 @@ import { Suspense } from "react";
 import { localePath } from "@/i18n/href";
 import { localeAlternates } from "@/i18n/alternates";
 import { messagesFor } from "@/i18n/messages";
-import type { Locale } from "@/i18n/routing";
+import { htmlLang, type Locale } from "@/i18n/routing";
 import { ArticleToc } from "@/components/article/article-toc";
 import { ArticleBody } from "@/components/article/article-body";
 import { CodeCopyButtons } from "@/components/article/code-copy-buttons";
@@ -26,15 +26,17 @@ import {
   getRelatedPosts,
   getSeriesNavForPost,
 } from "@/lib/posts/queries";
-import { readingMeta } from "@/lib/posts/reading-time";
+import { readingMetaValues } from "@/lib/posts/reading-time";
 import { CommentsSection } from "./comments-section";
 
 type PageProps = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ commentsPage?: string }> };
 
-const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
-  dateStyle: "long",
-  timeZone: "Asia/Shanghai",
-});
+function dateFormatterFor(locale: Locale) {
+  return new Intl.DateTimeFormat(htmlLang[locale], {
+    dateStyle: "long",
+    timeZone: "Asia/Shanghai",
+  });
+}
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale } = await params;
@@ -101,6 +103,8 @@ async function PostContent({ params, searchParams }: PageProps) {
     getSeriesNavForPost(post.id),
   ]);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const reading = readingMetaValues(post.charCount);
+  const dateFormatter = dateFormatterFor(locale);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -109,7 +113,10 @@ async function PostContent({ params, searchParams }: PageProps) {
     datePublished: post.publishedAt?.toISOString(),
     dateModified: post.updatedAt.toISOString(),
     author: { "@type": "Person", name: post.authorName },
-    mainEntityOfPage: post.canonicalUrl ?? `${siteUrl}/posts/${post.slug}`,
+    mainEntityOfPage: post.canonicalUrl ?? new URL(
+      localePath(`/posts/${encodeURIComponent(post.slug)}`, locale),
+      siteUrl,
+    ).toString(),
   };
 
   return (
@@ -148,6 +155,7 @@ async function PostContent({ params, searchParams }: PageProps) {
               label={seriesNavigation
                 ? t("seriesPosition", { name: seriesNavigation.series.name, position: seriesNavigation.position, total: seriesNavigation.total })
                 : post.categoryName}
+              alt={t("coverAlt", { title: post.title })}
               seed={post.slug}
               className="absolute inset-0"
             />
@@ -203,7 +211,7 @@ async function PostContent({ params, searchParams }: PageProps) {
                   </time>
                 ) : null}
                 <span aria-hidden>·</span>
-                <span>{readingMeta(post.charCount)}</span>
+                <span>{t(reading.key, { minutes: reading.minutes, count: reading.count })}</span>
                 <span aria-hidden>·</span>
                 <span>{t("revision", { n: post.revision })}</span>
               </div>
@@ -308,7 +316,7 @@ function SeriesNavigation({
           href={localePath(`/series/${navigation.series.slug}`, locale)}
           className="mx-1 font-semibold text-foreground hover:text-primary"
         >
-          《{navigation.series.name}》
+          {t("seriesName", { name: navigation.series.name })}
         </Link>
         {t.rich("seriesPart", {
           n: () => <span className="tabular-nums">{navigation.position} / {navigation.total}</span>,
@@ -346,18 +354,23 @@ function RelatedPosts({
   const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "post" });
   return (
     <ul className="mt-5 grid gap-4 sm:grid-cols-3">
-      {posts.map((post) => (
-        <li key={post.id} className="min-w-0">
-          <Link
-            href={localePath(`/posts/${post.slug}`, locale)}
-            className="home-card group flex h-full flex-col rounded-xl border bg-card p-4 transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]"
-          >
-            <span className="eyebrow text-primary">{post.categoryName ?? t("breadcrumbPosts")}</span>
-            <span className="mt-2 block text-sm font-bold leading-6 group-hover:text-primary">{post.title}</span>
-            <span className="mt-auto block pt-3 text-xs text-muted-foreground">{readingMeta(post.charCount)}</span>
-          </Link>
-        </li>
-      ))}
+      {posts.map((post) => {
+        const reading = readingMetaValues(post.charCount);
+        return (
+          <li key={post.id} className="min-w-0">
+            <Link
+              href={localePath(`/posts/${post.slug}`, locale)}
+              className="home-card group flex h-full flex-col rounded-xl border bg-card p-4 transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]"
+            >
+              <span className="eyebrow text-primary">{post.categoryName ?? t("breadcrumbPosts")}</span>
+              <span className="mt-2 block text-sm font-bold leading-6 group-hover:text-primary">{post.title}</span>
+              <span className="mt-auto block pt-3 text-xs text-muted-foreground">
+                {t(reading.key, { minutes: reading.minutes, count: reading.count })}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }

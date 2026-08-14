@@ -17,6 +17,10 @@ test("security alert contains Shanghai time and device, but no IP", () => {
       deviceName: "Chrome · Windows",
       accountUrl: "https://xiudou.site/account",
     });
+    assert.equal(
+      securityAlertPayload(headers, "密码已重置", new Date("2026-08-04T07:30:00.000Z"), "/en/account").accountUrl,
+      "https://xiudou.site/en/account",
+    );
     assert.doesNotMatch(JSON.stringify(payload), /192\.0\.2\.10/);
   } finally {
     if (previous === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;

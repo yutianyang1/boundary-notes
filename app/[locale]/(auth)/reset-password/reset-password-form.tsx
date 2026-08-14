@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useActionState } from "react";
 import { resetPasswordAction, type ResetPasswordState } from "./actions";
 
@@ -8,12 +8,14 @@ const initialState: ResetPasswordState = {};
 const inputClass = "mt-2 h-11 w-full rounded-md border bg-card px-3.5 font-normal outline-none transition-[border-color,box-shadow] focus:border-primary focus:ring-2 focus:ring-ring/30";
 
 export function ResetPasswordForm({ token }: { token: string }) {
+  const locale = useLocale();
   const t = useTranslations("auth.resetPassword");
   const tc = useTranslations("auth.common");
   const tAuth = useTranslations("auth");
   const [state, action, pending] = useActionState(resetPasswordAction, initialState);
   return (
     <form action={action} className="mt-8 space-y-5">
+      <input type="hidden" name="locale" value={locale} />
       <input type="hidden" name="token" value={token} />
       <label className="block text-sm font-semibold">
         {tc("newPassword")}

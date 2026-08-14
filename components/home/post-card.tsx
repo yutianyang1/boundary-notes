@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
+import { createTranslator } from "next-intl";
 import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
-import { readingMeta } from "@/lib/posts/reading-time";
+import { readingMetaValues } from "@/lib/posts/reading-time";
 
 export type PostCardData = {
   id: string;
@@ -35,6 +37,8 @@ export function PostCard({
   sequenceLabel?: string;
   coverAspect?: string;
 }) {
+  const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "post" });
+  const reading = readingMetaValues(post.charCount);
   return (
     <article className="home-card group flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-card)] border bg-card transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]">
       <Link
@@ -98,7 +102,7 @@ export function PostCard({
         <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-4 text-xs tabular-nums text-muted-foreground">
           {post.publishedAt ? <time dateTime={post.publishedAt.toISOString()}>{dateFormatter.format(post.publishedAt)}</time> : null}
           <span aria-hidden>·</span>
-          <span>{readingMeta(post.charCount)}</span>
+          <span>{t(reading.key, { minutes: reading.minutes, count: reading.count })}</span>
         </div>
       </div>
     </article>

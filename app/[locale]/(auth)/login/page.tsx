@@ -55,7 +55,7 @@ async function LoginContent({ params, searchParams }: PageProps) {
     ? OAUTH_ERROR_KEYS[query.error as keyof typeof OAUTH_ERROR_KEYS] ?? "githubFailed"
     : null;
   const oauthError = oauthErrorKey ? tError(oauthErrorKey) : null;
-  const redirectTo = safeLocalRedirect(query.callbackUrl);
+  const redirectTo = query.callbackUrl ? safeLocalRedirect(query.callbackUrl) : undefined;
 
   return (
     <AuthSplit
@@ -84,13 +84,13 @@ async function LoginContent({ params, searchParams }: PageProps) {
         {query.verified === "success" ? <Notice>{t("verificationComplete")}</Notice> : null}
         {githubEnabled ? (
           <div className="mt-7">
-            <GitHubLoginButton redirectTo={redirectTo} />
+            <GitHubLoginButton locale={locale} redirectTo={redirectTo ?? "/account"} />
             <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
               {t("or")}
             </div>
           </div>
         ) : null}
-        <LoginForm compactTop={githubEnabled} redirectTo={redirectTo} />
+        <LoginForm locale={locale} compactTop={githubEnabled} redirectTo={redirectTo} />
         {registrationEnabled ? (
           <p className="mt-6 border-t border-hairline pt-5 text-center text-sm text-muted-foreground">
             {t("noAccount")}

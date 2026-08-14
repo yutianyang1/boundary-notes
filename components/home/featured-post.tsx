@@ -1,10 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
+import { createTranslator } from "next-intl";
 import { localePath } from "@/i18n/href";
+import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
 import type { PostCardData } from "@/components/home/post-card";
-import { readingMeta } from "@/lib/posts/reading-time";
+import { readingMetaValues } from "@/lib/posts/reading-time";
 
 const dateFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Shanghai",
@@ -13,13 +15,17 @@ const dateFormatter = new Intl.DateTimeFormat("en-CA", {
 });
 
 export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardData }) {
+  const messages = messagesFor(locale);
+  const tHome = createTranslator({ locale, messages, namespace: "home" });
+  const tPost = createTranslator({ locale, messages, namespace: "post" });
+  const reading = readingMetaValues(post.charCount);
   return (
     <article className="mt-8 grid overflow-hidden rounded-[var(--radius-card)] border bg-card [box-shadow:var(--shadow)] min-[820px]:grid-cols-[1.05fr_1fr]">
       <div className="relative min-h-60">
         {post.cover ? (
           <Image
             src={post.cover}
-            alt={`${post.title}封面`}
+            alt={tPost("coverAlt", { title: post.title })}
             fill
             unoptimized
             priority
@@ -38,7 +44,7 @@ export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardD
 
       <div className="flex flex-col justify-center p-6 sm:p-8 lg:p-10">
         <p className="eyebrow flex items-center gap-2 text-warm before:block before:h-[3px] before:w-6 before:rounded-full before:bg-warm">
-          头条
+          {tHome("featured")}
         </p>
         <h2 lang="zh-CN" className="headline mt-4 text-2xl sm:text-4xl">
           <Link
@@ -70,7 +76,7 @@ export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardD
           ) : null}
           {post.publishedAt ? <time dateTime={post.publishedAt.toISOString()}>{dateFormatter.format(post.publishedAt)}</time> : null}
           <span aria-hidden className="size-[3px] rounded-full bg-current opacity-50" />
-          <span>{readingMeta(post.charCount)}</span>
+          <span>{tPost(reading.key, { minutes: reading.minutes, count: reading.count })}</span>
         </div>
       </div>
     </article>

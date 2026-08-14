@@ -4,6 +4,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { localePath, normalizeLocale } from "@/i18n/href";
 import { digestActionToken } from "@/lib/auth/action-tokens";
 import { extractClientIp } from "@/lib/auth/device";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -15,7 +16,7 @@ import { db } from "@/lib/db";
 import { auditLogs, mailOutbox, userActionTokens, userSessions, users } from "@/lib/db/schema";
 import { encryptOutboxPayload } from "@/lib/mail/outbox";
 
-/** 返回字典 key 而非文案：动作不需要知道当前语言，翻译交给 UI。 */
+/** 返回字典 key 而非文案；locale 只用于链接与跳转，翻译交给 UI。 */
 export type ResetPasswordErrorKey =
   | "errors.passwordMismatch"
   | "errors.passwordTooCommonReset"
@@ -34,6 +35,7 @@ export async function resetPasswordAction(
   _state: ResetPasswordState,
   formData: FormData,
 ): Promise<ResetPasswordState> {
+  const locale = normalizeLocale(formData.get("locale"));
   const token = tokenSchema.safeParse(formData.get("token"));
   const password = passwordSchema.safeParse(formData.get("password"));
   const confirmation = confirmationSchema.safeParse(formData.get("confirmPassword"));
@@ -46,7 +48,7 @@ export async function resetPasswordAction(
   const requestHeaders = await headers();
   const changedAt = new Date();
   // 安全提醒邮件是中文模板，动作名跟着保持中文。
-  const alertPayload = securityAlertPayload(requestHeaders, "密码已重置", changedAt);
+  const alertPayload = securityAlertPayload(requestHeaders, "密码已重置", changedAt, localePath("/account", locale));
   let revokedJtis: string[];
 
   try {
@@ -126,9 +128,7 @@ export async function resetPasswordAction(
   }
 
   await clearRegisteredSessionCache(revokedJtis);
-  // 重置成功后回登录页。locale 前缀由 proxy 的 as-needed 规则处理：
-  // 中文站保持无前缀，英文用户从 /en/reset-password 过来时由中间件改写。
-  redirect("/login?reset=success");
+  redirect(localePath("/login?reset=success", locale));
 }
 
 class PasswordPolicyError extends Error {}

@@ -3,10 +3,20 @@
 import { getSession, signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { localePath } from "@/i18n/href";
+import type { Locale } from "@/i18n/routing";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function LoginForm({ compactTop = false, redirectTo = "/account" }: { compactTop?: boolean; redirectTo?: string }) {
+export function LoginForm({
+  locale,
+  compactTop = false,
+  redirectTo,
+}: {
+  locale: Locale;
+  compactTop?: boolean;
+  redirectTo?: string;
+}) {
   const t = useTranslations("auth.login");
   const tc = useTranslations("auth.common");
   const router = useRouter();
@@ -22,7 +32,7 @@ export function LoginForm({ compactTop = false, redirectTo = "/account" }: { com
       email: formData.get("email"),
       password: formData.get("password"),
       redirect: false,
-      redirectTo,
+      redirectTo: localePath(redirectTo ?? "/account", locale),
     });
 
     if (result?.error) {
@@ -32,12 +42,13 @@ export function LoginForm({ compactTop = false, redirectTo = "/account" }: { com
     }
 
     const session = await getSession();
+    const target = redirectTo ?? (session?.user.role && session.user.role !== "reader" ? "/admin" : "/account");
     if (session?.authState === "mfa_pending") {
-      router.push(`/mfa/challenge?callbackUrl=${encodeURIComponent(redirectTo)}`);
+      router.push(localePath(`/mfa/challenge?callbackUrl=${encodeURIComponent(target)}`, locale));
     } else if (session?.authState === "mfa_enrollment_required") {
-      router.push("/mfa/enroll");
+      router.push(localePath("/mfa/enroll", locale));
     } else {
-      router.push(redirectTo);
+      router.push(localePath(target, locale));
     }
     router.refresh();
   }

@@ -17,6 +17,21 @@
     "switchToChinese": "切换到中文",
     "switchToEnglish": "Switch to English"
   },
+  "userMenu": {
+    "signIn": "Sign in",
+    "userFallback": "User",
+    "menu": "User menu",
+    "account": "Account",
+    "writePost": "Write a post",
+    "dashboard": "Dashboard",
+    "signOut": "Sign out",
+    "roles": {
+      "reader": "Reader",
+      "author": "Author",
+      "editor": "Editor",
+      "admin": "Administrator"
+    }
+  },
   "footer": {
     "nav": "Footer navigation",
     "tagline": "Looking for clear boundaries inside complex systems. Notes on software architecture, engineering practice, and the design decisions worth turning over twice.",
@@ -107,7 +122,8 @@
       "lead": "Enter the email you sign in with and we will send a reset link.",
       "submit": "Send reset email",
       "submitting": "Sending...",
-      "remembered": "Remembered it?"
+      "remembered": "Remembered it?",
+      "response": "If that email can be used for account recovery, a reset message will be sent."
     },
     "resetPassword": {
       "metaTitle": "Reset password",
@@ -243,6 +259,7 @@
     "resultsFor": "<n></n> results for “{query}”"
   },
   "home": {
+    "featured": "Featured",
     "eyebrow": "Software · Systems · The long view",
     "headline": "Looking for clear boundaries<br></br>inside complex systems.",
     "lead": "Notes on software architecture, engineering practice, and the design decisions worth turning over twice. Fewer shortcuts, more trade-offs that can be explained.",
@@ -253,6 +270,9 @@
     "loadingPosts": "Loading the latest posts"
   },
   "post": {
+    "readingMeta": "{minutes} min · {count, plural, one {# character} other {# characters}}",
+    "readingMetaThousands": "{minutes} min · {count}K characters",
+    "seriesName": "{name}",
     "loading": "Loading the post",
     "notFound": "This post does not exist, or has not been published.",
     "breadcrumbPosts": "Posts",

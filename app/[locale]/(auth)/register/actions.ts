@@ -4,6 +4,7 @@ import { and, eq, gt, isNotNull, isNull } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { localePath, normalizeLocale } from "@/i18n/href";
 import { createActionToken, digestActionToken } from "@/lib/auth/action-tokens";
 import { extractClientIp } from "@/lib/auth/device";
 import { hashPassword } from "@/lib/auth/password";
@@ -18,13 +19,14 @@ import { db } from "@/lib/db";
 import { auditLogs, mailOutbox, pendingRegistrations, users } from "@/lib/db/schema";
 import { isPublicRegistrationEnabled } from "@/lib/features";
 import { encryptOutboxPayload } from "@/lib/mail/outbox";
+import { SUPERSEDED_VERIFICATION_MAIL_ERROR } from "@/lib/mail/verification";
 
 export type RegisterState = {
   /** sent = 展示「检查你的邮箱」卡片；error = 停留在初始表单。 */
   status?: "sent" | "error";
   /**
    * 初始表单上的错误提示，存的是 auth 命名空间下的字典 key 而非文案。
-   * 动作因此不需要知道当前语言，渲染交给 UI。
+   * locale 只用于站内链接与跳转，具体提示文案仍由 UI 渲染。
    */
   messageKey?: RegisterMessageKey;
   /** 已发送卡片内的提示 key，用于重发被冷却拦下的场景。 */
@@ -75,6 +77,7 @@ export async function registerAction(previous: RegisterState, formData: FormData
 
 async function runRegistration(_: RegisterState, formData: FormData): Promise<RegisterState> {
   if (!isPublicRegistrationEnabled()) return { status: "error", messageKey: "errors.registrationClosed" };
+  const locale = normalizeLocale(formData.get("locale"));
   const parsed = emailSchema.safeParse(formData.get("email"));
   // 邮箱本身不合法时没有可回填的值，其余分支一律把它带回去，避免用户重输。
   if (!parsed.success) return { status: "error", messageKey: "errors.invalidEmail" };
@@ -105,12 +108,22 @@ async function runRegistration(_: RegisterState, formData: FormData): Promise<Re
   }
 
   const { token, tokenDigest } = createActionToken();
-  const verifyUrl = new URL("/verify-email", process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost");
+  const verifyUrl = new URL(localePath("/verify-email", locale), process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost");
   verifyUrl.searchParams.set("token", token);
   // 邮件模板是中文的（腾讯云 SES 模板带审核 ID），载荷跟着保持中文，不走 i18n。
   const payloadEnc = encryptOutboxPayload({ name: "读者", verifyUrl: verifyUrl.toString() });
   const now = new Date();
   await db.transaction(async (tx) => {
+    await tx.update(mailOutbox).set({
+      status: "failed",
+      payloadEnc: null,
+      redactedAt: now,
+      lastError: SUPERSEDED_VERIFICATION_MAIL_ERROR,
+    }).where(and(
+      eq(mailOutbox.template, "verify_email"),
+      eq(mailOutbox.recipient, parsed.data),
+      eq(mailOutbox.status, "pending"),
+    ));
     await tx.insert(pendingRegistrations).values({
       email: parsed.data,
       tokenDigest,
@@ -146,6 +159,7 @@ export async function completeRegistrationAction(
   formData: FormData,
 ): Promise<CompleteRegistrationState> {
   if (!isPublicRegistrationEnabled()) return { errorKey: "errors.registrationClosed" };
+  const locale = normalizeLocale(formData.get("locale"));
   const token = String(formData.get("token") ?? "");
   if (token.length < 20) return { errorKey: "errors.registrationLinkInvalid" };
   const tokenDigest = digestActionToken(token);
@@ -204,5 +218,5 @@ export async function completeRegistrationAction(
     )) return { errorKey: "errors.registrationAlreadyDone" };
     throw error;
   }
-  redirect("/login?registered=success");
+  redirect(localePath("/login?registered=success", locale));
 }

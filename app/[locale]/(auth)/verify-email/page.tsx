@@ -49,6 +49,7 @@ async function VerifyEmailContent({ params, searchParams }: PageProps) {
           {t("lead")}
         </p>
         <form action={verifyEmailAction} className="mt-8">
+          <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="token" value={token} />
           <button className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             {t("submit")}

@@ -1,7 +1,7 @@
 "use client";
 
 import { MailCheck } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useActionState, useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { registerAction, type RegisterMessageKey, type RegisterState } from "./actions";
@@ -34,9 +34,10 @@ function ResendButton({ seconds, pending }: { seconds: number; pending: boolean 
 }
 
 export function RegisterForm() {
+  const locale = useLocale();
   const t = useTranslations("auth.register");
   const tc = useTranslations("auth.common");
-  // 服务端动作返回的是字典 key，翻译在这里发生，动作本身不需要知道当前语言。
+  // 服务端动作返回字典 key；locale 只随表单提交给邮件链接和跳转使用，翻译仍在这里发生。
   const tAuth = useTranslations("auth");
   const message = (key: RegisterMessageKey | undefined, values?: Record<string, number>) =>
     key ? tAuth(key, values) : null;
@@ -59,6 +60,7 @@ export function RegisterForm() {
         ) : null}
         <div className="mt-5 flex items-center justify-center gap-4 text-sm">
           <form action={action}>
+            <input type="hidden" name="locale" value={locale} />
             <input type="hidden" name="email" value={state.email ?? ""} />
             <input type="hidden" name="intent" value="resend" />
             <ResendButton key={state.issuedAt} seconds={state.cooldownSeconds ?? 0} pending={pending} />
@@ -72,6 +74,7 @@ export function RegisterForm() {
 
   return (
     <form action={action} className="mt-8 space-y-5">
+      <input type="hidden" name="locale" value={locale} />
       <div className="absolute -left-[10000px] h-px w-px overflow-hidden" aria-hidden="true">
         <label>Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
       </div>

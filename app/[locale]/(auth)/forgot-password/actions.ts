@@ -3,15 +3,17 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { localePath, normalizeLocale } from "@/i18n/href";
 import { createActionToken } from "@/lib/auth/action-tokens";
 import { extractClientIp } from "@/lib/auth/device";
 import { allowPasswordResetRequest } from "@/lib/auth/password-reset-rate-limit";
-import { isPasswordResetEligible, PASSWORD_RESET_RESPONSE } from "@/lib/auth/password-reset";
+import { isPasswordResetEligible } from "@/lib/auth/password-reset";
 import { db } from "@/lib/db";
 import { mailOutbox, userActionTokens, users } from "@/lib/db/schema";
 import { encryptOutboxPayload } from "@/lib/mail/outbox";
 
-export type ForgotPasswordState = { status?: "success" | "error"; message?: string };
+export type ForgotPasswordMessageKey = "errors.invalidEmail" | "forgotPassword.response";
+export type ForgotPasswordState = { status?: "success" | "error"; messageKey?: ForgotPasswordMessageKey };
 
 // 这条校验信息不会显示给用户：动作对任何输入都返回统一响应，
 // 以免暴露邮箱是否已注册。
@@ -21,8 +23,9 @@ export async function forgotPasswordAction(
   _state: ForgotPasswordState,
   formData: FormData,
 ): Promise<ForgotPasswordState> {
+  const locale = normalizeLocale(formData.get("locale"));
   const parsed = emailSchema.safeParse(formData.get("email"));
-  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message };
+  if (!parsed.success) return { status: "error", messageKey: "errors.invalidEmail" };
 
   const requestHeaders = await headers();
   const allowed = await allowPasswordResetRequest(extractClientIp(requestHeaders), parsed.data);
@@ -43,7 +46,7 @@ export async function forgotPasswordAction(
 
   const now = new Date();
   const { token, tokenDigest } = createActionToken();
-  const resetUrl = new URL("/reset-password", process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost");
+  const resetUrl = new URL(localePath("/reset-password", locale), process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost");
   resetUrl.searchParams.set("token", token);
   const payloadEnc = encryptOutboxPayload({ resetUrl: resetUrl.toString() });
 
@@ -76,5 +79,5 @@ export async function forgotPasswordAction(
 }
 
 function uniformResponse(): ForgotPasswordState {
-  return { status: "success", message: PASSWORD_RESET_RESPONSE };
+  return { status: "success", messageKey: "forgotPassword.response" };
 }

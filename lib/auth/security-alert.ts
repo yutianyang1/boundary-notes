@@ -14,8 +14,8 @@ export function formatShanghaiDate(value: Date) {
   return `${part("year")}-${part("month")}-${part("day")} ${part("hour")}:${part("minute")}`;
 }
 
-export function securityAlertPayload(headers: Headers, actionLabel: string, occurredAt: Date) {
-  const accountUrl = new URL("/account", process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost").toString();
+export function securityAlertPayload(headers: Headers, actionLabel: string, occurredAt: Date, accountPath = "/account") {
+  const accountUrl = new URL(accountPath, process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost").toString();
   return {
     actionLabel,
     occurredAt: formatShanghaiDate(occurredAt),

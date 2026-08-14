@@ -101,7 +101,7 @@ async function AccountContent({ params }: PageProps) {
           </div>
           <div className="flex gap-3">
             {session.user.role !== "reader" ? (
-              <Link href={localePath("/admin", locale)} className="rounded-md border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Link href="/admin" className="rounded-md border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 {t("backToAdmin")}
               </Link>
             ) : (

@@ -69,7 +69,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           </Suspense>
           <ThemeToggle />
           <Suspense fallback={<span aria-hidden className="h-9 w-16 shrink-0 animate-pulse rounded-full border bg-muted motion-reduce:animate-none sm:w-28" />}>
-            <UserMenuServer />
+            <UserMenuServer locale={locale} />
           </Suspense>
         </div>
       </div>

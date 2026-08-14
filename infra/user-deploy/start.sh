@@ -68,7 +68,11 @@ if [ -f "$RUN_DIR/app.pid" ] && kill -0 "$(cat "$RUN_DIR/app.pid")" 2>/dev/null;
   done
 fi
 
-export NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=127.0.0.1
+# Next normalizes loopback IPs to `localhost` inside middleware URLs. Keeping
+# HOSTNAME as 127.0.0.1 makes next-intl's default-locale rewrite look
+# cross-origin in standalone mode and can produce a self-redirect. On the
+# Tencent host `localhost` resolves to 127.0.0.1, so the app remains loopback-only.
+export NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=localhost
 nohup "$NODE_BIN/node" server.js >> "$LOG_DIR/app.log" 2>&1 &
 echo $! > "$RUN_DIR/app.pid"
 

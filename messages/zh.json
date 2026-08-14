@@ -17,6 +17,21 @@
     "switchToChinese": "切换到中文",
     "switchToEnglish": "Switch to English"
   },
+  "userMenu": {
+    "signIn": "登录",
+    "userFallback": "用户",
+    "menu": "用户菜单",
+    "account": "账户中心",
+    "writePost": "写文章",
+    "dashboard": "返回后台",
+    "signOut": "退出登录",
+    "roles": {
+      "reader": "读者",
+      "author": "作者",
+      "editor": "编辑",
+      "admin": "管理员"
+    }
+  },
   "footer": {
     "nav": "页脚导航",
     "tagline": "在复杂系统中寻找清晰的边界。记录软件架构、工程实践与那些值得反复推敲的设计决定。",
@@ -107,7 +122,8 @@
       "lead": "输入你的登录邮箱，我们会发送密码重置链接。",
       "submit": "发送重置邮件",
       "submitting": "正在发送…",
-      "remembered": "想起密码了？"
+      "remembered": "想起密码了？",
+      "response": "如果该邮箱可用于账户恢复，重置邮件将会发送。"
     },
     "resetPassword": {
       "metaTitle": "重置密码",
@@ -243,6 +259,7 @@
     "resultsFor": "「{query}」找到 <n></n> 篇文章"
   },
   "home": {
+    "featured": "头条",
     "eyebrow": "软件 · 系统 · 长期主义",
     "headline": "在复杂系统中，<br></br>寻找清晰的边界。",
     "lead": "记录软件架构、工程实践和那些值得反复推敲的设计决定。少一点捷径，多一点可以解释的取舍。",
@@ -253,6 +270,9 @@
     "loadingPosts": "正在加载首页文章"
   },
   "post": {
+    "readingMeta": "{minutes} 分钟 · {count} 字",
+    "readingMetaThousands": "{minutes} 分钟 · {count} 千字",
+    "seriesName": "《{name}》",
     "loading": "正在加载文章",
     "notFound": "文章不存在或尚未发布。",
     "breadcrumbPosts": "文章",

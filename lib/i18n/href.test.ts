@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { localePath } from "../../i18n/href";
+import { localePath, normalizeLocale } from "../../i18n/href";
 
 test("default locale keeps paths unprefixed", () => {
   // 站点已上线且 sitemap 已提交，中文地址一个字都不能变。
@@ -22,4 +22,22 @@ test("home page does not collect a trailing slash", () => {
 test("query strings and fragments survive prefixing", () => {
   assert.equal(localePath("/posts?year=2026&page=2", "en"), "/en/posts?year=2026&page=2");
   assert.equal(localePath("/posts/x#comments", "en"), "/en/posts/x#comments");
+});
+
+test("backend paths stay outside locale routing", () => {
+  assert.equal(localePath("/admin", "en"), "/admin");
+  assert.equal(localePath("/admin/posts/new", "en"), "/admin/posts/new");
+  assert.equal(localePath("/admin?from=account", "en"), "/admin?from=account");
+});
+
+test("already localized callback targets are not prefixed twice", () => {
+  assert.equal(localePath("/en/account", "en"), "/en/account");
+  assert.equal(localePath("/en/posts/x?commentsPage=2", "en"), "/en/posts/x?commentsPage=2");
+});
+
+test("normalizeLocale accepts supported locales and rejects form tampering", () => {
+  assert.equal(normalizeLocale("zh"), "zh");
+  assert.equal(normalizeLocale("en"), "en");
+  assert.equal(normalizeLocale("en/../../admin"), "zh");
+  assert.equal(normalizeLocale(null), "zh");
 });
