@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
@@ -24,6 +24,7 @@ import { areCommentsEnabled, isSubscriptionEnabled } from "@/lib/features";
 import { extractTableOfContents } from "@/lib/markdown/toc";
 import {
   getPublishedPost,
+  getPublishedPostRedirect,
   getRelatedPosts,
   getSeriesNavForPost,
 } from "@/lib/posts/queries";
@@ -31,6 +32,7 @@ import { readingMetaValues } from "@/lib/posts/reading-time";
 import { CommentsSection } from "./comments-section";
 
 type PageProps = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ commentsPage?: string }> };
+const POST_ROUTE_BUILD_PROBE = "__post-route-probe__";
 
 function dateFormatterFor(locale: Locale) {
   return new Intl.DateTimeFormat(htmlLang[locale], {
@@ -39,10 +41,18 @@ function dateFormatterFor(locale: Locale) {
   });
 }
 
+// Cache Components needs one representative value before route params can be
+// resolved ahead of the streaming boundary. Real slugs remain dynamic and are
+// cached after their first request.
+export function generateStaticParams() {
+  return [{ slug: POST_ROUTE_BUILD_PROBE }];
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale } = await params;
   const tMeta = createTranslator({ locale, messages: messagesFor(locale as Locale), namespace: "post" });
   const { slug } = await params;
+  if (slug === POST_ROUTE_BUILD_PROBE) return {};
   const post = await getPublishedPost(slug);
   if (!post) return {};
   const title = post.seoTitle ?? post.title;
@@ -78,23 +88,40 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default function PostPage({ params, searchParams }: PageProps) {
+type PublishedPost = NonNullable<Awaited<ReturnType<typeof getPublishedPost>>>;
+
+export default async function PostPage({ params, searchParams }: PageProps) {
+  const { locale: rawLocale, slug } = await params;
+  const locale = rawLocale as Locale;
+  if (slug === POST_ROUTE_BUILD_PROBE) notFound();
+  const post = await getPublishedPost(slug);
+  if (!post) {
+    const redirectSlug = await getPublishedPostRedirect(slug);
+    if (redirectSlug) {
+      permanentRedirect(localePath(`/posts/${encodeURIComponent(redirectSlug)}`, locale));
+    }
+    notFound();
+  }
+
   return (
     <Suspense fallback={<ArticleSkeleton />}>
-      <PostContent params={params} searchParams={searchParams} />
+      <PostContent locale={locale} post={post} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function PostContent({ params, searchParams }: PageProps) {
-  const { locale: rawLocale } = await params;
-  const locale = rawLocale as Locale;
+async function PostContent({
+  locale,
+  post,
+  searchParams,
+}: {
+  locale: Locale;
+  post: PublishedPost;
+  searchParams: PageProps["searchParams"];
+}) {
   setRequestLocale(locale);
   const messages = messagesFor(locale);
   const t = createTranslator({ locale, messages, namespace: "post" });
-  const { slug } = await params;
-  const post = await getPublishedPost(slug);
-  if (!post) notFound();
   const requestedCommentsPage = Number((await searchParams).commentsPage ?? "1");
   const commentsPage = Number.isSafeInteger(requestedCommentsPage) && requestedCommentsPage > 0 ? requestedCommentsPage : 1;
 

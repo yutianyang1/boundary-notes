@@ -2,7 +2,7 @@ import { and, asc, desc, eq, ilike, isNull, lte, ne, or, sql } from "drizzle-orm
 import { cacheLife, cacheTag } from "next/cache";
 import { cacheTags } from "@/lib/cache/tags";
 import { db } from "@/lib/db";
-import { categories, posts, postTags, postViewCounts, series, tags, users } from "@/lib/db/schema";
+import { categories, postRedirects, posts, postTags, postViewCounts, series, tags, users } from "@/lib/db/schema";
 
 const publiclyVisible = and(
   isNull(posts.deletedAt),
@@ -16,9 +16,18 @@ const publiclyVisible = and(
 const charCount = sql<number>`length(${posts.contentMd})`.mapWith(Number);
 const viewCount = sql<number>`coalesce(${postViewCounts.viewCount}, 0)`.mapWith(Number);
 
+function decodeRouteSlug(slug: string) {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
+
 export async function getPublishedPost(slug: string) {
   "use cache";
-  cacheTag(cacheTags.posts, cacheTags.post(slug));
+  const decodedSlug = decodeRouteSlug(slug);
+  cacheTag(cacheTags.posts, cacheTags.post(decodedSlug));
 
   const [post] = await db
     .select({
@@ -44,7 +53,7 @@ export async function getPublishedPost(slug: string) {
     .from(posts)
     .leftJoin(categories, and(eq(posts.categoryId, categories.id), isNull(categories.deletedAt)))
     .innerJoin(users, eq(posts.authorId, users.id))
-    .where(and(eq(posts.slug, slug), publiclyVisible))
+    .where(and(eq(posts.slug, decodedSlug), publiclyVisible))
     .limit(1);
 
   if (post) {
@@ -60,6 +69,33 @@ export async function getPublishedPost(slug: string) {
   } else {
     cacheLife("negative");
   }
+  return null;
+}
+
+export function buildPublishedPostRedirectQuery(oldSlug: string) {
+  const decodedSlug = decodeRouteSlug(oldSlug);
+  return db
+    .select({ slug: posts.slug })
+    .from(postRedirects)
+    .innerJoin(posts, eq(postRedirects.postId, posts.id))
+    .where(and(eq(postRedirects.oldSlug, decodedSlug), publiclyVisible))
+    .limit(1);
+}
+
+/** Resolve a historical article slug only when its current post is public. */
+export async function getPublishedPostRedirect(oldSlug: string) {
+  "use cache";
+  const decodedSlug = decodeRouteSlug(oldSlug);
+  cacheTag(cacheTags.posts, cacheTags.post(decodedSlug));
+
+  const [target] = await buildPublishedPostRedirectQuery(decodedSlug);
+  if (target) {
+    cacheTag(cacheTags.post(target.slug));
+    cacheLife("published-content");
+    return target.slug;
+  }
+
+  cacheLife("negative");
   return null;
 }
 

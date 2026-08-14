@@ -12,6 +12,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { categories, tags } from "@/lib/db/schema";
+import { TAG_SLUG_REDIRECTS } from "@/lib/posts/slug-redirects";
 
 /** slug -> 英文名。新增分类后在这里补一行即可。 */
 const CATEGORY_NAMES_EN: Record<string, string> = {
@@ -43,13 +44,20 @@ const TAG_NAMES_EN: Record<string, string> = {
   长上下文: "Long context",
 };
 
+// slug 迁移前后都能重跑：英文 slug 复用对应旧中文 slug 的译名。
+const TAG_NAMES_EN_BY_ANY_SLUG: Record<string, string> = { ...TAG_NAMES_EN };
+for (const [oldSlug, newSlug] of Object.entries(TAG_SLUG_REDIRECTS)) {
+  const name = TAG_NAMES_EN[oldSlug];
+  if (name) TAG_NAMES_EN_BY_ANY_SLUG[newSlug] = name;
+}
+
 async function main() {
   const apply = process.argv.includes("--apply");
   console.log(apply ? "写入模式" : "预览模式（加 --apply 才会写库）");
 
   for (const [table, mapping, label] of [
     [categories, CATEGORY_NAMES_EN, "分类"],
-    [tags, TAG_NAMES_EN, "标签"],
+    [tags, TAG_NAMES_EN_BY_ANY_SLUG, "标签"],
   ] as const) {
     const rows = await db.select({ slug: table.slug, name: table.name, nameEn: table.nameEn }).from(table);
     let planned = 0;

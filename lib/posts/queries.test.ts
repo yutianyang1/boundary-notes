@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildPublishedPostRedirectQuery,
   buildPublishedCategoryListQuery,
   buildPublishedPostsForCategoryQuery,
   buildPublishedSeriesListQuery,
@@ -24,6 +25,19 @@ test("category list counts only public posts and orders by count then name", () 
   assert.match(query.sql, /"categories"\."deleted_at" is null/);
   assert.match(query.sql, /count\("posts"\."id"\) desc, "categories"\."name"/);
   assert.match(query.sql, /"categories"\."description"/);
+});
+
+test("historical post slugs resolve only to a currently public post", () => {
+  const query = buildPublishedPostRedirectQuery("old-slug").toSQL();
+  assertPublicVisibility(query.sql, query.params);
+  assert.match(query.sql, /from "post_redirects" inner join "posts"/);
+  assert.match(query.sql, /"post_redirects"\."old_slug" = \$1/);
+  assert.equal(query.params[0], "old-slug");
+});
+
+test("historical post slugs are decoded before querying redirects", () => {
+  const query = buildPublishedPostRedirectQuery("app%E6%8E%A5%E5%85%A5deepagent").toSQL();
+  assert.equal(query.params[0], "app接入deepagent");
 });
 
 test("category detail uses the shared public visibility and post-card ordering", () => {

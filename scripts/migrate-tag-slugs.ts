@@ -10,7 +10,7 @@
  * 顺序要求：先部署带 301 的代码，再跑这个脚本。反过来的话，
  * 在代码上线之前旧地址会直接 404。
  */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { tags } from "@/lib/db/schema";
 import { TAG_SLUG_REDIRECTS } from "@/lib/posts/slug-redirects";
@@ -24,6 +24,8 @@ async function main() {
 
   let planned = 0;
   let skipped = 0;
+  const conflicts: string[] = [];
+  const plans: Array<{ id: string; name: string; oldSlug: string; newSlug: string }> = [];
 
   for (const [oldSlug, newSlug] of Object.entries(TAG_SLUG_REDIRECTS)) {
     const row = bySlug.get(oldSlug);
@@ -33,14 +35,29 @@ async function main() {
       continue;
     }
     if (bySlug.has(newSlug)) {
-      console.error(`  ✗ ${oldSlug} → ${newSlug}：目标 slug 已被占用，跳过`);
+      conflicts.push(`${oldSlug} → ${newSlug}：目标 slug 已被占用`);
       continue;
     }
     planned += 1;
+    plans.push({ id: row.id, name: row.name, oldSlug, newSlug });
     console.log(`  ✓ ${row.name}: ${oldSlug} → ${newSlug}`);
-    if (apply) {
-      await db.update(tags).set({ slug: newSlug }).where(eq(tags.id, row.id));
-    }
+  }
+
+  if (conflicts.length) {
+    for (const conflict of conflicts) console.error(`  ✗ ${conflict}`);
+    throw new Error(`发现 ${conflicts.length} 个目标 slug 冲突，未写入任何数据。`);
+  }
+
+  if (apply && plans.length) {
+    await db.transaction(async (tx) => {
+      for (const plan of plans) {
+        const [updated] = await tx.update(tags)
+          .set({ slug: plan.newSlug })
+          .where(and(eq(tags.id, plan.id), eq(tags.slug, plan.oldSlug)))
+          .returning({ id: tags.id });
+        if (!updated) throw new Error(`标签 ${plan.name} 在迁移期间发生变化，事务已回滚。`);
+      }
+    });
   }
 
   console.log(`\n共 ${rows.length} 个标签，${planned} 个待迁移，${skipped} 个无需处理。`);
