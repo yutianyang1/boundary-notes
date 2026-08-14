@@ -27,8 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 const focusAreas = [
   { href: "/categories/speech-recognition", key: "focus1", icon: Mic2 },
-  // 这个标签的 slug 是中文，属于已知遗留问题，slug 迁移是单独的任务。
-  { href: "/tags/系统架构", key: "focus2", icon: Network },
+  { href: "/tags/system-architecture", key: "focus2", icon: Network },
   { href: "/categories/inference-optimization", key: "focus3", icon: Wrench },
 ] as const;
 

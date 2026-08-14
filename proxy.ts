@@ -1,6 +1,7 @@
 import createMiddleware from "next-intl/middleware";
 import { NextResponse, type NextRequest } from "next/server";
 import { defaultLocale, locales, routing } from "@/i18n/routing";
+import { resolveTagRedirect } from "@/lib/posts/slug-redirects";
 
 const handleI18nRouting = createMiddleware(routing);
 
@@ -18,6 +19,15 @@ function localeOf(pathname: string) {
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+
+  // 标签 slug 从中文迁到英文后，旧地址 301 到新地址。
+  // 放在 i18n 处理之前：旧地址已被收录，任何情况下都不应落到 404。
+  const redirectTarget = resolveTagRedirect(pathname);
+  if (redirectTarget) {
+    const url = request.nextUrl.clone();
+    url.pathname = redirectTarget;
+    return NextResponse.redirect(url, 301);
+  }
 
   // 后台不参与 i18n：保持原有的 x-current-path 行为，供守卫构造 callbackUrl。
   if (pathname.startsWith("/admin")) {
