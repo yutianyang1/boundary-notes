@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { localePath } from "@/i18n/href";
+import { localeAlternates } from "@/i18n/alternates";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -36,7 +37,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
-    alternates: { canonical: "/posts" },
+    alternates: localeAlternates("/posts", locale as Locale),
     // 分页态是同一批文章的切片,避免被当作重复薄页收录。
     ...(paged ? { robots: { index: false, follow: true } } : {}),
   };

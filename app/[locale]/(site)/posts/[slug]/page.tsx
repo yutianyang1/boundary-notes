@@ -6,6 +6,7 @@ import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 import { localePath } from "@/i18n/href";
+import { localeAlternates } from "@/i18n/alternates";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { ArticleToc } from "@/components/article/article-toc";
@@ -47,7 +48,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
-    alternates: { canonical: post.canonicalUrl ?? `/posts/${post.slug}` },
+    alternates: post.canonicalUrl
+      // 文章自带 canonical 时（转载/合并）以它为准，不再输出语言备用链接。
+      ? { canonical: post.canonicalUrl }
+      : localeAlternates(`/posts/${post.slug}`, locale as Locale),
     openGraph: {
       type: "article",
       title,

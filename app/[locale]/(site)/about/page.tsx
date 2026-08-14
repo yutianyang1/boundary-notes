@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
 import { localePath } from "@/i18n/href";
+import { localeAlternates } from "@/i18n/alternates";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -16,7 +17,11 @@ type PageProps = { params: Promise<{ locale: string }> };
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale } = await params;
   const t = createTranslator({ locale, messages: messagesFor(locale as Locale), namespace: "about" });
-  return { title: t("metaTitle"), description: t("metaDescription") };
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+    alternates: localeAlternates("/about", locale as Locale),
+  };
 }
 
 const focusAreas = [

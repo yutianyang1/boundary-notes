@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createTranslator } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
+import { localeAlternates } from "@/i18n/alternates";
 import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
@@ -20,6 +21,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: result.category.name,
     description: result.category.description || t("metaFallback", { name: result.category.name }),
+    alternates: localeAlternates(`/categories/${rawSlug}`, locale as Locale),
   };
 }
 

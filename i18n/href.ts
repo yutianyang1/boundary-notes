@@ -9,5 +9,8 @@ import { defaultLocale, type Locale } from "./routing";
  * 客户端组件不受影响，locale 由 NextIntlClientProvider 提供，照常用 next-intl 的 <Link>。
  */
 export function localePath(href: string, locale: Locale) {
-  return locale === defaultLocale ? href : `/${locale}${href}`;
+  if (locale === defaultLocale) return href;
+  // 首页要得到 /en 而不是 /en/：后者和实际路由不一致，
+  // 出现在 sitemap 与 canonical 里会被当成另一个地址。
+  return href === "/" ? `/${locale}` : `/${locale}${href}`;
 }
