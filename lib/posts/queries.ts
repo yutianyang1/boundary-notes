@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { cacheTags } from "@/lib/cache/tags";
 import { db } from "@/lib/db";
@@ -41,6 +41,8 @@ export async function getPublishedPost(slug: string) {
       seoTitle: posts.seoTitle,
       seoDescription: posts.seoDescription,
       canonicalUrl: posts.canonicalUrl,
+      // 相关文章要按它排掉同系列的成员，得在正文这趟查询里一起带出来。
+      seriesId: posts.seriesId,
       publishedAt: posts.publishedAt,
       updatedAt: posts.updatedAt,
       categoryName: categories.name,
@@ -99,36 +101,77 @@ export async function getPublishedPostRedirect(oldSlug: string) {
   return null;
 }
 
-export async function getRelatedPosts(postId: string, categorySlug: string | null, limit = 3) {
-  "use cache";
-  cacheTag(cacheTags.posts);
-  cacheLife("feed-index");
-  if (!categorySlug) return [];
-  cacheTag(cacheTags.category(categorySlug));
+type RelatedPostsInput = {
+  postId: string;
+  categorySlug: string | null;
+  seriesId: string | null;
+  tagSlugs: string[];
+};
+
+/**
+ * 相关文章。先按共同标签数排，标签一样多再看是否同分类，最后才按时间。
+ *
+ * 只按分类取最新几篇的话，同一分类下每篇文章底部推的都是同样那几篇，
+ * 读者翻两篇就会发现推荐栏从没变过；标签重合才是「这两篇在讲同一件事」的信号。
+ */
+export function buildRelatedPostsQuery(
+  { postId, categorySlug, seriesId, tagSlugs }: RelatedPostsInput,
+  limit: number,
+) {
+  const currentTagIds = db
+    .select({ id: tags.id })
+    .from(tags)
+    .where(and(inArray(tags.slug, tagSlugs), isNull(tags.deletedAt)));
+
+  // 只 join 当前文章也带着的那些标签，count 出来正好是重合数。
+  // 没有标签时 join 恒不成立，重合数一律为 0，排序自然退回按分类。
+  const sharedTags = tagSlugs.length
+    ? and(eq(postTags.postId, posts.id), inArray(postTags.tagId, currentTagIds))
+    : sql`false`;
+  const overlap = sql`count(${postTags.tagId})`;
+  // coalesce 不能省：候选文章没有分类时比较结果是 null，而 Postgres 的
+  // desc 默认把 null 排在最前，不兜底的话无分类的文章会插到最上面。
+  const sameCategory = categorySlug
+    ? sql`coalesce(${categories.slug} = ${categorySlug}, false)`
+    : null;
+  const ranking = sameCategory ? [desc(overlap), desc(sameCategory)] : [desc(overlap)];
 
   return db
     .select({
       id: posts.id,
       slug: posts.slug,
       title: posts.title,
-      summary: posts.summary,
-      cover: posts.cover,
-      publishedAt: posts.publishedAt,
       categoryName: categories.name,
       categoryNameEn: categories.nameEn,
-      categorySlug: categories.slug,
       charCount,
     })
     .from(posts)
-    .innerJoin(categories, eq(posts.categoryId, categories.id))
+    .leftJoin(categories, and(eq(posts.categoryId, categories.id), isNull(categories.deletedAt)))
+    .leftJoin(postTags, sharedTags)
     .where(and(
       publiclyVisible,
       ne(posts.id, postId),
-      eq(categories.slug, categorySlug),
-      isNull(categories.deletedAt),
+      // 同系列的不推：正文下方的系列导航已经把上下篇列出来了，
+      // 而同系列的文章标签分类几乎必然重合，不排掉会把推荐位全占满。
+      seriesId ? or(isNull(posts.seriesId), ne(posts.seriesId, seriesId)) : undefined,
     ))
-    .orderBy(desc(posts.pinned), desc(posts.publishedAt))
+    .groupBy(posts.id, categories.id)
+    // 一篇都不沾边的文章宁可不推：底部空着也好过挂三篇没关系的。
+    .having(sameCategory ? sql`${overlap} > 0 or ${sameCategory}` : sql`${overlap} > 0`)
+    .orderBy(...ranking, desc(posts.pinned), desc(posts.publishedAt))
     .limit(limit);
+}
+
+export async function getRelatedPosts(input: RelatedPostsInput, limit = 3) {
+  "use cache";
+  cacheTag(cacheTags.posts);
+  cacheLife("feed-index");
+  // 既没分类也没标签，就没有「相关」可言，不必往数据库跑一趟。
+  if (!input.categorySlug && !input.tagSlugs.length) return [];
+  if (input.categorySlug) cacheTag(cacheTags.category(input.categorySlug));
+  for (const slug of input.tagSlugs) cacheTag(cacheTags.tag(slug));
+
+  return buildRelatedPostsQuery(input, limit);
 }
 
 export async function getPopularPosts(limit = 5, excludePostId?: string) {

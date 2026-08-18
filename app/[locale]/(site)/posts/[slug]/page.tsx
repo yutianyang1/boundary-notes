@@ -129,7 +129,12 @@ async function PostContent({
 
   const [toc, relatedPosts, seriesNavigation] = await Promise.all([
     Promise.resolve(extractTableOfContents(post.contentHtml)),
-    getRelatedPosts(post.id, post.categorySlug, 3),
+    getRelatedPosts({
+      postId: post.id,
+      categorySlug: post.categorySlug,
+      seriesId: post.seriesId,
+      tagSlugs: post.tags.map((tag) => tag.slug),
+    }, 3),
     getSeriesNavForPost(post.id),
   ]);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
