@@ -249,9 +249,10 @@
     "metaFallback": "Posts filed under “{name}”.",
     "sequenceLabel": "Part {n}",
     "progress": "{read} of {total} read",
-    "progressScope": "Progress is kept on this device only.",
     "resetProgress": "Reset",
-    "readBadge": "Read"
+    "readBadge": "Read",
+    "signInPrompt": "Sign in",
+    "signInSuffix": " to keep track of which posts you have read."
   },
   "search": {
     "metaTitle": "Search",

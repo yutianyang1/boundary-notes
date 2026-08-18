@@ -10,8 +10,11 @@ import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/browse/page-header";
 import { PostCard, PostCardSkeleton } from "@/components/home/post-card";
-import { PostReadBadge, SeriesReadProgress } from "@/components/series/series-read-progress";
+import { PostReadBadge } from "@/components/series/post-read-badge";
+import { SeriesProgressView, SeriesSignInPrompt } from "@/components/series/series-read-progress";
+import { auth } from "@/auth";
 import { getPublishedSeries } from "@/lib/posts/queries";
+import { readPostsAmong } from "@/lib/posts/read-progress";
 
 type PageProps = { params: Promise<{ locale: string; slug: string }> };
 
@@ -46,6 +49,9 @@ async function SeriesContent({ params }: PageProps) {
   await connection();
   const result = await getPublishedSeries(decodeURIComponent(rawSlug));
   if (!result) notFound();
+  // 已读集合取一次:进度条和每张卡的角标都用它,不重复查。
+  const session = await auth();
+  const readIds = await readPostsAmong(session?.user?.id, result.posts.map((post) => post.id));
 
   return (
     <div className="shell py-10 sm:py-16">
@@ -57,11 +63,21 @@ async function SeriesContent({ params }: PageProps) {
       />
       {result.posts.length ? (
         <>
-          <SeriesReadProgress
-            className="rule-anchor mt-8 pt-6"
-            slugs={result.posts.map((post) => post.slug)}
-            note
-          />
+          {session?.user?.id ? (
+            <SeriesProgressView
+              locale={locale}
+              seriesSlug={result.series.slug}
+              read={readIds.size}
+              total={result.posts.length}
+              className="rule-anchor mt-8 pt-6"
+            />
+          ) : (
+            <SeriesSignInPrompt
+              locale={locale}
+              seriesSlug={result.series.slug}
+              className="rule-anchor mt-8 pt-6"
+            />
+          )}
           <div className="mt-10 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
             {result.posts.map((post, index) => (
               <PostCard
@@ -69,7 +85,7 @@ async function SeriesContent({ params }: PageProps) {
                 key={post.id}
                 post={post}
                 sequenceLabel={t("sequenceLabel", { n: post.seriesOrder ?? index + 1 })}
-                overlay={<PostReadBadge slug={post.slug} />}
+                overlay={readIds.has(post.id) ? <PostReadBadge locale={locale} /> : null}
               />
             ))}
           </div>

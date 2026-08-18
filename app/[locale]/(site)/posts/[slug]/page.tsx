@@ -14,7 +14,7 @@ import { ArticleToc } from "@/components/article/article-toc";
 import { ArticleBody } from "@/components/article/article-body";
 import { CodeCopyButtons } from "@/components/article/code-copy-buttons";
 import { ImageLightbox } from "@/components/article/image-lightbox";
-import { MarkPostRead } from "@/components/article/mark-post-read";
+import { MarkPostReadServer } from "@/components/article/mark-post-read-server";
 import { PostViewTracker } from "@/components/article/post-view-tracker";
 import { ReadingProgress } from "@/components/article/reading-progress";
 import { ShareLinkButton } from "@/components/article/share-link-button";
@@ -284,8 +284,11 @@ async function PostContent({
                 toc.length ? "mt-10 min-[1040px]:mt-0" : ""
               }`}
             />
-            {/* 哨兵紧跟正文:它进入视口就说明读者翻到了文末。 */}
-            <MarkPostRead slug={post.slug} />
+            {/* 哨兵紧跟正文:它进入视口就说明读者翻到了文末。
+                只对登录用户渲染,所以是个动态洞,得单独包 Suspense。 */}
+            <Suspense fallback={null}>
+              <MarkPostReadServer slug={post.slug} />
+            </Suspense>
           </div>
 
           {/* 目录区可滚动,下方的操作与赞助位钉在底部不跟着滚——
@@ -377,7 +380,14 @@ function SeriesNavigation({
           </Link>
         ) : null}
       </div>
-      <SeriesReadProgress className="mt-5 border-t pt-5" slugs={navigation.slugs} />
+      <Suspense fallback={null}>
+        <SeriesReadProgress
+          locale={locale}
+          seriesSlug={navigation.series.slug}
+          postIds={navigation.postIds}
+          className="mt-5 border-t pt-5"
+        />
+      </Suspense>
     </nav>
   );
 }

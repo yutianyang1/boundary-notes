@@ -1,64 +1,46 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  READ_POSTS_LIMIT,
-  countRead,
-  forgetPosts,
-  isPostRead,
-  markPostRead,
-  parseReadPosts,
+  buildForgetPostsQuery,
+  buildMarkPostReadQuery,
+  buildReadPostsQuery,
+  readPostsAmong,
 } from "./read-progress";
 
-test("坏掉的存储内容一律当成空进度,不抛错", () => {
-  // 这份数据存在读者浏览器里,我们改不到也修不了;
-  // 任何一种损坏都不能让整页崩掉。
-  assert.deepEqual(parseReadPosts(null), {});
-  assert.deepEqual(parseReadPosts(""), {});
-  assert.deepEqual(parseReadPosts("not json"), {});
-  assert.deepEqual(parseReadPosts("[1,2,3]"), {});
-  assert.deepEqual(parseReadPosts('"just-a-string"'), {});
-  assert.deepEqual(parseReadPosts("null"), {});
+const userId = "11111111-1111-4111-8111-111111111111";
+const otherUserId = "22222222-2222-4222-8222-222222222222";
+const postIds = ["33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444"];
+
+test("重置进度的删除语句必须同时限定用户和文章", () => {
+  // 少了 user_id 这个条件,一个人点「重置」会清掉所有人的阅读记录。
+  const query = buildForgetPostsQuery(userId, postIds).toSQL();
+  assert.match(query.sql, /delete from "post_reads"/);
+  assert.match(query.sql, /"user_id" = \$1/);
+  assert.match(query.sql, /"post_id" in \(/);
+  assert.equal(query.params[0], userId);
+  assert.ok(postIds.every((id) => query.params.includes(id)));
+  assert.ok(!query.params.includes(otherUserId));
 });
 
-test("逐条剔除无效记录,保留同一份里正常的部分", () => {
-  assert.deepEqual(
-    parseReadPosts('{"good":1700000000000,"empty-value":"x","nan":null,"":123}'),
-    { good: 1700000000000 },
-  );
+test("查已读同样按用户隔离", () => {
+  const query = buildReadPostsQuery(userId, postIds).toSQL();
+  assert.match(query.sql, /from "post_reads"/);
+  assert.match(query.sql, /"user_id" = \$1/);
+  assert.equal(query.params[0], userId);
 });
 
-test("存储里的 __proto__ 不会改到对象原型上", () => {
-  const state = parseReadPosts('{"__proto__":{"polluted":1},"real":1}');
-  assert.equal(({} as Record<string, unknown>).polluted, undefined);
-  assert.equal(isPostRead(state, "real"), true);
+test("重复标记已读不报错也不覆盖首次时间", () => {
+  const query = buildMarkPostReadQuery(userId, postIds[0]).toSQL();
+  assert.match(query.sql, /insert into "post_reads"/);
+  assert.match(query.sql, /on conflict do nothing/);
+  // read_at 走数据库默认值,不作为参数传入——冲突时那一行原样保留。
+  assert.match(query.sql, /values \(\$1, \$2, default\)/);
+  assert.equal(query.params.length, 2);
 });
 
-test("已读过的文章不再产生写入", () => {
-  const state = { "已读的文章": 1_000 };
-  assert.equal(markPostRead(state, "已读的文章", 2_000), null);
-  assert.equal(markPostRead(state, "", 2_000), null);
-  assert.deepEqual(markPostRead(state, "新文章", 2_000), { "已读的文章": 1_000, "新文章": 2_000 });
-});
-
-test("超出上限时丢掉最旧的,不丢刚读完的那篇", () => {
-  const state: Record<string, number> = {};
-  for (let i = 0; i < READ_POSTS_LIMIT; i += 1) state[`post-${i}`] = i + 1;
-  const next = markPostRead(state, "刚读完", 999_999);
-  assert.ok(next);
-  assert.equal(Object.keys(next).length, READ_POSTS_LIMIT);
-  assert.equal(isPostRead(next, "刚读完"), true);
-  assert.equal(isPostRead(next, "post-0"), false, "最旧的一条应当被挤掉");
-  assert.equal(isPostRead(next, "post-1"), true);
-});
-
-test("系列进度只数这个系列里的文章", () => {
-  const state = { a: 1, c: 1, "别的系列": 1 };
-  assert.equal(countRead(state, ["a", "b", "c", "d"]), 2);
-  assert.equal(countRead(state, []), 0);
-});
-
-test("重置只清掉传入的 slug,别的系列不受影响", () => {
-  const state = { a: 1, b: 1, "别的系列": 1 };
-  assert.deepEqual(forgetPosts(state, ["a", "b"]), { "别的系列": 1 });
-  assert.equal(forgetPosts(state, ["从没读过"]), null, "无变化时应返回 null,免去一次写入");
+test("未登录或空列表时不查库", async () => {
+  // 走到查询就会碰数据库连接;这里没有连接,能返回说明确实短路了。
+  assert.deepEqual(await readPostsAmong(null, postIds), new Set());
+  assert.deepEqual(await readPostsAmong(undefined, postIds), new Set());
+  assert.deepEqual(await readPostsAmong(userId, []), new Set());
 });

@@ -278,6 +278,20 @@ export const postViewDaily = pgTable("post_view_daily", {
   index("post_view_daily_day_count_idx").on(table.day, table.viewCount),
 ]);
 
+/**
+ * 读者读完了哪些文章。按账号存,匿名访客不产生记录。
+ *
+ * 主键就是查询形状:「这个用户读过下面这批 post 里的哪几篇」。
+ * 跟着账号级联删除——注销之后不该还留着阅读行为记录。
+ */
+export const postReads = pgTable("post_reads", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.postId] }),
+]);
+
 export const postRedirects = pgTable("post_redirects", {
   id: uuid("id").primaryKey().defaultRandom(),
   oldSlug: varchar("old_slug", { length: 240 }).notNull(),

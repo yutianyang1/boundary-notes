@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { loadRawReadPosts, markPostRead, parseReadPosts, saveReadPosts } from "@/lib/posts/read-progress";
 
 /**
  * 停留时长门槛。正文末尾进入视口就算读完,对一屏装得下的短文来说
@@ -10,8 +9,10 @@ import { loadRawReadPosts, markPostRead, parseReadPosts, saveReadPosts } from "@
 const DWELL_MS = 8_000;
 
 /**
- * 标记「读完这篇」。渲染一个零高度哨兵,放在正文之后,
+ * 标记「读完这篇」。渲染一个零高度哨兵放在正文之后,
  * 它进入视口即意味着读者已经翻到了正文末尾。
+ *
+ * 只在登录用户身上渲染,由 MarkPostReadServer 负责判断。
  */
 export function MarkPostRead({ slug }: { slug: string }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -27,8 +28,11 @@ export function MarkPostRead({ slug }: { slug: string }) {
     const record = () => {
       if (done) return;
       done = true;
-      const next = markPostRead(parseReadPosts(loadRawReadPosts()), slug);
-      if (next) saveReadPosts(next);
+      // 失败就算了:下次再打开这篇还会重来一遍,不值得为它做重试队列。
+      void fetch(`/api/posts/${encodeURIComponent(slug)}/read`, {
+        method: "POST",
+        keepalive: true,
+      }).catch(() => {});
     };
 
     const observer = new IntersectionObserver((entries) => {

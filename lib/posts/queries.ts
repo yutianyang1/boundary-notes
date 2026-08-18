@@ -331,6 +331,19 @@ export function buildPublishedPostsForCategoryQuery(categoryId: string, limit = 
     .limit(limit);
 }
 
+/** slug → 当前公开文章的 id。标记已读用,不走缓存。 */
+export function buildPublicPostIdQuery(slug: string) {
+  return db.select({ id: posts.id }).from(posts)
+    .where(and(eq(posts.slug, decodeURIComponent(slug)), publiclyVisible)).limit(1);
+}
+
+/** 一个系列下所有公开文章的 id。重置该系列进度时用。 */
+export function buildSeriesPostIdsQuery(seriesSlug: string) {
+  return db.select({ id: posts.id }).from(posts)
+    .innerJoin(series, eq(posts.seriesId, series.id))
+    .where(and(eq(series.slug, decodeURIComponent(seriesSlug)), isNull(series.deletedAt), publiclyVisible));
+}
+
 export async function getPublishedSeriesList() {
   "use cache";
   cacheTag(cacheTags.posts);
@@ -422,9 +435,9 @@ export function selectSeriesNavigation(rows: SeriesNavigationRow[], currentPostI
     position: index + 1,
     prev: adjacent(rows[index - 1]),
     next: adjacent(rows[index + 1]),
-    // 全系列的 slug 一起带出来:阅读进度存在读者浏览器里,
-    // 服务端不知道读过哪几篇,得把「哪几篇」交给客户端自己比对。
-    slugs: rows.map((row) => row.slug),
+    // 全系列的 post id 一起带出来:导航卡上的阅读进度要按这批 id
+    // 去查当前用户读过几篇,只有上下篇是不够的。
+    postIds: rows.map((row) => row.id),
   };
 }
 

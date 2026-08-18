@@ -86,25 +86,25 @@ test("series navigation handles first, last and an omitted invisible member", ()
     position: 1,
     prev: null,
     next: { slug: "last", title: "最后一篇" },
-    slugs: ["first", "last"],
+    postIds: ["first", "last"],
   });
   assert.deepEqual(selectSeriesNavigation(publicMembers, "last"), {
     total: 2,
     position: 2,
     prev: { slug: "first", title: "第一篇" },
     next: null,
-    slugs: ["first", "last"],
+    postIds: ["first", "last"],
   });
   assert.equal(selectSeriesNavigation(publicMembers, "hidden-draft"), null);
 });
 
-test("导航带出的 slug 与公开成员顺序一致", () => {
-  // 客户端拿这串 slug 去比对本地阅读记录;顺序错了进度条不会错,
-  // 但少一篇就会把「已读 2 / 3」算成「2 / 2」,直接显示成读完了。
+test("导航带出全部公开成员的 id,不只是上下篇", () => {
+  // 进度按这批 id 去数已读;少一篇就会把「已读 2 / 3」算成「2 / 2」,
+  // 直接显示成整个系列读完了。
   const members = [
     { id: "a", slug: "first", title: "一" },
     { id: "b", slug: "second", title: "二" },
     { id: "c", slug: "third", title: "三" },
   ];
-  assert.deepEqual(selectSeriesNavigation(members, "b")?.slugs, ["first", "second", "third"]);
+  assert.deepEqual(selectSeriesNavigation(members, "b")?.postIds, ["a", "b", "c"]);
 });
