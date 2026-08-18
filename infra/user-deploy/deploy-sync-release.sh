@@ -108,6 +108,14 @@ SQL
   -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
   "$engagement_backup"
 
+# Must come after the content restore: the dump carries whatever renderer
+# version the authoring machine had, so re-rendering earlier would be undone.
+# Only posts below the current version are touched, so this is a no-op read
+# on releases that did not change the renderer.
+echo "Re-rendering posts below the current renderer version"
+cd "$ROOT/source"
+"$NODE_BIN/npm" run content:rerender
+
 ln -sfn "$RELEASE" "$ROOT/app"
 "$ROOT/deploy/start.sh"
 
