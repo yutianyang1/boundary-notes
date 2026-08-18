@@ -7,18 +7,20 @@ import { setRequestLocale } from "next-intl/server";
 import { Suspense } from "react";
 import { localePath } from "@/i18n/href";
 import { localeAlternates } from "@/i18n/alternates";
-import { displayName } from "@/lib/i18n/display-name";
+import { displayName, displayNameLang } from "@/lib/i18n/display-name";
 import { messagesFor } from "@/i18n/messages";
 import { htmlLang, type Locale } from "@/i18n/routing";
 import { ArticleToc } from "@/components/article/article-toc";
 import { ArticleBody } from "@/components/article/article-body";
 import { CodeCopyButtons } from "@/components/article/code-copy-buttons";
 import { ImageLightbox } from "@/components/article/image-lightbox";
+import { MarkPostRead } from "@/components/article/mark-post-read";
 import { PostViewTracker } from "@/components/article/post-view-tracker";
 import { ReadingProgress } from "@/components/article/reading-progress";
 import { ShareLinkButton } from "@/components/article/share-link-button";
 import { SponsorSlot } from "@/components/article/sponsor-slot";
 import { GeneratedCover } from "@/components/home/generated-cover";
+import { SeriesReadProgress } from "@/components/series/series-read-progress";
 import { SubscriptionForm } from "@/components/subscribe/subscription-form";
 import { areCommentsEnabled, isSubscriptionEnabled } from "@/lib/features";
 import { extractTableOfContents } from "@/lib/markdown/toc";
@@ -181,7 +183,11 @@ async function PostContent({
             <GeneratedCover
               title={post.title}
               label={seriesNavigation
-                ? t("seriesPosition", { name: seriesNavigation.series.name, position: seriesNavigation.position, total: seriesNavigation.total })
+                ? t("seriesPosition", {
+                  name: displayName(seriesNavigation.series, locale),
+                  position: seriesNavigation.position,
+                  total: seriesNavigation.total,
+                })
                 : displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
               alt={t("coverAlt", { title: post.title })}
               seed={post.slug}
@@ -278,6 +284,8 @@ async function PostContent({
                 toc.length ? "mt-10 min-[1040px]:mt-0" : ""
               }`}
             />
+            {/* 哨兵紧跟正文:它进入视口就说明读者翻到了文末。 */}
+            <MarkPostRead slug={post.slug} />
           </div>
 
           {/* 目录区可滚动,下方的操作与赞助位钉在底部不跟着滚——
@@ -342,9 +350,10 @@ function SeriesNavigation({
         {t("inSeries")}
         <Link
           href={localePath(`/series/${navigation.series.slug}`, locale)}
+          lang={displayNameLang(navigation.series, locale)}
           className="mx-1 font-semibold text-foreground hover:text-primary"
         >
-          {t("seriesName", { name: navigation.series.name })}
+          {t("seriesName", { name: displayName(navigation.series, locale) })}
         </Link>
         {t.rich("seriesPart", {
           n: () => <span className="tabular-nums">{navigation.position} / {navigation.total}</span>,
@@ -368,6 +377,7 @@ function SeriesNavigation({
           </Link>
         ) : null}
       </div>
+      <SeriesReadProgress className="mt-5 border-t pt-5" slugs={navigation.slugs} />
     </nav>
   );
 }

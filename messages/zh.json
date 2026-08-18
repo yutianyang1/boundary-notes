@@ -247,7 +247,11 @@
     "empty": "暂无系列。",
     "emptyPosts": "该系列暂无公开文章。",
     "metaFallback": "「{name}」下的文章。",
-    "sequenceLabel": "第 {n} 篇"
+    "sequenceLabel": "第 {n} 篇",
+    "progress": "已读 {read} / {total}",
+    "progressScope": "进度只记在这台设备上。",
+    "resetProgress": "重置进度",
+    "readBadge": "已读"
   },
   "search": {
     "metaTitle": "搜索",

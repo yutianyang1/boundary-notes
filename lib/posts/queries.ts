@@ -422,6 +422,9 @@ export function selectSeriesNavigation(rows: SeriesNavigationRow[], currentPostI
     position: index + 1,
     prev: adjacent(rows[index - 1]),
     next: adjacent(rows[index + 1]),
+    // 全系列的 slug 一起带出来:阅读进度存在读者浏览器里,
+    // 服务端不知道读过哪几篇,得把「哪几篇」交给客户端自己比对。
+    slugs: rows.map((row) => row.slug),
   };
 }
 
@@ -449,7 +452,9 @@ export async function getSeriesNavForPost(postId: string) {
   if (!navigation) return null;
 
   return {
-    series: { name: membership.name, slug: membership.slug },
+    // nameEn 要一路带到渲染处:只回传 name 的话,英文站的系列导航
+    // 会显示中文系列名,而这个名字是有英文版的。
+    series: { name: membership.name, nameEn: membership.nameEn, slug: membership.slug },
     ...navigation,
   };
 }

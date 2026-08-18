@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { createTranslator } from "next-intl";
@@ -33,11 +34,14 @@ export function PostCard({
   locale,
   post,
   sequenceLabel,
+  overlay,
   coverAspect = "aspect-[2/1]",
 }: {
   locale: Locale;
   post: PostCardData;
   sequenceLabel?: string;
+  /** 封面右上角的角标位。目前只有系列页用它挂「已读」。 */
+  overlay?: ReactNode;
   coverAspect?: string;
 }) {
   const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "post" });
@@ -72,6 +76,7 @@ export function PostCard({
             {sequenceLabel}
           </span>
         ) : null}
+        {overlay}
       </Link>
 
       <div className="flex flex-1 flex-col p-4">

@@ -10,6 +10,7 @@ import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/browse/page-header";
 import { PostCard, PostCardSkeleton } from "@/components/home/post-card";
+import { PostReadBadge, SeriesReadProgress } from "@/components/series/series-read-progress";
 import { getPublishedSeries } from "@/lib/posts/queries";
 
 type PageProps = { params: Promise<{ locale: string; slug: string }> };
@@ -55,16 +56,24 @@ async function SeriesContent({ params }: PageProps) {
         countLabel={tc("postCount", { count: result.posts.length })}
       />
       {result.posts.length ? (
-        <div className="mt-10 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
-          {result.posts.map((post, index) => (
-            <PostCard
-              locale={locale}
-              key={post.id}
-              post={post}
-              sequenceLabel={t("sequenceLabel", { n: post.seriesOrder ?? index + 1 })}
-            />
-          ))}
-        </div>
+        <>
+          <SeriesReadProgress
+            className="rule-anchor mt-8 pt-6"
+            slugs={result.posts.map((post) => post.slug)}
+            note
+          />
+          <div className="mt-10 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
+            {result.posts.map((post, index) => (
+              <PostCard
+                locale={locale}
+                key={post.id}
+                post={post}
+                sequenceLabel={t("sequenceLabel", { n: post.seriesOrder ?? index + 1 })}
+                overlay={<PostReadBadge slug={post.slug} />}
+              />
+            ))}
+          </div>
+        </>
       ) : (
         <p className="rule-anchor mt-12 pt-12 text-muted-foreground">{t("emptyPosts")}</p>
       )}
