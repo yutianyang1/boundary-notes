@@ -30,6 +30,7 @@ export function ImageLightbox() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
+  const suppressImageClickRef = useRef(false);
   const [current, setCurrent] = useState<ZoomedImage | null>(null);
   const [view, setView] = useState<ViewState>(INITIAL_VIEW);
   const [dragging, setDragging] = useState(false);
@@ -148,6 +149,7 @@ export function ImageLightbox() {
   }
 
   function handlePointerDown(event: ReactPointerEvent<HTMLImageElement>) {
+    suppressImageClickRef.current = false;
     if (view.scale === MIN_SCALE || event.button !== 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
@@ -163,6 +165,9 @@ export function ImageLightbox() {
   function handlePointerMove(event: ReactPointerEvent<HTMLImageElement>) {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
+    if (Math.abs(event.clientX - drag.startX) > 4 || Math.abs(event.clientY - drag.startY) > 4) {
+      suppressImageClickRef.current = true;
+    }
     setView((previous) => ({
       ...previous,
       x: drag.originX + event.clientX - drag.startX,
@@ -194,17 +199,21 @@ export function ImageLightbox() {
           <img
             src={current.src}
             alt={current.alt}
+            title={t("closeImagePreview")}
             draggable={false}
-            onDoubleClick={(event) => {
-              if (view.scale > MIN_SCALE) resetView();
-              else setScaleAt(2, event.clientX, event.clientY);
+            onClick={() => {
+              if (suppressImageClickRef.current) {
+                suppressImageClickRef.current = false;
+                return;
+              }
+              dialogRef.current?.close();
             }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={stopDragging}
             onPointerCancel={stopDragging}
             className={`max-h-[calc(100dvh-10rem)] max-w-[calc(100vw-2rem)] select-none rounded-lg object-contain shadow-2xl will-change-transform sm:max-w-[calc(100vw-5rem)] ${
-              view.scale > MIN_SCALE ? dragging ? "cursor-grabbing" : "cursor-grab" : "cursor-zoom-in"
+              view.scale > MIN_SCALE ? dragging ? "cursor-grabbing" : "cursor-grab" : "cursor-zoom-out"
             } ${current.diagram ? "bg-white/95 p-2 sm:p-4" : ""}`}
             style={{ transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.scale})` }}
           />
