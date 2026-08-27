@@ -337,6 +337,18 @@ button {
 .article-body img[data-zoomable],
 .article-body .mermaid-diagram svg[data-zoomable] {
   cursor: zoom-in;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+@media (hover: hover) {
+  .article-body img[data-zoomable]:hover {
+    border-color: color-mix(in oklch, var(--primary) 38%, var(--border));
+    box-shadow: 0 14px 34px color-mix(in oklch, var(--foreground) 12%, transparent);
+    transform: translateY(-2px);
+  }
 }
 
 .article-body img[data-zoomable]:focus-visible,
@@ -450,7 +462,7 @@ button {
   padding: 1rem;
 }
 
-/* 插图：图表自带浅色画布，故用一层内边距 + 边框把它当作独立图版对待 */
+/* 插图保留原始比例与自然宽度。小图不再被强制拉伸到整栏，大图才缩到版心内。 */
 .article-body figure {
   margin-block: 2.5rem;
 }
@@ -458,10 +470,15 @@ button {
 .article-body figure img,
 .article-body p > img {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: min(72vh, 48rem);
   height: auto;
+  margin-inline: auto;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) + 0.125rem);
+  background: var(--card);
+  box-shadow: 0 8px 24px color-mix(in oklch, var(--foreground) 7%, transparent);
 }
 
 .article-body figcaption {
