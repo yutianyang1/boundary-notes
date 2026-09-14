@@ -37,6 +37,7 @@ export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardD
           <GeneratedCover
             title={post.title}
             seed={post.slug}
+            group={post.categorySlug}
             patternOnly
             className="absolute inset-0"
           />

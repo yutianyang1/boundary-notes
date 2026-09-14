@@ -44,7 +44,10 @@ test("historical post slugs are decoded before querying redirects", () => {
 test("category detail uses the shared public visibility and post-card ordering", () => {
   const query = buildPublishedPostsForCategoryQuery(id, 25).toSQL();
   assertPublicVisibility(query.sql, query.params);
-  assert.match(query.sql, /"categories"\."id" = \$1/);
+  // 不钉死占位符序号：select 列表里多一个带参数的表达式（摘要兜底就是）就会
+  // 把它顺移。真正要保证的是分类 id 走了绑定参数，所以直接断言绑定值。
+  assert.match(query.sql, /"categories"\."id" = \$\d+/);
+  assert.ok(query.params.includes(id));
   assert.match(query.sql, /"posts"\."pinned" desc, "posts"\."published_at" desc/);
   assert.equal(query.params.at(-1), 25);
 });

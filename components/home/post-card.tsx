@@ -67,6 +67,7 @@ export function PostCard({
           <GeneratedCover
             title={post.title}
             seed={post.slug}
+            group={post.categorySlug}
             patternOnly
             className="absolute inset-0"
           />

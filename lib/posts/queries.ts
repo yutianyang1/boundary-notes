@@ -3,6 +3,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { cacheTags } from "@/lib/cache/tags";
 import { db } from "@/lib/db";
 import { categories, postRedirects, posts, postTags, postViewCounts, series, tags, users } from "@/lib/db/schema";
+import { excerptFromMarkdown } from "@/lib/posts/excerpt";
 
 const publiclyVisible = and(
   isNull(posts.deletedAt),
@@ -14,6 +15,28 @@ const publiclyVisible = and(
 
 /** 正文字符数。中文按字符计，用于估算阅读时长。 */
 const charCount = sql<number>`length(${posts.contentMd})`.mapWith(Number);
+
+/**
+ * 摘要没填时退回正文开头。
+ *
+ * 影响两处：卡片是等高的、元信息又贴着底边，没摘要的那张中间会空出一大块；RSS
+ * 条目的 <description> 会是空的。
+ *
+ * 只取正文前 600 字符——把整篇正文拉进列表查询太重，600 字符足够裁出卡片要的
+ * 两行。哨兵前缀用来区分「作者写的摘要」和「从正文裁的」，只有后者需要清洗
+ * Markdown 标记；真摘要原样返回，免得里面的 * 或 # 被当成语法吃掉。
+ */
+// 哨兵用不可打印的控制字符：作者写的摘要里不可能出现，不会误判。
+// 不能用 NUL —— Postgres 的 text 不接受 0x00，整条查询会直接报错。
+const EXCERPT_MARK = "\u0001md\u0001";
+const summaryOrExcerpt = sql<string>`
+  case when ${posts.summary} <> '' then ${posts.summary}
+       else ${EXCERPT_MARK} || left(${posts.contentMd}, 600) end
+`.mapWith((value: string) =>
+  typeof value === "string" && value.startsWith(EXCERPT_MARK)
+    ? excerptFromMarkdown(value.slice(EXCERPT_MARK.length))
+    : value ?? "",
+);
 const viewCount = sql<number>`coalesce(${postViewCounts.viewCount}, 0)`.mapWith(Number);
 
 function decodeRouteSlug(slug: string) {
@@ -210,7 +233,7 @@ export async function getPublishedPosts(limit = 20) {
       id: posts.id,
       slug: posts.slug,
       title: posts.title,
-      summary: posts.summary,
+      summary: summaryOrExcerpt,
       cover: posts.cover,
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
@@ -263,7 +286,7 @@ export async function getPublishedPostsByTag(tagSlug: string, limit = 100) {
       id: posts.id,
       slug: posts.slug,
       title: posts.title,
-      summary: posts.summary,
+      summary: summaryOrExcerpt,
       cover: posts.cover,
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
@@ -358,7 +381,7 @@ export function buildPublishedPostsForCategoryQuery(categoryId: string, limit = 
       id: posts.id,
       slug: posts.slug,
       title: posts.title,
-      summary: posts.summary,
+      summary: summaryOrExcerpt,
       cover: posts.cover,
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
@@ -444,7 +467,7 @@ export function buildPublishedSeriesPostsQuery(seriesId: string, limit = 100) {
       id: posts.id,
       slug: posts.slug,
       title: posts.title,
-      summary: posts.summary,
+      summary: summaryOrExcerpt,
       cover: posts.cover,
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
@@ -546,7 +569,7 @@ export async function searchPublishedPosts(query: string, limit = 50) {
       id: posts.id,
       slug: posts.slug,
       title: posts.title,
-      summary: posts.summary,
+      summary: summaryOrExcerpt,
       cover: posts.cover,
       publishedAt: posts.publishedAt,
       pinned: posts.pinned,
@@ -573,7 +596,7 @@ export async function getFeedPosts(limit = 50) {
   return db.select({
     slug: posts.slug,
     title: posts.title,
-    summary: posts.summary,
+    summary: summaryOrExcerpt,
     contentHtml: posts.contentHtml,
     publishedAt: posts.publishedAt,
     updatedAt: posts.updatedAt,

@@ -28,7 +28,12 @@ export function SiteFooter({ locale }: { locale: Locale }) {
   return (
     <footer className="mt-auto border-t border-border bg-muted/40">
       <div className="shell py-12 sm:py-16">
-        <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-16">
+        {/*
+          链接列按比例占位，不用 auto。auto 会把两列压到内容宽度再推到最右边，
+          而 .shell 有 100rem 宽——品牌区和链接之间因此空出近 700px，两列窄到
+          每列只放得下两个字，整片页脚看起来像没排完。
+        */}
+        <div className="grid gap-10 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:items-start md:gap-16">
           <div className="max-w-[28rem]">
             <BrandMark />
             <p className="mt-4 max-w-[24em] text-sm leading-[1.8] text-muted-foreground">

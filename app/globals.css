@@ -199,83 +199,210 @@ button {
   letter-spacing: 0.01em;
 }
 
-/* 首页与归档共用的程序化封面：深底、细网格、确定性色相光环。 */
+/* ---------------------------------------------------------------------------
+   程序化兜底封面
+   ---------------------------------------------------------------------------
+   首页、归档、分类、系列、关于页名片、登录分栏品牌板共用这一套图版。
+
+   两个维度：母题（.generated-cover-m0…m5，由分类决定）和色相（--cover-hue，
+   由文章 slug 决定）。母题相同 = 同一个分类，看起来成套；色相不同 = 不同文章，
+   不会撞脸。
+
+   之前是「一个母题 × 5 个色相」，六张封面摆在一起只有颜色差别，加上哈希退化
+   （见 generated-cover.tsx 的注释），实际渲染出来像同一张图重复了五遍。所以
+   这次换的是图形本身，不只是颜色。
+
+   底板在明暗两个主题下都保持深色：它是「封面」这个表面，不是页面背景，而且
+   登录页品牌板和站点 OG 图共用同一套语言。亮色主题下只把明度抬一点点、收掉
+   一半暗角，免得白页面上压着几个纯黑洞。
+   --------------------------------------------------------------------------- */
+
+@layer components {
+  /*
+   * 默认自带定位上下文。放在 components 层而不是裸写，是因为裸写的规则会赢过
+   * Tailwind 的 utilities 层，调用方传的 `absolute inset-0` 就会失效。
+   */
+  .generated-cover {
+    position: relative;
+  }
+}
+
 .generated-cover {
+  --cover-hue: 264;
+  /*
+   * 构图焦点的横向位置，由 slug 决定。同一个分类共用母题是有意的（一页看下来
+   * 成套），但只靠色相区分的话，同分类的几张还是像同一张图换了个颜色。让图案
+   * 的聚焦点也跟着挪，家族感保留，撞脸没有了。
+   */
+  --cover-x: 72%;
+  /* 线条：压暗压灰，只用来勾形，不跟标题抢注意力 */
+  --cover-line: oklch(0.72 0.07 var(--cover-hue) / 0.16);
+  --cover-line-strong: oklch(0.78 0.1 var(--cover-hue) / 0.3);
+  /* 主形：整张图里唯一允许有饱和度的东西 */
+  --cover-ink: oklch(0.6 0.17 var(--cover-hue) / 0.3);
+  --cover-glow: oklch(0.62 0.2 var(--cover-hue) / 0.22);
+  --cover-plate: oklch(0.22 0.035 var(--cover-hue));
+  --cover-vignette: 0.55;
+
   isolation: isolate;
   overflow: hidden;
-  background: oklch(0.22 0.03 264);
-  color: oklch(0.93 0.025 264);
-  /* 底部微暗角，给纯装饰封面一点纵深，hue 中性、不与色相变体打架 */
-  box-shadow: inset 0 -3.5rem 5rem -3.5rem oklch(0 0 0 / 0.55);
+  background: var(--cover-plate);
+  color: oklch(0.93 0.025 var(--cover-hue));
+  /* 底部微暗角，给纯装饰封面一点纵深 */
+  box-shadow: inset 0 -3.5rem 5rem -3.5rem oklch(0 0 0 / var(--cover-vignette));
+}
+
+/* 亮色主题：底板抬亮一档、暗角减半，白底上不至于像挖了个洞 */
+:root:not(.dark) .generated-cover {
+  --cover-plate: oklch(0.27 0.04 var(--cover-hue));
+  --cover-vignette: 0.3;
+}
+
+.generated-cover::before,
+.generated-cover::after {
+  position: absolute;
+  content: "";
 }
 
 .generated-cover::before {
-  position: absolute;
   z-index: -2;
   inset: 0;
-  background-image:
-    linear-gradient(oklch(0.7 0.05 264 / 0.14) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.7 0.05 264 / 0.14) 1px, transparent 1px);
-  background-size: 34px 34px;
-  content: "";
-  opacity: 0.55;
-  /* 网格向边缘柔化，聚焦在光环一侧，比铺满的方格更克制 */
-  -webkit-mask-image: radial-gradient(135% 105% at 72% 26%, #000 34%, transparent 78%);
-  mask-image: radial-gradient(135% 105% at 72% 26%, #000 34%, transparent 78%);
 }
 
 .generated-cover::after {
-  position: absolute;
   z-index: -1;
+}
+
+/* --- m0 网格 + 光环：原来的图版，留作「系统 / 架构」一类的母题 ------------ */
+.generated-cover-m0::before {
+  background-image:
+    linear-gradient(var(--cover-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cover-line) 1px, transparent 1px);
+  background-size: 34px 34px;
+  /* 网格向边缘柔化，聚焦在光环一侧，比铺满的方格更克制 */
+  -webkit-mask-image: radial-gradient(135% 105% at var(--cover-x) 26%, #000 34%, transparent 78%);
+  mask-image: radial-gradient(135% 105% at var(--cover-x) 26%, #000 34%, transparent 78%);
+}
+
+.generated-cover-m0::after {
   top: -32%;
   right: -14%;
   width: 60%;
   aspect-ratio: 1;
-  border: 26px solid oklch(0.55 0.2 264 / 0.28);
+  border: 26px solid var(--cover-ink);
   border-radius: 999px;
-  content: "";
 }
 
-.generated-cover-v2 {
-  background: oklch(0.24 0.035 286);
+/* --- m1 同心弧：从左下发散的细环，像频响 / 雷达扫描 ---------------------- */
+.generated-cover-m1::before {
+  background-image: repeating-radial-gradient(
+    circle at 12% 118%,
+    transparent 0 26px,
+    var(--cover-line-strong) 26px 28px
+  );
+  -webkit-mask-image: radial-gradient(120% 150% at calc(var(--cover-x) - 60%) 118%, #000 20%, transparent 72%);
+  mask-image: radial-gradient(120% 150% at calc(var(--cover-x) - 60%) 118%, #000 20%, transparent 72%);
 }
 
-.generated-cover-v2::after {
-  top: auto;
-  right: 8%;
-  bottom: -36%;
-  border-color: oklch(0.6 0.16 300 / 0.28);
+.generated-cover-m1::after {
+  bottom: -46%;
+  left: -12%;
+  width: 52%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--cover-glow), transparent 68%);
 }
 
-.generated-cover-v3 {
-  background: oklch(0.23 0.04 208);
+/* --- m2 频谱柱：等宽竖条 + 成簇的明暗起伏，像声音 / 时序数据 ------------- */
+.generated-cover-m2::before {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--cover-line) 0 3px,
+    transparent 3px 19px
+  );
+  /*
+   * 用遮罩制造疏密，而不是真的去画高度不同的柱子。遮罩整体压在下半部：柱子
+   * 顶到天花板就成了一片栅栏，只有从底边长上来才像频谱。
+   */
+  -webkit-mask-image:
+    radial-gradient(52% 82% at calc(var(--cover-x) - 50%) 104%, #000 8%, transparent 72%),
+    radial-gradient(38% 62% at calc(var(--cover-x) - 14%) 110%, #000 8%, transparent 74%),
+    radial-gradient(60% 96% at calc(var(--cover-x) + 16%) 100%, #000 6%, transparent 68%);
+  mask-image:
+    radial-gradient(52% 82% at calc(var(--cover-x) - 50%) 104%, #000 8%, transparent 72%),
+    radial-gradient(38% 62% at calc(var(--cover-x) - 14%) 110%, #000 8%, transparent 74%),
+    radial-gradient(60% 96% at calc(var(--cover-x) + 16%) 100%, #000 6%, transparent 68%);
 }
 
-.generated-cover-v3::after {
-  top: -38%;
-  right: 30%;
-  border-color: oklch(0.62 0.13 200 / 0.3);
+.generated-cover-m2::after {
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    var(--cover-glow) -20%,
+    transparent 38%
+  );
 }
 
-.generated-cover-v4 {
-  background: oklch(0.23 0.035 330);
+/* --- m3 对角带：宽缓的斜向条带 + 一根亮线，像管线 / 流水 ----------------- */
+.generated-cover-m3::before {
+  /*
+   * 条带拉宽、间距加倍，并且整体往右上角淡出。等宽等亮的斜纹铺满整张会比其它
+   * 五个母题重一大截，一排卡片里它会把视线全吸走。
+   */
+  background-image: repeating-linear-gradient(
+    52deg,
+    var(--cover-line) 0 14px,
+    transparent 14px 68px
+  );
+  -webkit-mask-image: linear-gradient(128deg, #000 10%, transparent 88%);
+  mask-image: linear-gradient(128deg, #000 10%, transparent 88%);
 }
 
-.generated-cover-v4::after {
-  top: -18%;
-  right: -4%;
-  border-color: oklch(0.64 0.16 340 / 0.28);
+.generated-cover-m3::after {
+  top: -20%;
+  right: 18%;
+  width: 34%;
+  height: 160%;
+  transform: rotate(38deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--cover-glow) 46% 54%,
+    transparent
+  );
 }
 
-.generated-cover-v5 {
-  background: oklch(0.23 0.035 155);
+/* --- m4 点阵：矩阵式圆点 + 一处高光，像张量 / 参数空间 ------------------- */
+.generated-cover-m4::before {
+  background-image: radial-gradient(var(--cover-line-strong) 1.6px, transparent 1.7px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(110% 130% at calc(var(--cover-x) + 6%) 18%, #000 30%, transparent 80%);
+  mask-image: radial-gradient(110% 130% at calc(var(--cover-x) + 6%) 18%, #000 30%, transparent 80%);
 }
 
-.generated-cover-v5::after {
-  top: auto;
-  right: 24%;
-  bottom: -42%;
-  border-color: oklch(0.65 0.13 160 / 0.28);
+.generated-cover-m4::after {
+  top: -30%;
+  right: 6%;
+  width: 44%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--cover-glow), transparent 65%);
+}
+
+/* --- m5 等高线：拉扁的同心椭圆，像梯度场 / 地形 -------------------------- */
+.generated-cover-m5::before {
+  background-image: repeating-radial-gradient(
+    130% 60% at calc(var(--cover-x) + 4%) 8%,
+    transparent 0 22px,
+    var(--cover-line-strong) 22px 24px
+  );
+  -webkit-mask-image: linear-gradient(200deg, #000 18%, transparent 82%);
+  mask-image: linear-gradient(200deg, #000 18%, transparent 82%);
+}
+
+.generated-cover-m5::after {
+  inset: 0;
+  background: radial-gradient(80% 70% at calc(var(--cover-x) + 4%) 4%, var(--cover-glow), transparent 62%);
 }
 
 /* ---------------------------------------------------------------------------

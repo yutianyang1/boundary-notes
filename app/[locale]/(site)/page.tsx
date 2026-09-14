@@ -11,9 +11,10 @@ import { Suspense } from "react";
 import { PopularPosts } from "@/components/article/popular-posts";
 import { FeaturedPost } from "@/components/home/featured-post";
 import { PostCard } from "@/components/home/post-card";
+import { TagRail } from "@/components/home/tag-rail";
 import { SubscriptionForm } from "@/components/subscribe/subscription-form";
 import { isSubscriptionEnabled } from "@/lib/features";
-import { getPopularPosts, getPublishedPosts } from "@/lib/posts/queries";
+import { getPopularPosts, getPublishedPosts, getPublishedTagCloud } from "@/lib/posts/queries";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -51,9 +52,10 @@ export default async function HomePage({ params }: PageProps) {
 async function HomeFeed({ locale }: { locale: Locale }) {
   const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "home" });
   await connection();
-  const [articles, popular] = await Promise.all([
+  const [articles, popular, tagCloud] = await Promise.all([
     getPublishedPosts(5),
     getPopularPosts(5),
+    getPublishedTagCloud(),
   ]);
 
   if (articles.length === 0) {
@@ -92,7 +94,8 @@ async function HomeFeed({ locale }: { locale: Locale }) {
 
         <aside className="rule-anchor pt-4">
           <PopularPosts locale={locale} posts={popular} headingLevel="h2" />
-          {isSubscriptionEnabled() ? <div className="mt-8"><SubscriptionForm compact /></div> : null}
+          <div className="mt-10"><TagRail locale={locale} tags={tagCloud} /></div>
+          {isSubscriptionEnabled() ? <div className="mt-10"><SubscriptionForm compact /></div> : null}
         </aside>
       </div>
     </>
@@ -127,7 +130,11 @@ function HomeFeedSkeleton({ locale }: { locale: Locale }) {
             ))}
           </div>
         </div>
-        <div className="h-64 rounded bg-muted" />
+        {/* 右栏骨架要跟着实际内容走：热门 + 标签云，否则加载完会往下跳一截。 */}
+        <div className="space-y-8">
+          <div className="h-64 rounded bg-muted" />
+          <div className="h-28 rounded bg-muted" />
+        </div>
       </div>
     </div>
   );

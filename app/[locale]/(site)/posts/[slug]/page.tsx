@@ -196,6 +196,7 @@ async function PostContent({
                 : displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
               alt={t("coverAlt", { title: post.title })}
               seed={post.slug}
+              group={post.categorySlug}
               className="absolute inset-0"
             />
           )}
@@ -298,17 +299,31 @@ async function PostContent({
 
           {/* 目录区可滚动,下方的操作与赞助位钉在底部不跟着滚——
               否则目录一长,它们就被卷进滚动区里看不见了。 */}
-          <aside className="sticky top-24 hidden max-h-[calc(100vh-7rem)] flex-col min-[1040px]:flex">
-            {toc.length ? (
-              <div className="toc-scroll min-h-0 flex-1 overflow-y-auto rounded-[var(--radius-card)] bg-muted/55 p-4 pr-2.5">
-                <p className="eyebrow mb-4 text-foreground/70">{t("toc")}</p>
-                <ArticleToc items={toc} />
-              </div>
-            ) : null}
+          {/*
+            目录与其下的操作合成同一块面板。分开写的时候目录是一张填色卡片，
+            而「复制链接 / 返回顶部」落在裸背景上，看起来像面板下面掉出来的两个
+            零件。合进来之后右栏是一件东西，不是三件。
 
-            <div className="mt-6 flex shrink-0 flex-col items-start gap-3 border-t pt-5">
-              <ShareLinkButton />
-              <a href="#article-top" className="text-sm text-muted-foreground hover:text-primary">{t("backToTop")}</a>
+            面板内部仍是「目录可滚动、操作钉在底部」：目录一长，操作要是跟着卷
+            进滚动区就再也看不见了。
+          */}
+          <aside className="sticky top-24 hidden max-h-[calc(100vh-7rem)] flex-col min-[1040px]:flex">
+            <div className="flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-card)] bg-muted/55">
+              {toc.length ? (
+                <div className="toc-scroll min-h-0 flex-1 overflow-y-auto p-4 pr-2.5">
+                  <p className="eyebrow mb-4 text-foreground/70">{t("toc")}</p>
+                  <ArticleToc items={toc} />
+                </div>
+              ) : null}
+
+              <div
+                className={`flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 ${
+                  toc.length ? "border-t border-hairline" : ""
+                }`}
+              >
+                <ShareLinkButton />
+                <a href="#article-top" className="text-sm text-muted-foreground hover:text-primary">{t("backToTop")}</a>
+              </div>
             </div>
 
             <SponsorSlot locale={locale} />
