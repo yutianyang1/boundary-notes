@@ -681,10 +681,32 @@ button {
   background-color: transparent;
 }
 
+/*
+ * 表格宽度。
+ *
+ * 窄屏：display:block + overflow-x:auto，表按内容宽度排、放不下就横向滚动。多列表硬
+ * 铺满手机宽度会被挤成一格一个字。
+ *
+ * 宽屏：统一铺满正文栏，列宽按内容比例分。按内容撑宽的话，同一篇里两列的小表才
+ * 两百多像素、八列的大表近九百，一页上宽窄参差、左对齐后右边缘乱成锯齿。铺满后
+ * 每张表左右边缘都一致。单元格允许在任意位置折行，保证超长的路径或代码也不会把
+ * 表撑出正文栏、压到右侧目录上。
+ */
 .article-body table {
   display: block;
   overflow-x: auto;
   font-size: 0.9375rem;
+}
+
+@media (min-width: 768px) {
+  .article-body table {
+    display: table;
+    width: 100%;
+  }
+
+  .article-body :is(th, td) {
+    overflow-wrap: anywhere;
+  }
 }
 
 .article-body :is(th, td) {
