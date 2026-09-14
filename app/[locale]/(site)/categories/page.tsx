@@ -55,7 +55,7 @@ async function CategoryList({ locale }: { locale: Locale }) {
 
   return (
     <div className="mt-10 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
-      {categories.map((category) => (
+      {categories.map((category, index) => (
         <TermCard
           key={category.slug}
           href={localePath(`/categories/${category.slug}`, locale)}
@@ -63,7 +63,7 @@ async function CategoryList({ locale }: { locale: Locale }) {
           description={displayDescription(category, locale)}
           countLabel={tc("postCount", { count: category.count })}
           seed={category.slug}
-          label={t("title")}
+          index={index}
         />
       ))}
     </div>

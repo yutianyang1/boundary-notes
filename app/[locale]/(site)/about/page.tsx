@@ -12,6 +12,7 @@ import type { Locale } from "@/i18n/routing";
 import { Suspense } from "react";
 import { ProfileCard } from "@/components/about/profile-card";
 import { getPrimaryPublishedAuthor, getPublishedPosts } from "@/lib/posts/queries";
+import { WrappedTitle } from "@/components/wrapped-title";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -174,7 +175,7 @@ async function FeaturedPostList({ locale }: { locale: Locale }) {
           className="group grid gap-2 border-b border-hairline py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline sm:gap-6"
         >
           <span className="text-base font-semibold group-hover:text-primary sm:text-lg">
-            {post.title}
+            <WrappedTitle text={post.title} />
           </span>
           <span className="text-xs font-semibold text-primary">
             {displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}

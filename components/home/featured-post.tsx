@@ -8,6 +8,7 @@ import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
 import type { PostCardData } from "@/components/home/post-card";
 import { readingMetaValues } from "@/lib/posts/reading-time";
+import { WrappedTitle } from "@/components/wrapped-title";
 
 const dateFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Shanghai",
@@ -53,7 +54,7 @@ export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardD
             href={localePath(`/posts/${post.slug}`, locale)}
             className="bg-[linear-gradient(var(--primary),var(--primary))] bg-[length:0_2px] bg-left-bottom bg-no-repeat pb-1 transition-[background-size] duration-300 hover:bg-[length:100%_2px]"
           >
-            {post.title}
+            <WrappedTitle text={post.title} />
           </Link>
         </h2>
         {post.summary ? (

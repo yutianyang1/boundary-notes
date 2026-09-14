@@ -37,7 +37,8 @@ export default async function HomePage({ params }: PageProps) {
           {/* 换行位置随语言而定，所以由字典里的 <br> 标签决定。 */}
           {t.rich("headline", { br: () => <br /> })}
         </h1>
-        <p className="mt-6 max-w-[42em] text-lg leading-[1.8] text-muted-foreground sm:text-xl">
+        {/* text-pretty：不让最后一行只剩「舍。」一个字。 */}
+        <p className="mt-6 max-w-[42em] text-pretty text-lg leading-[1.8] text-muted-foreground sm:text-xl">
           {t("lead")}
         </p>
       </section>

@@ -61,6 +61,48 @@ test("excerptFromMarkdown joins short lines until it has enough text", () => {
   assert.equal(excerptFromMarkdown(markdown, 40), "短句一。 短句二。 短句三。");
 });
 
+// 以下三条的元数据形态照抄线上三篇规格文档的开头：引用块 + 硬换行、引用块
+// 分段、普通段落 + 硬换行。
+test("excerptFromMarkdown skips a leading metadata block inside a blockquote", () => {
+  const markdown = [
+    "# 自然语言输入理解与规范化层设计（原有链路）",
+    "",
+    "> 状态：设计稿  ",
+    "> 适用项目：`lanque-app`  ",
+    "> 适用运行时：原有 `OpenAiIpcClient` 链路  ",
+    "> 更新日期：2026-08-19",
+    "",
+    "## 1. 背景与目标",
+    "",
+    "自然语言是信息化交互的第一道关口。",
+  ].join("\n");
+  assert.equal(excerptFromMarkdown(markdown), "自然语言是信息化交互的第一道关口。");
+});
+
+test("excerptFromMarkdown skips metadata written as separate quoted paragraphs", () => {
+  const markdown = "> 状态：调研结论与实施草案\n>\n> 日期：2026-08-12\n>\n> 目标项目：lanque-app\n\n## 1. 结论先行\n\n这套系统可以接入。";
+  assert.equal(excerptFromMarkdown(markdown), "这套系统可以接入。");
+});
+
+test("excerptFromMarkdown skips metadata lines joined by backslash hard breaks", () => {
+  const markdown = "版本：1.0\\\n状态：客户端已实现\\\n适用范围：Lanque App 回答卡片操作区\n\n## 1. 目标与边界\n\n回答操作事件用于在最终回答中提供入口。";
+  assert.equal(excerptFromMarkdown(markdown), "回答操作事件用于在最终回答中提供入口。");
+});
+
+test("excerptFromMarkdown keeps a labelled sentence that is real prose", () => {
+  assert.equal(excerptFromMarkdown("注意：这里的缓存不会失效。"), "注意：这里的缓存不会失效。");
+});
+
+test("excerptFromMarkdown keeps field-like lines once prose has started", () => {
+  const markdown = "配置项如下。\n\n超时：30 秒";
+  assert.equal(excerptFromMarkdown(markdown), "配置项如下。 超时：30 秒");
+});
+
+test("excerptFromMarkdown does not leave a dangling comma before the ellipsis", () => {
+  const excerpt = excerptFromMarkdown("提供查看详情、修改展示、继续处理、确认执行等入口", 17);
+  assert.equal(excerpt, "提供查看详情、修改展示、继续处理…");
+});
+
 test("excerptFromMarkdown returns empty string for content with no prose", () => {
   assert.equal(excerptFromMarkdown(""), "");
   assert.equal(excerptFromMarkdown("---\n\n***\n"), "");

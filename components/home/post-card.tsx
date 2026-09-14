@@ -8,6 +8,7 @@ import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
 import { readingMetaValues } from "@/lib/posts/reading-time";
+import { WrappedTitle } from "@/components/wrapped-title";
 
 export type PostCardData = {
   id: string;
@@ -80,27 +81,17 @@ export function PostCard({
         {overlay}
       </Link>
 
+      {/*
+        分类放在底部信息行，不再是标题上方的标签。有分类的卡片标题上面多一行，
+        没分类的没有，同一排卡片的标题因此高低错开，归档页一眼就能看出参差。
+      */}
       <div className="flex flex-1 flex-col p-4">
-        {post.categoryName ? (
-          post.categorySlug ? (
-            <Link
-              href={localePath(`/categories/${post.categorySlug}`, locale)}
-              className="w-fit rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary hover:bg-primary hover:text-primary-foreground"
-            >
-              {displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
-            </Link>
-          ) : (
-            <span className="w-fit rounded-full bg-accent px-3 py-1 text-xs font-semibold text-primary">
-              {displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
-            </span>
-          )
-        ) : null}
-        <h3 lang="zh-CN" className="headline-sm mt-2.5 text-lg">
+        <h3 lang="zh-CN" className="headline-sm text-lg">
           <Link
             href={localePath(`/posts/${post.slug}`, locale)}
             className="rounded-sm group-hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {post.title}
+            <WrappedTitle text={post.title} />
           </Link>
         </h3>
         {post.summary ? (
@@ -109,6 +100,23 @@ export function PostCard({
           </p>
         ) : null}
         <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-4 text-xs tabular-nums text-muted-foreground">
+          {post.categoryName ? (
+            <>
+              {post.categorySlug ? (
+                <Link
+                  href={localePath(`/categories/${post.categorySlug}`, locale)}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  {displayName({ name: post.categoryName, nameEn: post.categoryNameEn }, locale)}
+                </Link>
+              ) : (
+                <span className="font-semibold text-primary">
+                  {displayName({ name: post.categoryName, nameEn: post.categoryNameEn }, locale)}
+                </span>
+              )}
+              <span aria-hidden>·</span>
+            </>
+          ) : null}
           {post.publishedAt ? <time dateTime={post.publishedAt.toISOString()}>{dateFormatter.format(post.publishedAt)}</time> : null}
           <span aria-hidden>·</span>
           <span>{t(reading.key, { minutes: reading.minutes, count: reading.count })}</span>
@@ -126,7 +134,6 @@ export function PostCardSkeleton() {
     >
       <div className="aspect-[2/1] animate-pulse bg-muted" />
       <div className="space-y-4 p-4">
-        <div className="h-6 w-20 animate-pulse rounded-full bg-muted" />
         <div className="h-6 w-4/5 animate-pulse rounded bg-muted" />
         <div className="space-y-2">
           <div className="h-4 w-full animate-pulse rounded bg-muted" />

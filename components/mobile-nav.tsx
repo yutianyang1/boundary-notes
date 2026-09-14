@@ -2,9 +2,10 @@
 
 import { Menu, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { BrandSymbol, siteName } from "@/components/brand-mark";
+import { LanguageToggle } from "@/components/language-toggle";
 import { Link } from "@/i18n/navigation";
 import { navigation } from "@/lib/navigation";
 
@@ -153,6 +154,15 @@ export function MobileNav() {
                     </Link>
                   ))}
                 </nav>
+
+                {/* 窄屏顶栏放不下语言切换（见 site-header），挪到菜单底部。
+                    sm 以上顶栏里已经有了，这里就不再重复。 */}
+                <div className="mt-auto flex items-center justify-between border-t px-5 py-4 sm:hidden">
+                  <span className="text-sm font-medium text-muted-foreground">{t("language")}</span>
+                  <Suspense fallback={null}>
+                    <LanguageToggle />
+                  </Suspense>
+                </div>
               </aside>
             </div>,
             document.body,

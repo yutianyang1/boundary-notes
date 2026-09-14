@@ -55,7 +55,7 @@ async function SeriesList({ locale }: { locale: Locale }) {
 
   return (
     <div className="mt-10 grid gap-6 min-[560px]:grid-cols-2 min-[1000px]:grid-cols-3">
-      {items.map((item) => (
+      {items.map((item, index) => (
         <TermCard
           key={item.slug}
           href={localePath(`/series/${item.slug}`, locale)}
@@ -64,7 +64,7 @@ async function SeriesList({ locale }: { locale: Locale }) {
           countLabel={tc("postCount", { count: item.count })}
           cover={item.cover}
           seed={item.slug}
-          label={t("title")}
+          index={index}
         />
       ))}
     </div>

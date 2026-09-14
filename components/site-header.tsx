@@ -39,7 +39,12 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/*
+          窄屏下右侧收紧：间距 12→8px，语言切换挪进侧边菜单。之前右组固定 208px，
+          360px 宽的手机上把左边挤掉 37px，品牌名直接压在搜索按钮上（390px 也
+          压了 7px）。现在右组 152px，360px 下两组之间还留约 20px。
+        */}
+        <div className="flex items-center gap-2 sm:gap-3">
           <form action={searchAction} className="relative hidden sm:block">
             <label>
               <span className="sr-only">{t("searchPosts")}</span>
@@ -64,9 +69,11 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             <Search className="size-4" />
           </Link>
           {/* 语言切换要读当前路径，那在预渲染期属于请求数据，必须单独包 Suspense。 */}
-          <Suspense fallback={<span aria-hidden className="size-9 shrink-0 rounded-md border bg-muted" />}>
-            <LanguageToggle />
-          </Suspense>
+          <div className="hidden sm:contents">
+            <Suspense fallback={<span aria-hidden className="size-9 shrink-0 rounded-md border bg-muted" />}>
+              <LanguageToggle />
+            </Suspense>
+          </div>
           <ThemeToggle />
           <Suspense fallback={<span aria-hidden className="h-9 w-16 shrink-0 animate-pulse rounded-full border bg-muted motion-reduce:animate-none sm:w-28" />}>
             <UserMenuServer locale={locale} />

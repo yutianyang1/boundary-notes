@@ -32,6 +32,7 @@ import {
 } from "@/lib/posts/queries";
 import { readingMetaValues } from "@/lib/posts/reading-time";
 import { CommentsSection } from "./comments-section";
+import { WrappedTitle } from "@/components/wrapped-title";
 
 type PageProps = { params: Promise<{ locale: string; slug: string }>; searchParams: Promise<{ commentsPage?: string }> };
 const POST_ROUTE_BUILD_PROBE = "__post-route-probe__";
@@ -173,7 +174,12 @@ async function PostContent({
           {t("allPosts")}
         </Link>
 
-        <div className="relative mt-8 h-[clamp(11rem,26vw,17rem)] overflow-hidden rounded-[var(--radius-card)] border [box-shadow:var(--shadow)]">
+        {/* 没有封面图时横幅只是装饰，矮一些；真封面才值得占那么大一块。 */}
+        <div
+          className={`relative mt-8 overflow-hidden rounded-[var(--radius-card)] border [box-shadow:var(--shadow)] ${
+            post.cover ? "h-[clamp(11rem,26vw,17rem)]" : "h-[clamp(6rem,12vw,9rem)]"
+          }`}
+        >
           {post.cover ? (
             <Image
               src={post.cover}
@@ -185,6 +191,8 @@ async function PostContent({
               className="object-cover"
             />
           ) : (
+            // 不在横幅上印标题和分类：正下方就是分类标签和大标题，印了读者会连看
+            // 两遍。只有系列位置（第几篇/共几篇）是页头里没有的，保留。
             <GeneratedCover
               title={post.title}
               label={seriesNavigation
@@ -193,7 +201,9 @@ async function PostContent({
                   position: seriesNavigation.position,
                   total: seriesNavigation.total,
                 })
-                : displayName({ name: post.categoryName ?? "", nameEn: post.categoryNameEn }, locale)}
+                : null}
+              showTitle={false}
+              patternOnly={!seriesNavigation}
               alt={t("coverAlt", { title: post.title })}
               seed={post.slug}
               group={post.categorySlug}
@@ -219,7 +229,7 @@ async function PostContent({
           ) : null}
 
           {/* 标题是文章内容，语言随正文而非界面，浏览器据此提示翻译。 */}
-          <h1 lang="zh-CN" className="headline mt-4 max-w-[20em] text-[2.25rem] sm:text-5xl">{post.title}</h1>
+          <h1 lang="zh-CN" className="headline mt-4 max-w-[20em] text-[2.25rem] sm:text-5xl"><WrappedTitle text={post.title} /></h1>
 
           {post.summary ? (
             <p lang="zh-CN" className="mt-6 max-w-[38em] text-lg leading-[1.8] text-muted-foreground">
@@ -337,17 +347,19 @@ async function PostContent({
           <SeriesNavigation locale={locale} navigation={seriesNavigation} />
         ) : null}
 
-        {areCommentsEnabled() ? (
-          <Suspense fallback={<div className="mt-12 h-56 animate-pulse rounded-[var(--radius-card)] border bg-muted/50" />}>
-            <CommentsSection locale={locale} postId={post.id} slug={post.slug} page={commentsPage} />
-          </Suspense>
-        ) : null}
-
+        {/* 相关文章排在评论前面：刚读完的人最可能要的是下一篇，而评论区在没有
+            评论时是一整块空卡片，放前面会把「接着读」推到很远的地方。 */}
         {relatedPosts.length ? (
           <section className="rule-anchor mt-12 pt-5">
             <h2 className="headline-sm text-xl">{t("related")}</h2>
             <RelatedPosts locale={locale} posts={relatedPosts} />
           </section>
+        ) : null}
+
+        {areCommentsEnabled() ? (
+          <Suspense fallback={<div className="mt-12 h-56 animate-pulse rounded-[var(--radius-card)] border bg-muted/50" />}>
+            <CommentsSection locale={locale} postId={post.id} slug={post.slug} page={commentsPage} />
+          </Suspense>
         ) : null}
 
         {isSubscriptionEnabled() ? <div className="mt-12"><SubscriptionForm /></div> : null}
@@ -431,7 +443,7 @@ function RelatedPosts({
               className="home-card group flex h-full flex-col rounded-xl border bg-card p-4 transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]"
             >
               <span className="eyebrow text-primary">{post.categoryName ? displayName({ name: post.categoryName, nameEn: post.categoryNameEn }, locale) : t("breadcrumbPosts")}</span>
-              <span lang="zh-CN" className="mt-2 block text-sm font-bold leading-6 group-hover:text-primary">{post.title}</span>
+              <span lang="zh-CN" className="mt-2 block text-sm font-bold leading-6 group-hover:text-primary"><WrappedTitle text={post.title} /></span>
               <span className="mt-auto block pt-3 text-xs text-muted-foreground">
                 {t(reading.key, { minutes: reading.minutes, count: reading.count })}
               </span>

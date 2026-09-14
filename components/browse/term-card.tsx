@@ -9,7 +9,7 @@ export function TermCard({
   countLabel,
   cover,
   seed,
-  label,
+  index,
 }: {
   href: string;
   name: string;
@@ -18,8 +18,8 @@ export function TermCard({
   countLabel: string;
   cover?: string | null;
   seed: string;
-  /** 生成封面上的分类标记，已翻译。 */
-  label: string;
+  /** 在列表里的位置，用来给相邻卡片错开封面色相。 */
+  index: number;
 }) {
   return (
     <Link
@@ -37,10 +37,12 @@ export function TermCard({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : (
+          // 纯图案：名称就印在紧挨着的卡片正文里，封面上再印一遍是重复。
           <GeneratedCover
             title={name}
-            label={label}
             seed={seed}
+            hueIndex={index}
+            patternOnly
             className="absolute inset-0"
           />
         )}

@@ -18,10 +18,14 @@ import type { CSSProperties } from "react";
 const MOTIF_COUNT = 6;
 
 /**
- * 色相环上取的 8 个点。都在深色版面上试过：明度压到 0.22 的底板上仍能看出
- * 彼此是不同颜色，而不是「一片深蓝里有点偏差」。
+ * 色相环上大致等距的 8 个点（OKLCH 色相，间隔约 40°）。
+ *
+ * 上一版是 264/286/300/330 挤在靛蓝到品红一段、186/208 又挨着，8 个里一半
+ * 看起来是「偏紫」。线上分类页三张全紫、搜索结果三张冷色竖条就是这么来的。
+ * 数组顺序按 hueIndex 每次跳 3 格排过：依次取到靛蓝、橙红、青、紫、琥珀、蓝、
+ * 粉、绿，相邻两张冷暖交替。
  */
-const HUES = [264, 286, 208, 330, 155, 24, 186, 300];
+const HUES = [264, 305, 350, 30, 70, 150, 190, 230];
 
 /**
  * 构图焦点的横向位置。
@@ -57,8 +61,10 @@ export function GeneratedCover({
   label,
   seed,
   group,
+  hueIndex,
   className = "",
   patternOnly = false,
+  showTitle = true,
   alt,
 }: {
   title: string;
@@ -66,13 +72,29 @@ export function GeneratedCover({
   seed: string;
   /** 决定母题的分组键，通常是分类/系列 slug；留空则退回 seed。 */
   group?: string | null;
+  /**
+   * 列表里的序号。给了就按序号取色相，不再按 seed 哈希。
+   *
+   * 分类、系列这种一页只有三五张卡片的列表，哈希取色很容易让相邻几张落进同一
+   * 片色区（线上分类页三张全是紫色）。按序号每次在色相表里跳 3 格，8 个色相
+   * 走完一圈前不会重复，相邻两张始终隔着 135°。
+   */
+  hueIndex?: number;
   className?: string;
   patternOnly?: boolean;
+  /**
+   * 是否在封面上印标题。紧挨着封面下方就是同一个标题时（文章页头、分类卡片）
+   * 应该关掉，否则读者会连着看到两遍。
+   */
+  showTitle?: boolean;
   alt?: string;
 }) {
   const motif = hashOf(`motif:${group || seed}`) % MOTIF_COUNT;
-  const hue = HUES[hashOf(`hue:${seed}`) % HUES.length];
+  const hue = hueIndex === undefined
+    ? HUES[hashOf(`hue:${seed}`) % HUES.length]
+    : HUES[(hueIndex * 3) % HUES.length];
   const focus = FOCUS[hashOf(`focus:${seed}`) % FOCUS.length];
+  const hasText = !patternOnly && (showTitle || Boolean(label));
 
   return (
     <div
@@ -82,19 +104,21 @@ export function GeneratedCover({
       className={`generated-cover generated-cover-m${motif} ${className}`}
       style={{ "--cover-hue": hue, "--cover-x": focus } as CSSProperties}
     >
-      {patternOnly ? null : (
+      {hasText ? (
         <div className="absolute inset-x-[7%] bottom-[9%] max-w-[78%]">
           {label ? (
             <span className="mb-2 block text-[0.65rem] font-semibold tracking-[0.14em] text-indigo-200/75 sm:text-xs">
               {label}
             </span>
           ) : null}
-          {/* 标题来自文章内容，语言随正文而非界面。 */}
-          <span lang="zh-CN" className="line-clamp-2 block text-base font-extrabold leading-tight text-balance sm:text-xl">
-            {title}
-          </span>
+          {showTitle ? (
+            /* 标题来自文章内容，语言随正文而非界面。 */
+            <span lang="zh-CN" className="line-clamp-2 block text-base font-extrabold leading-tight text-balance sm:text-xl">
+              {title}
+            </span>
+          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

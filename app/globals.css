@@ -192,6 +192,15 @@ button {
   line-height: 1.3;
 }
 
+/*
+ * 标题按词断行，配合 components/wrapped-title.tsx：组件在词与词之间插 <wbr>，
+ * 这里关掉浏览器默认的逐字断行。break-word 兜底一个超长词撑破容器的情况。
+ */
+.title-wrap {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 /* 日期锚点：等宽数字，避免逐行跳动 */
 .date-anchor {
   font-variant-numeric: tabular-nums;

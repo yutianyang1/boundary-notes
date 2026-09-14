@@ -75,6 +75,8 @@ function stripLinePrefixes(line: string) {
 /** 剥掉行内标记，保留可读的文字。 */
 function stripInline(text: string) {
   return text
+    // 行尾反斜杠是 Markdown 的硬换行记号
+    .replace(/\\$/, "")
     // 链接留锚文本，丢地址
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\[\^[^\]]+\]/g, "")
@@ -95,13 +97,30 @@ function isProse(line: string) {
   return line.length > 0 && !/^[-*_=~`|#>\s]+$/.test(line);
 }
 
+/**
+ * 「字段：值」形式的文档元数据行，例如「状态：设计稿」「更新日期：2026-08-19」。
+ *
+ * 规格类文章开头常挂一段这样的元数据（有的放在引用块里，有的用硬换行，有的
+ * 一行一段）。上线后卡片摘要就成了「版本：1.0 状态：客户端已实现 适用范围：…」，
+ * 读者从中看不出文章讲什么。
+ *
+ * 判定刻意收得很窄：字段名不超过 8 个字符且不含空白标点，值里没有句末标点。
+ * 「注意：这里的缓存不会失效。」带句号，是正文，不算。
+ */
+const METADATA_LINE = /^[\p{L}\p{N}_-]{1,8}[：:][ \t]*[^。！？!?]{1,60}$/u;
+
 export function excerptFromMarkdown(markdown: string, maxLength = DEFAULT_MAX_LENGTH) {
   if (!markdown) return "";
 
-  const lines = stripBlocks(markdown)
+  const prose = stripBlocks(markdown)
     .split(/\r?\n/)
     .map((line) => stripInline(stripLinePrefixes(line)).trim())
     .filter(isProse);
+
+  // 只跳过开头那一段元数据：一旦出现真正的正文，之后的「字段：值」就是正文的
+  // 一部分（比如列举配置项），不再特殊处理。
+  const firstProse = prose.findIndex((line) => !METADATA_LINE.test(line));
+  const lines = firstProse === -1 ? [] : prose.slice(firstProse);
 
   if (lines.length === 0) return "";
 
@@ -124,5 +143,6 @@ export function excerptFromMarkdown(markdown: string, maxLength = DEFAULT_MAX_LE
     window.lastIndexOf("；"),
   );
   if (breakAt >= maxLength * 0.5) return window.slice(0, breakAt + 1);
-  return `${window.trimEnd()}…`;
+  // 省略号前不留逗号顿号：「继续处理、…」读起来像列举被截了一半还硬接了个尾巴。
+  return `${window.trimEnd().replace(/[，、；：,;:]+$/, "")}…`;
 }
