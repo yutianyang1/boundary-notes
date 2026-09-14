@@ -166,7 +166,12 @@ async function PostContent({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
-      <article id="article-top" className="mx-auto max-w-[74rem] py-10 sm:py-16">
+      {/*
+        文章页和顶栏同宽：左边缘对齐 logo，右边缘对齐顶栏右侧。原来居中收在 74rem，
+        正文栏只剩 40em，表格一多就挤得满屏换行。文字的行宽另由 --article-measure
+        控制，表格、代码块、图表用满正文栏，见 globals.css 的 .article-body。
+      */}
+      <article id="article-top" className="py-10 sm:py-16">
         <Link
           href={localePath("/posts", locale)}
           className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
@@ -187,7 +192,7 @@ async function PostContent({
               fill
               unoptimized
               priority
-              sizes="(min-width: 1184px) 1184px, 100vw"
+              sizes="(min-width: 1600px) 1488px, 100vw"
               className="object-cover"
             />
           ) : (
@@ -232,12 +237,12 @@ async function PostContent({
           <h1 lang="zh-CN" className="headline mt-4 max-w-[20em] text-[2.25rem] sm:text-5xl"><WrappedTitle text={post.title} /></h1>
 
           {post.summary ? (
-            <p lang="zh-CN" className="mt-6 max-w-[38em] text-lg leading-[1.8] text-muted-foreground">
+            <p lang="zh-CN" className="mt-6 max-w-[var(--article-measure)] text-lg leading-[1.8] text-muted-foreground">
               {post.summary}
             </p>
           ) : null}
 
-          <div className="mt-8 flex max-w-[42rem] items-center gap-3 border-t border-hairline pt-6">
+          <div className="mt-8 flex max-w-[var(--article-measure)] items-center gap-3 border-t border-hairline pt-6">
             {post.authorImage ? (
               <Image
                 src={post.authorImage}
@@ -283,7 +288,7 @@ async function PostContent({
           ) : null}
         </header>
 
-        <div className="mt-12 grid gap-10 min-[1040px]:grid-cols-[minmax(0,1fr)_19rem] min-[1040px]:items-start min-[1040px]:gap-16 min-[1440px]:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="mt-12 grid gap-10 min-[1040px]:grid-cols-[minmax(0,1fr)_19rem] min-[1040px]:items-start min-[1040px]:gap-16 min-[1440px]:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0">
             {toc.length ? (
               <details className="rounded-[var(--radius-card)] border bg-card p-4 min-[1040px]:hidden">
@@ -459,13 +464,13 @@ function ArticleSkeleton() {
   return (
     <div className="shell py-16 sm:py-24">
       {/* 宽度与对齐必须和 <article> 一致,否则加载完成时整块内容会横向跳一下。 */}
-      <div className="mx-auto max-w-[74rem] animate-pulse">
+      <div className="animate-pulse">
         <div className="h-4 w-24 rounded bg-muted" />
         <div className="mt-8 h-64 rounded-[var(--radius-card)] bg-muted" />
         <div className="mt-8 h-6 w-20 rounded-full bg-muted" />
         <div className="mt-4 h-11 w-full max-w-3xl rounded bg-muted" />
         <div className="mt-3 h-11 w-3/5 rounded bg-muted" />
-        <div className="mt-12 grid gap-16 min-[1040px]:grid-cols-[minmax(0,1fr)_19rem] min-[1440px]:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="mt-12 grid gap-16 min-[1040px]:grid-cols-[minmax(0,1fr)_19rem] min-[1440px]:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="h-96 rounded bg-muted" />
           <div className="hidden h-72 rounded bg-muted min-[1040px]:block" />
         </div>

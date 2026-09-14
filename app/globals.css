@@ -504,11 +504,29 @@ button {
    正文
    --------------------------------------------------------------------------- */
 
+/*
+ * 正文栏本身不限宽，占满文章页网格给它的那一列；限宽只加在「文字类」块上。
+ *
+ * 原来整个 .article-body 收在 40em（约 680px），表格、代码块也被一起压在这个宽度
+ * 里，多列表格几乎每格都要折行。现在分开处理：
+ * - 段落、列表、标题、引用：行宽上限 --article-measure（51rem ≈ 816px，17px 正文
+ *   约 48 个汉字一行）。再宽中文读起来要来回扫视，行宽仍然要有上限。
+ * - 表格、代码块、图表、插图：用满正文栏。
+ * 两类块都靠左，左边缘一致，宽内容只向右多伸出去。
+ */
+:root {
+  --article-measure: 51rem;
+}
+
 .article-body {
-  max-width: 40em;
+  max-width: none;
   font-size: 1.0625rem;
   /* 中文正文行高需高于拉丁文，1.85 ≈ 汉字视觉密度下的舒适值 */
   line-height: 1.85;
+}
+
+.article-body > :is(p, ul, ol, dl, h2, h3, h4, h5, h6, blockquote, hr, .directive-note, .directive-warning) {
+  max-width: var(--article-measure);
 }
 
 .article-body :is(h2, h3, h4) {
