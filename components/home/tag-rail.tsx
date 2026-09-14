@@ -29,7 +29,7 @@ export function TagRail({
 
   return (
     <div>
-      <h2 className="eyebrow text-foreground/70">{t("tags")}</h2>
+      <h2 className="headline-sm text-xl">{t("tags")}</h2>
       <ul className="mt-4 flex flex-wrap gap-2">
         {tags.slice(0, RAIL_LIMIT).map((tag) => (
           <li key={tag.slug}>

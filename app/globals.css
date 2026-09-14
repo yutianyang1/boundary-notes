@@ -37,6 +37,9 @@
   --danger: oklch(0.55 0.2 25);
   --ok: oklch(0.52 0.14 155);
   --shadow: 0 1px 2px oklch(0.4 0.04 257 / 0.04), 0 12px 32px -12px oklch(0.4 0.06 257 / 0.16);
+  /* 卡片：静止时一丝层次，悬停时带淡淡的品牌色投影 */
+  --shadow-card: 0 1px 2px oklch(0.4 0.04 257 / 0.05);
+  --shadow-card-hover: 0 1px 2px oklch(0.4 0.04 257 / 0.06), 0 18px 40px -18px oklch(0.54 0.21 264 / 0.3);
 
   --radius: 0.5rem;
   --radius-card: 0.875rem;
@@ -68,6 +71,8 @@
   --danger: oklch(0.72 0.16 25);
   --ok: oklch(0.7 0.13 155);
   --shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 40px -14px oklch(0 0 0 / 0.6);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-card-hover: 0 1px 2px oklch(0 0 0 / 0.3), 0 20px 44px -18px oklch(0.72 0.17 264 / 0.28);
 }
 
 @theme inline {
@@ -173,9 +178,12 @@ button {
   line-height: 1.4;
 }
 
-/* 章节锚定横线：2px + 近前景色，是全站视觉重量的主要来源 */
+/*
+ * 章节锚定横线。原来 2px + 近前景色，是全站视觉重量的主要来源，但在亮色下像报纸
+ * 栏线，压得页面发硬。收成 1px 并淡到 55%：仍是锚点，不再是一道黑杠。
+ */
 .rule-anchor {
-  border-top: 2px solid var(--rule-strong);
+  border-top: 1px solid color-mix(in oklch, var(--rule-strong) 55%, transparent);
 }
 
 /* 中文标题：字重靠 700/800 建立，绝不使用负字距 */
@@ -199,6 +207,73 @@ button {
 .title-wrap {
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+
+/*
+ * 「边界」二字的暖色底痕。首页和关于页的大标题共用，由字典里的 <hl> 标签包出来。
+ */
+.boundary-mark {
+  background: linear-gradient(transparent 62%, color-mix(in oklch, var(--warm) 40%, transparent) 62% 92%, transparent 92%);
+  padding-inline: 0.04em;
+}
+
+/*
+ * 首页首屏的氛围层：一层很淡的品牌光 + 向外淡出的细网格。
+ *
+ * 原来首屏只有左边一段文字，右半边是整片空白，打开网站第一眼显得没做完。
+ * 暗色下不用暖色光：暖光在靛黑底上会发成一块褐色，只留靛蓝。
+ * 上下都溢出首屏：往上衬到半透明顶栏底下，往下漫到头条卡片周围。底部整体淡出，
+ * 不留硬边。
+ */
+.hero-atmosphere {
+  position: absolute;
+  z-index: -1;
+  inset: -5rem 0 -8rem;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(#000 60%, transparent);
+  mask-image: linear-gradient(#000 60%, transparent);
+}
+
+.hero-atmosphere::before,
+.hero-atmosphere::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.hero-atmosphere::before {
+  background:
+    radial-gradient(40rem 20rem at 18% 42%, color-mix(in oklch, var(--primary) 13%, transparent), transparent 72%),
+    radial-gradient(30rem 16rem at 60% 10%, color-mix(in oklch, var(--warm) 9%, transparent), transparent 70%);
+}
+
+.dark .hero-atmosphere::before {
+  background:
+    radial-gradient(40rem 20rem at 18% 42%, color-mix(in oklch, var(--primary) 20%, transparent), transparent 72%),
+    radial-gradient(30rem 16rem at 64% 8%, color-mix(in oklch, var(--primary) 8%, transparent), transparent 70%);
+}
+
+.hero-atmosphere::after {
+  background-image:
+    linear-gradient(var(--hairline) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hairline) 1px, transparent 1px);
+  background-size: 56px 56px;
+  opacity: 0.7;
+  -webkit-mask-image: radial-gradient(60rem 26rem at 30% 34%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(60rem 26rem at 30% 34%, #000 20%, transparent 75%);
+}
+
+.dark .hero-atmosphere::after {
+  opacity: 0.45;
+}
+
+/* 文章/分类/系列卡片共用的层次。悬停位移仍在组件里写，这里只管阴影。 */
+.home-card {
+  box-shadow: var(--shadow-card);
+}
+
+.home-card:hover {
+  box-shadow: var(--shadow-card-hover);
 }
 
 /* 日期锚点：等宽数字，避免逐行跳动 */
@@ -255,7 +330,15 @@ button {
 
   isolation: isolate;
   overflow: hidden;
-  background: var(--cover-plate);
+  /*
+   * 底板上叠两层：斜向微光和细颗粒。纯色底 + 渐变线条一眼就是「程序画的」，
+   * 颗粒让它像一张有质感的印刷底，微光给一点受光方向。颗粒是内联 SVG 噪声，
+   * 不发请求。
+   */
+  background:
+    linear-gradient(155deg, rgb(255 255 255 / 7%), transparent 42%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .07 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    var(--cover-plate);
   color: oklch(0.93 0.025 var(--cover-hue));
   /* 底部微暗角，给纯装饰封面一点纵深 */
   box-shadow: inset 0 -3.5rem 5rem -3.5rem oklch(0 0 0 / var(--cover-vignette));
@@ -306,8 +389,10 @@ button {
 .generated-cover-m1::before {
   background-image: repeating-radial-gradient(
     circle at 12% 118%,
-    transparent 0 26px,
-    var(--cover-line-strong) 26px 28px
+    /* 线条两侧各留 1px 过渡，硬边的细环在 1x 屏上会断成一截一截的锯齿 */
+    transparent 0 25px,
+    var(--cover-line-strong) 26px 27.5px,
+    transparent 28.5px 30px
   );
   -webkit-mask-image: radial-gradient(120% 150% at calc(var(--cover-x) - 60%) 118%, #000 20%, transparent 72%);
   mask-image: radial-gradient(120% 150% at calc(var(--cover-x) - 60%) 118%, #000 20%, transparent 72%);
@@ -402,8 +487,9 @@ button {
 .generated-cover-m5::before {
   background-image: repeating-radial-gradient(
     130% 60% at calc(var(--cover-x) + 4%) 8%,
-    transparent 0 22px,
-    var(--cover-line-strong) 22px 24px
+    transparent 0 21px,
+    var(--cover-line-strong) 22px 23.5px,
+    transparent 24.5px 26px
   );
   -webkit-mask-image: linear-gradient(200deg, #000 18%, transparent 82%);
   mask-image: linear-gradient(200deg, #000 18%, transparent 82%);
@@ -495,7 +581,7 @@ button {
 
 .article-body pre {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 0.75rem;
   overflow-x: auto;
 }
 
@@ -556,6 +642,25 @@ button {
 .dark .shiki span {
   color: var(--shiki-dark);
   background-color: var(--shiki-dark-bg);
+}
+
+/*
+ * 正文里的代码块不用主题自带的底色：github-dark 那块灰和站点的靛黑底不搭，
+ * github-light 的纯白又和页面底色差一层。底色跟站点走，高亮颜色仍用主题的。
+ * span 上的底色一并清掉，否则每个 token 会各自带一小块底。
+ */
+.article-body pre.shiki {
+  background-color: oklch(0.975 0.004 257);
+}
+
+.dark .article-body pre.shiki {
+  border-color: oklch(0.27 0.02 257);
+  background-color: oklch(0.19 0.02 257);
+}
+
+.article-body pre.shiki span,
+.dark .article-body pre.shiki span {
+  background-color: transparent;
 }
 
 .article-body table {

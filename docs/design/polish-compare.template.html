@@ -1,0 +1,60 @@
+<title>边界笔记精修对比</title>
+<style>
+:root {
+  --bg: #f5f6f8; --fg: #15171b; --mute: #5e6571; --line: #dde1e7; --card: #ffffff; --acc: #2d60e7; --warm: #d9731f;
+  --shadow: 0 1px 2px rgb(21 23 27 / 6%), 0 14px 36px -22px rgb(21 23 27 / 28%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #0e1014; --fg: #e8eaee; --mute: #9aa1ac; --line: #262a32; --card: #161920; --acc: #8ea7ff; --warm: #f0a04b; --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 14px 36px -22px rgb(0 0 0 / 70%); }
+}
+:root[data-theme="dark"] { --bg: #0e1014; --fg: #e8eaee; --mute: #9aa1ac; --line: #262a32; --card: #161920; --acc: #8ea7ff; --warm: #f0a04b; --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 14px 36px -22px rgb(0 0 0 / 70%); }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.7 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; }
+.page { max-width: 1400px; margin: 0 auto; padding: 44px 20px 88px; }
+.kicker { margin: 0; font-size: 12px; letter-spacing: .1em; color: var(--mute); }
+h1 { margin: 10px 0 10px; font-size: clamp(28px, 4vw, 40px); line-height: 1.2; font-weight: 800; text-wrap: balance; }
+.lead { margin: 0; max-width: 46em; color: var(--mute); }
+.lead b { color: var(--fg); }
+.changes { margin: 28px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .changes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1180px) { .changes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.changes li { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.changes b { display: flex; gap: 8px; align-items: baseline; font-size: 15px; }
+.changes b span { font: 700 12px/1 ui-monospace, "SFMono-Regular", Consolas, monospace; color: var(--acc); }
+.changes p { margin: 6px 0 0; color: var(--mute); font-size: 14px; }
+.theme-h { margin: 56px 0 0; padding-bottom: 10px; border-bottom: 1px solid var(--line); font-size: 22px; }
+.pair { margin-top: 28px; }
+.pair-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.pair-h h3 { margin: 0; font-size: 17px; }
+.tag { font: 600 12px/1 ui-monospace, "SFMono-Regular", Consolas, monospace; color: var(--acc); }
+.shots { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .shots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pair.narrow .shots { grid-template-columns: repeat(2, minmax(0, 390px)); justify-content: start; }
+figure { margin: 0; }
+figcaption { font-size: 13px; color: var(--mute); margin-bottom: 6px; }
+figcaption.after { color: var(--warm); font-weight: 600; }
+figure img { display: block; width: 100%; max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+.note { margin-top: 48px; color: var(--mute); font-size: 14px; max-width: 46em; }
+</style>
+
+<div class="page">
+  <p class="kicker">边界笔记 · 精修对比 · 2026-09-14</p>
+  <h1>风格不换，只把细节做到位</h1>
+  <p class="lead">
+    左边是线上现在的样子，右边是在<b>同一个真实页面</b>上叠加精修样式后的截图，内容、布局、配色体系都没变。
+    改动分成 6 处，可以整体要，也可以只挑其中几条告诉我编号。
+  </p>
+
+  <ul class="changes">
+    <li><b><span>P1</span>首屏有氛围</b><p>留白收紧，第一屏能看到完整的头条。标题背后加一层很淡的品牌光和细网格，「边界」两个字带一道暖色底痕，和关于页呼应。</p></li>
+    <li><b><span>P2</span>登录按钮让位</b><p>之前是整页最显眼的实心蓝按钮，改成描边按钮。读者来看文章，不是来登录的。</p></li>
+    <li><b><span>P3</span>区块标题统一</b><p>「最新文章」和「热门文章」原来是两套写法，现在字号字重一致；区块上方的分隔线从 2px 减到 1px，不再像报纸栏线。</p></li>
+    <li><b><span>P4</span>卡片更舒展</b><p>内边距加大，静止时有一丝层次，悬停时带淡淡的品牌色投影；日期从「08-27」改成「8月27日」。</p></li>
+    <li><b><span>P5</span>封面去廉价感</b><p>加一层细颗粒和斜向微光，同心弧和等高线的细线做了抗锯齿，减少断续的锯齿纹。</p></li>
+    <li><b><span>P6</span>代码块配色</b><p>暗色下代码块原来是 GitHub 那种灰，和靛黑的站点底色不搭，改成跟随站点底色。</p></li>
+  </ul>
+
+<!--PAIRS-->
+
+  <p class="note">截图方式：用无头浏览器打开线上 xiudou.site，先截一张，再在同一页面上注入精修样式截第二张。没有改线上代码，也没有部署。</p>
+</div>

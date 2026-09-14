@@ -24,7 +24,8 @@ export function PopularPosts({
 
   return (
     <div>
-      <Heading className="eyebrow text-foreground/70">{t("popular")}</Heading>
+      {/* 与左栏「最新文章」同一写法，原来是小号灰色 eyebrow，左右两栏标题像两套系统。 */}
+      <Heading className="headline-sm text-xl">{t("popular")}</Heading>
       <ol className="mt-4 divide-y divide-hairline border-b border-hairline">
         {posts.map((post, index) => (
           <li key={post.id} className="py-4 first:pt-0">

@@ -8,13 +8,9 @@ import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
 import type { PostCardData } from "@/components/home/post-card";
 import { readingMetaValues } from "@/lib/posts/reading-time";
+import { shortDate } from "@/lib/posts/short-date";
 import { WrappedTitle } from "@/components/wrapped-title";
 
-const dateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Shanghai",
-  month: "2-digit",
-  day: "2-digit",
-});
 
 export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardData }) {
   const messages = messagesFor(locale);
@@ -77,7 +73,7 @@ export function FeaturedPost({ locale, post }: { locale: Locale; post: PostCardD
               </span>
             )
           ) : null}
-          {post.publishedAt ? <time dateTime={post.publishedAt.toISOString()}>{dateFormatter.format(post.publishedAt)}</time> : null}
+          {post.publishedAt ? <time dateTime={post.publishedAt.toISOString()}>{shortDate(post.publishedAt, locale)}</time> : null}
           <span aria-hidden className="size-[3px] rounded-full bg-current opacity-50" />
           <span>{tPost(reading.key, { minutes: reading.minutes, count: reading.count })}</span>
         </div>

@@ -51,7 +51,7 @@ export function UserMenu({ locale, session }: { locale: Locale; session: Session
     return (
       <Link
         href={localePath("/login", locale)}
-        className="inline-flex h-9 w-16 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none sm:w-28"
+        className="inline-flex h-9 w-16 shrink-0 items-center justify-center rounded-full border bg-background text-sm font-semibold text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none sm:w-28"
       >
         {t("signIn")}
       </Link>

@@ -53,7 +53,7 @@ export default async function AboutPage({ params }: PageProps) {
             {t.rich("headline", {
               br: () => <br />,
               hl: (chunks) => (
-                <span className="[background:linear-gradient(transparent_62%,color-mix(in_oklch,var(--warm)_45%,transparent)_62%)]">{chunks}</span>
+                <span className="boundary-mark">{chunks}</span>
               ),
             })}
           </h1>

@@ -8,6 +8,7 @@ import { messagesFor } from "@/i18n/messages";
 import type { Locale } from "@/i18n/routing";
 import { GeneratedCover } from "@/components/home/generated-cover";
 import { readingMetaValues } from "@/lib/posts/reading-time";
+import { shortDate } from "@/lib/posts/short-date";
 import { WrappedTitle } from "@/components/wrapped-title";
 
 export type PostCardData = {
@@ -25,11 +26,6 @@ export type PostCardData = {
   charCount: number;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Shanghai",
-  month: "2-digit",
-  day: "2-digit",
-});
 
 export function PostCard({
   locale,
@@ -48,7 +44,7 @@ export function PostCard({
   const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "post" });
   const reading = readingMetaValues(post.charCount);
   return (
-    <article className="home-card group flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-card)] border bg-card transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40 hover:[box-shadow:var(--shadow)]">
+    <article className="home-card group flex min-w-0 flex-col overflow-hidden rounded-[var(--radius-card)] border bg-card transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-primary/40">
       <Link
         href={localePath(`/posts/${post.slug}`, locale)}
         aria-label={post.title}
@@ -85,8 +81,8 @@ export function PostCard({
         分类放在底部信息行，不再是标题上方的标签。有分类的卡片标题上面多一行，
         没分类的没有，同一排卡片的标题因此高低错开，归档页一眼就能看出参差。
       */}
-      <div className="flex flex-1 flex-col p-4">
-        <h3 lang="zh-CN" className="headline-sm text-lg">
+      <div className="flex flex-1 flex-col p-5">
+        <h3 lang="zh-CN" className="headline-sm text-[1.1875rem] leading-[1.45]">
           <Link
             href={localePath(`/posts/${post.slug}`, locale)}
             className="rounded-sm group-hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -117,7 +113,7 @@ export function PostCard({
               <span aria-hidden>·</span>
             </>
           ) : null}
-          {post.publishedAt ? <time dateTime={post.publishedAt.toISOString()}>{dateFormatter.format(post.publishedAt)}</time> : null}
+          {post.publishedAt ? <time dateTime={post.publishedAt.toISOString()}>{shortDate(post.publishedAt, locale)}</time> : null}
           <span aria-hidden>·</span>
           <span>{t(reading.key, { minutes: reading.minutes, count: reading.count })}</span>
         </div>
@@ -133,7 +129,7 @@ export function PostCardSkeleton() {
       className="overflow-hidden rounded-[var(--radius-card)] border bg-card"
     >
       <div className="aspect-[2/1] animate-pulse bg-muted" />
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-5">
         <div className="h-6 w-4/5 animate-pulse rounded bg-muted" />
         <div className="space-y-2">
           <div className="h-4 w-full animate-pulse rounded bg-muted" />

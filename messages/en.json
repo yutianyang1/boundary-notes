@@ -269,7 +269,7 @@
   "home": {
     "featured": "Featured",
     "eyebrow": "Software · Systems · The long view",
-    "headline": "Looking for clear boundaries<br></br>inside complex systems.",
+    "headline": "Looking for clear <hl>boundaries</hl><br></br>inside complex systems.",
     "lead": "Notes on software architecture, engineering practice, and the design decisions worth turning over twice. Fewer shortcuts, more trade-offs that can be explained.",
     "noPosts": "The first post is on its way.",
     "latest": "Latest posts",

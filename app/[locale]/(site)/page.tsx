@@ -30,23 +30,38 @@ export default async function HomePage({ params }: PageProps) {
   const t = createTranslator({ locale, messages: messagesFor(locale), namespace: "home" });
 
   return (
-    <div className="shell">
-      <section className="py-10 sm:py-14">
-        <p className="eyebrow text-primary">{t("eyebrow")}</p>
-        <h1 className="headline mt-6 text-[2.5rem] sm:text-6xl">
-          {/* 换行位置随语言而定，所以由字典里的 <br> 标签决定。 */}
-          {t.rich("headline", { br: () => <br /> })}
-        </h1>
-        {/* text-pretty：不让最后一行只剩「舍。」一个字。 */}
-        <p className="mt-6 max-w-[42em] text-pretty text-lg leading-[1.8] text-muted-foreground sm:text-xl">
-          {t("lead")}
-        </p>
-      </section>
+    <>
+      {/*
+        首屏氛围层要铺满视口宽度，所以挂在 .shell 外面的全宽容器上；内容本身仍在
+        .shell 里对齐。只在横向裁切（overflow-x-clip）：光晕要往下漫到头条卡片背后
+        才有氛围，overflow-hidden 会把它切在首屏那一小条高度里，几乎看不见。
+      */}
+      <div className="relative isolate overflow-x-clip">
+        <div aria-hidden className="hero-atmosphere" />
+        {/* 上下留白比原来收紧：原来首屏只露出头条大卡的一半。 */}
+        <section className="shell pb-8 pt-8 sm:pt-12">
+          <p className="eyebrow text-primary">{t("eyebrow")}</p>
+          <h1 className="headline mt-6 text-[2.5rem] sm:text-6xl">
+            {/* 换行位置随语言而定，所以由字典里的 <br> 标签决定。 */}
+            {t.rich("headline", {
+              br: () => <br />,
+              hl: (chunks) => <span className="boundary-mark">{chunks}</span>,
+            })}
+          </h1>
+          {/* text-pretty：不让最后一行只剩「舍。」一个字。 */}
+          <p className="mt-6 max-w-[42em] text-pretty text-lg leading-[1.8] text-muted-foreground sm:text-xl">
+            {t("lead")}
+          </p>
+        </section>
+      </div>
 
-      <Suspense fallback={<HomeFeedSkeleton locale={locale} />}>
-        <HomeFeed locale={locale} />
-      </Suspense>
-    </div>
+      {/* relative：让文章区排在氛围层之后绘制，光晕只衬在卡片间隙，不盖到卡片上。 */}
+      <div className="shell relative">
+        <Suspense fallback={<HomeFeedSkeleton locale={locale} />}>
+          <HomeFeed locale={locale} />
+        </Suspense>
+      </div>
+    </>
   );
 }
 
