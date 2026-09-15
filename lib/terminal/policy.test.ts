@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isExplicitlyAllowedHost, isPrivateAddress, normalizeHostKeyFingerprint } from "./policy";
+import {
+  isExplicitlyAllowedHost,
+  isPrivateAddress,
+  normalizeHostKeyFingerprint,
+  normalizeTerminalUploadName,
+} from "./policy";
 
 test("private and metadata addresses are blocked", () => {
   for (const address of [
@@ -23,4 +28,12 @@ test("host allowlist is exact and case-insensitive", () => {
 
 test("host key fingerprints accept OpenSSH notation", () => {
   assert.equal(normalizeHostKeyFingerprint("SHA256:abc123=="), "abc123");
+});
+
+test("terminal upload filenames are safe remote basenames", () => {
+  assert.equal(normalizeTerminalUploadName(" report.txt "), "report.txt");
+  assert.equal(normalizeTerminalUploadName("../../secret.txt"), ".._.._secret.txt");
+  assert.equal(normalizeTerminalUploadName("folder\\file.txt"), "folder_file.txt");
+  assert.equal(normalizeTerminalUploadName("."), null);
+  assert.equal(normalizeTerminalUploadName("a".repeat(241)), null);
 });

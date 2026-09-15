@@ -3,11 +3,12 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { EventEmitter } from "node:events";
-import { Client, type ClientChannel } from "ssh2";
+import { Client, type ClientChannel, type SFTPWrapper } from "ssh2";
 import {
   isExplicitlyAllowedHost,
   isPrivateAddress,
   normalizeHostKeyFingerprint,
+  normalizeTerminalUploadName,
 } from "@/lib/terminal/policy";
 
 const CONNECT_TIMEOUT_MS = 15_000;
@@ -49,6 +50,7 @@ type TerminalSession = {
   historyBytes: number;
   nextEventId: number;
   closed: boolean;
+  uploading: boolean;
   idleTimer: NodeJS.Timeout;
   lifetimeTimer: NodeJS.Timeout;
 };
@@ -213,6 +215,7 @@ export async function createTerminalSession(ownerId: string, input: CreateTermin
     historyBytes: 0,
     nextEventId: 1,
     closed: false,
+    uploading: false,
     idleTimer: placeholder,
     lifetimeTimer: placeholder,
   };
@@ -262,6 +265,49 @@ export function resizeTerminalSession(id: string, ownerId: string, cols: number,
   if (session.closed) throw new WebSshError("SESSION_CLOSED", "SSH 连接已经关闭。", 409);
   touch(session);
   session.stream.setWindow(rows, cols, 0, 0);
+}
+
+export async function uploadTerminalFile(id: string, ownerId: string, filename: string, data: Buffer) {
+  const session = requireOwnedSession(id, ownerId);
+  if (session.closed) throw new WebSshError("SESSION_CLOSED", "SSH 连接已经关闭。", 409);
+  if (session.uploading) throw new WebSshError("UPLOAD_IN_PROGRESS", "已有文件正在上传，请稍后重试。", 409);
+  const safeName = normalizeTerminalUploadName(filename);
+  if (!safeName) throw new WebSshError("INVALID_FILENAME", "文件名无效或过长。", 400);
+  if (data.length === 0) throw new WebSshError("EMPTY_FILE", "不能上传空文件。", 400);
+
+  session.uploading = true;
+  touch(session);
+  let sftp: SFTPWrapper | undefined;
+  try {
+    sftp = await new Promise<SFTPWrapper>((resolve, reject) => {
+      session.client.sftp((error, channel) => error ? reject(error) : resolve(channel));
+    });
+    const channel = sftp;
+    const home = await new Promise<string>((resolve, reject) => {
+      channel.realpath(".", (error, remotePath) => error ? reject(error) : resolve(remotePath));
+    });
+    const remotePath = `${home.replace(/\/+$/, "")}/${safeName}`;
+    const exists = await new Promise<boolean>((resolve, reject) => {
+      channel.lstat(remotePath, (error) => {
+        if (!error) return resolve(true);
+        if ((error as Error & { code?: number }).code === 2) return resolve(false);
+        reject(error);
+      });
+    });
+    if (exists) throw new WebSshError("FILE_EXISTS", `远端已存在同名文件：${remotePath}`, 409);
+    await new Promise<void>((resolve, reject) => {
+      channel.writeFile(remotePath, data, { flag: "wx", mode: 0o600 }, (error) => error ? reject(error) : resolve());
+    });
+    touch(session);
+    return { path: remotePath, bytes: data.length };
+  } catch (error) {
+    if (error instanceof WebSshError) throw error;
+    const message = error instanceof Error ? error.message : "SFTP 上传失败。";
+    throw new WebSshError("SFTP_UPLOAD_FAILED", `SFTP 上传失败：${message}`, 502);
+  } finally {
+    sftp?.end();
+    session.uploading = false;
+  }
 }
 
 export function closeTerminalSession(id: string, ownerId: string, message = "终端已由用户关闭。") {

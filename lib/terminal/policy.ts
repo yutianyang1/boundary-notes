@@ -42,3 +42,11 @@ export function isPrivateAddress(address: string) {
 export function normalizeHostKeyFingerprint(value: string) {
   return value.trim().replace(/^SHA256:/i, "").replace(/=+$/, "");
 }
+
+export function normalizeTerminalUploadName(value: string) {
+  const normalized = value.normalize("NFC").trim();
+  if (!normalized || normalized === "." || normalized === "..") return null;
+  const safe = normalized.replace(/[\u0000-\u001f\u007f/\\]/g, "_");
+  if (Buffer.byteLength(safe, "utf8") > 240) return null;
+  return safe;
+}
