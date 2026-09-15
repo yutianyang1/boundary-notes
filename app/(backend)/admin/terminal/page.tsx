@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { TerminalConsole } from "@/components/admin/terminal-console";
 import { isWebSshEnabled } from "@/lib/features";
 import { requireAdmin } from "@/lib/auth/permissions";
@@ -6,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/permissions";
 export const metadata = { title: "SSH 终端" };
 
 export default async function AdminTerminalPage() {
+  await connection();
   if (!isWebSshEnabled()) notFound();
   await requireAdmin();
 
