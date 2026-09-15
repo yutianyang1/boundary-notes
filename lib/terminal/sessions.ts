@@ -21,7 +21,8 @@ const MAX_HISTORY_BYTES = 1_000_000;
 const MAX_INPUT_REORDER_WINDOW = 64;
 
 export type TerminalEvent =
-  | { type: "data"; data: string }
+  // sshEcho：服务端把输入写进 SSH 到收到这段输出的毫秒数，只在有待回显的输入时带上。
+  | { type: "data"; data: string; sshEcho?: number }
   | { type: "exit"; message: string };
 export type StoredTerminalEvent = { id: number; event: TerminalEvent };
 
@@ -52,6 +53,7 @@ type TerminalSession = {
   nextEventId: number;
   nextInputSequence: number;
   pendingInputs: Map<number, string>;
+  inputWrittenAt: number | null;
   closed: boolean;
   uploading: boolean;
   idleTimer: NodeJS.Timeout;
@@ -222,6 +224,7 @@ export async function createTerminalSession(ownerId: string, input: CreateTermin
     nextEventId: 1,
     nextInputSequence: 0,
     pendingInputs: new Map(),
+    inputWrittenAt: null,
     closed: false,
     uploading: false,
     idleTimer: placeholder,
@@ -232,14 +235,18 @@ export async function createTerminalSession(ownerId: string, input: CreateTermin
   session.lifetimeTimer = setTimeout(() => close(session, "终端已达到最长连接时间。"), MAX_LIFETIME_MS);
   session.lifetimeTimer.unref();
 
-  stream.on("data", (chunk: Buffer) => {
+  const onOutput = (chunk: Buffer) => {
     touch(session);
-    emit(session, { type: "data", data: chunk.toString("base64") });
-  });
-  stream.stderr.on("data", (chunk: Buffer) => {
-    touch(session);
-    emit(session, { type: "data", data: chunk.toString("base64") });
-  });
+    const writtenAt = session.inputWrittenAt;
+    session.inputWrittenAt = null;
+    emit(session, {
+      type: "data",
+      data: chunk.toString("base64"),
+      ...(writtenAt === null ? {} : { sshEcho: Math.round((performance.now() - writtenAt) * 10) / 10 }),
+    });
+  };
+  stream.on("data", onOutput);
+  stream.stderr.on("data", onOutput);
   stream.once("close", () => close(session, "SSH 连接已关闭。"));
   client.once("error", (error) => close(session, `SSH 错误：${error.message}`));
   client.once("close", () => close(session, "SSH 连接已断开。"));
@@ -273,7 +280,10 @@ export function writeTerminalSession(id: string, ownerId: string, data: string, 
   touch(session);
   while (session.pendingInputs.has(session.nextInputSequence)) {
     const next = session.pendingInputs.get(session.nextInputSequence);
-    if (next) session.stream.write(next);
+    if (next) {
+      session.stream.write(next);
+      session.inputWrittenAt ??= performance.now();
+    }
     session.pendingInputs.delete(session.nextInputSequence);
     session.nextInputSequence += 1;
   }

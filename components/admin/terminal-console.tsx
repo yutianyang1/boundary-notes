@@ -7,20 +7,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { parseServerTiming, percentile } from "@/lib/terminal/latency";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "closed";
-type ServerEvent = { type: "data"; data: string } | { type: "exit"; message: string };
+type ServerEvent = { type: "data"; data: string; sshEcho?: number } | { type: "exit"; message: string };
 type WindowRect = { x: number; y: number; width: number; height: number };
 type ResizeDirection = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 const MAX_UPLOAD_BYTES = 24 * 1024 * 1024;
+const MAX_UPLOAD_FILES = 5;
 const LATENCY_WINDOW = 200;
 const LATENCY_REPORT_EVERY = 50;
 const MAX_ECHO_SAMPLE_MS = 2_000;
 
 /**
  * 按键延迟采样（毫秒）。echo：发出输入到收到下一段输出；request：输入请求往返；
- * auth / server：服务端 Server-Timing 里的鉴权耗时和总耗时。
+ * auth / server：服务端 Server-Timing 里的鉴权耗时和总耗时；ssh：服务端写入 SSH 到收到输出。
+ * echo 减去 ssh 和 request 的去程，剩下的就是输出从服务端推到浏览器的时间。
  */
-type LatencySamples = { echo: number[]; request: number[]; auth: number[]; server: number[]; inputs: number };
+type LatencySamples = { echo: number[]; ssh: number[]; request: number[]; auth: number[]; server: number[]; inputs: number };
 
 function pushSample(samples: number[], value: number) {
   if (!Number.isFinite(value)) return;
@@ -29,7 +31,7 @@ function pushSample(samples: number[], value: number) {
 }
 
 function reportLatency(stats: LatencySamples) {
-  const rows = Object.fromEntries((["echo", "request", "auth", "server"] as const).map((key) => [key, {
+  const rows = Object.fromEntries((["echo", "ssh", "request", "auth", "server"] as const).map((key) => [key, {
     P50: Math.round(percentile(stats[key], 50) * 10) / 10,
     P95: Math.round(percentile(stats[key], 95) * 10) / 10,
     samples: stats[key].length,
@@ -37,7 +39,7 @@ function reportLatency(stats: LatencySamples) {
   console.info("[terminal] 按键延迟（毫秒，最近 %d 次）", LATENCY_WINDOW);
   console.table(rows);
 }
-const MAX_UPLOAD_FILES = 5;
+
 const RESIZE_HANDLES: Array<{ direction: ResizeDirection; className: string }> = [
   { direction: "n", className: "top-0 left-3 right-3 h-1.5 cursor-n-resize" },
   { direction: "ne", className: "top-0 right-0 size-3 cursor-ne-resize" },
@@ -75,7 +77,7 @@ export function TerminalConsole() {
   const inputRef = useRef("");
   const inputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputSequenceRef = useRef(0);
-  const latencyRef = useRef<LatencySamples>({ echo: [], request: [], auth: [], server: [], inputs: 0 });
+  const latencyRef = useRef<LatencySamples>({ echo: [], ssh: [], request: [], auth: [], server: [], inputs: 0 });
   const echoStartRef = useRef<number | null>(null);
   const resizeFrameRef = useRef<number | null>(null);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -450,6 +452,9 @@ export function TerminalConsole() {
             echoStartRef.current = null;
             // 不回显的输入（如密码）会一直挂着起点，隔很久才配上输出，这种样本丢掉。
             if (elapsed <= MAX_ECHO_SAMPLE_MS) pushSample(latencyRef.current.echo, elapsed);
+          }
+          if (serverEvent.sshEcho !== undefined && serverEvent.sshEcho <= MAX_ECHO_SAMPLE_MS) {
+            pushSample(latencyRef.current.ssh, serverEvent.sshEcho);
           }
           const binary = atob(serverEvent.data);
           const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
