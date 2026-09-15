@@ -12,6 +12,8 @@ import {
   saveAppearance,
   saveBackgroundImage,
 } from "@/components/admin/terminal-appearance-store";
+import { deleteConnection, saveConnection, useSavedConnections } from "@/components/admin/terminal-connection-store";
+import { TerminalSavedConnections } from "@/components/admin/terminal-saved-connections";
 import {
   DEFAULT_APPEARANCE,
   MAX_BACKGROUND_IMAGE_BYTES,
@@ -19,6 +21,7 @@ import {
   terminalTheme,
   type TerminalAppearance,
 } from "@/lib/terminal/appearance";
+import { connectionKey, type AuthMethod, type SavedConnection } from "@/lib/terminal/saved-connections";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "closed";
 type ServerEvent = { type: "data"; data: string } | { type: "exit"; message: string };
@@ -37,6 +40,20 @@ const RESIZE_HANDLES: Array<{ direction: ResizeDirection; className: string }> =
   { direction: "w", className: "top-3 bottom-3 left-0 w-1.5 cursor-w-resize" },
   { direction: "nw", className: "top-0 left-0 size-3 cursor-nw-resize" },
 ];
+
+type ConnectionDraft = { host: string; port: string; username: string; authMethod: AuthMethod; fingerprint: string };
+
+const EMPTY_DRAFT: ConnectionDraft = { host: "", port: "22", username: "", authMethod: "password", fingerprint: "" };
+
+function draftFromSaved(connection: SavedConnection): ConnectionDraft {
+  return {
+    host: connection.host,
+    port: String(connection.port),
+    username: connection.username,
+    authMethod: connection.authMethod,
+    fingerprint: connection.fingerprint,
+  };
+}
 
 function defaultWindowRect(): WindowRect {
   const margin = window.innerWidth < 640 ? 8 : 24;
@@ -87,8 +104,14 @@ export function TerminalConsole() {
   const [state, setState] = useState<ConnectionState>("idle");
   const [message, setMessage] = useState("填写目标主机后连接。");
   const [connectionTitle, setConnectionTitle] = useState("Linux shell");
-  const [authMethod, setAuthMethod] = useState<"password" | "key">("password");
-  const [fingerprint, setFingerprint] = useState("");
+  const savedConnections = useSavedConnections();
+  // 还没动过表单时默认填最近用过的连接；一旦修改或选了别的连接，就以 draftOverride 为准。
+  const [draftOverride, setDraftOverride] = useState<ConnectionDraft | null>(null);
+  const draft = draftOverride ?? (savedConnections[0] ? draftFromSaved(savedConnections[0]) : EMPTY_DRAFT);
+  const { authMethod, fingerprint } = draft;
+  const [rememberThisConnection, setRememberThisConnection] = useState(true);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const privateKeyInputRef = useRef<HTMLTextAreaElement>(null);
   const [password, setPassword] = useState("");
   const [privateKey, setPrivateKey] = useState("");
   const [passphrase, setPassphrase] = useState("");
@@ -176,6 +199,8 @@ export function TerminalConsole() {
     setMaximized(false);
     setDragActive(false);
     setContextMenu(null);
+    // 服务端主动断开时调用方已经写好了原因，这里只处理用户自己关掉的情况。
+    if (notifyServer) setMessage("已断开连接。");
     setState("closed");
   }, []);
 
@@ -574,14 +599,14 @@ export function TerminalConsole() {
 
   async function connect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const submitted = draft;
     if (sessionIdRef.current) await disconnect();
     setState("connecting");
     setMessage("正在建立 SSH 连接…");
 
-    const host = String(form.get("host") ?? "");
-    const port = Number(form.get("port") ?? 22);
-    const username = String(form.get("username") ?? "");
+    const host = submitted.host.trim();
+    const port = Number(submitted.port);
+    const username = submitted.username;
     const response = await fetch("/api/admin/terminal/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -605,13 +630,19 @@ export function TerminalConsole() {
     }
     const payload = await response.json().catch(() => ({})) as { id?: string; error?: string; fingerprint?: string };
     if (!response.ok || !payload.id) {
-      if (payload.fingerprint) setFingerprint(payload.fingerprint);
+      if (payload.fingerprint) setDraftOverride({ ...submitted, fingerprint: payload.fingerprint });
       setState("closed");
       setMessage(payload.error ?? "SSH 连接失败。");
       return;
     }
 
     sessionIdRef.current = payload.id;
+    // 记下这次核对通过的指纹：下次从常用连接里选它，可以直接连上，不用再确认一遍。
+    const verifiedFingerprint = payload.fingerprint ?? submitted.fingerprint;
+    setDraftOverride({ ...submitted, host, fingerprint: verifiedFingerprint });
+    if (rememberThisConnection) {
+      saveConnection({ host, port, username, authMethod: submitted.authMethod, fingerprint: verifiedFingerprint, lastUsedAt: Date.now() });
+    }
     setConnectionTitle(`${username}@${host}${port === 22 ? "" : `:${port}`}`);
     setPassword("");
     setPrivateKey("");
@@ -625,6 +656,22 @@ export function TerminalConsole() {
 
   const connected = state === "connected";
   const busy = state === "connecting";
+  const draftKey = connectionKey({ host: draft.host, port: Number(draft.port), username: draft.username });
+  const selectedConnectionKey = savedConnections.some((connection) => connectionKey(connection) === draftKey) ? draftKey : "";
+
+  function updateDraft(patch: Partial<ConnectionDraft>) {
+    setDraftOverride({ ...draft, ...patch });
+  }
+
+  function pickConnection(connection: SavedConnection) {
+    setDraftOverride(draftFromSaved(connection));
+    setPassword("");
+    setPrivateKey("");
+    setPassphrase("");
+    requestAnimationFrame(() => {
+      (connection.authMethod === "key" ? privateKeyInputRef.current : passwordInputRef.current)?.focus();
+    });
+  }
 
   if (!connected) {
     return (
@@ -639,37 +686,50 @@ export function TerminalConsole() {
               </p>
             </div>
           </div>
+          <TerminalSavedConnections
+            connections={savedConnections}
+            selectedKey={selectedConnectionKey}
+            disabled={busy}
+            onPick={pickConnection}
+            onDelete={deleteConnection}
+            onClear={() => {
+              setDraftOverride(EMPTY_DRAFT);
+              setPassword("");
+              setPrivateKey("");
+              setPassphrase("");
+            }}
+          />
           <div className="grid gap-4">
             <label className="grid gap-1.5 text-sm font-medium">
               主机名或 IP
-              <input name="host" required disabled={busy} placeholder="server.example.com" className="h-10 rounded-md border bg-background px-3 font-mono text-sm" />
+              <input name="host" value={draft.host} onChange={(event) => updateDraft({ host: event.target.value })} required disabled={busy} placeholder="server.example.com" className="h-10 rounded-md border bg-background px-3 font-mono text-sm" />
             </label>
             <div className="grid grid-cols-[1fr_6rem] gap-3">
               <label className="grid gap-1.5 text-sm font-medium">
                 用户名
-                <input name="username" required disabled={busy} autoComplete="username" placeholder="root" className="h-10 rounded-md border bg-background px-3 font-mono text-sm" />
+                <input name="username" value={draft.username} onChange={(event) => updateDraft({ username: event.target.value })} required disabled={busy} autoComplete="username" placeholder="root" className="h-10 rounded-md border bg-background px-3 font-mono text-sm" />
               </label>
               <label className="grid gap-1.5 text-sm font-medium">
                 端口
-                <input name="port" type="number" min="1" max="65535" defaultValue="22" required disabled={busy} className="h-10 rounded-md border bg-background px-3 font-mono text-sm" />
+                <input name="port" type="number" min="1" max="65535" value={draft.port} onChange={(event) => updateDraft({ port: event.target.value })} required disabled={busy} className="h-10 rounded-md border bg-background px-3 font-mono text-sm" />
               </label>
             </div>
             <fieldset disabled={busy} className="grid gap-3">
               <legend className="mb-2 text-sm font-medium">登录方式</legend>
               <div className="flex gap-4 text-sm">
-                <label className="flex items-center gap-2"><input type="radio" checked={authMethod === "password"} onChange={() => setAuthMethod("password")} />密码</label>
-                <label className="flex items-center gap-2"><input type="radio" checked={authMethod === "key"} onChange={() => setAuthMethod("key")} />私钥</label>
+                <label className="flex items-center gap-2"><input type="radio" checked={authMethod === "password"} onChange={() => updateDraft({ authMethod: "password" })} />密码</label>
+                <label className="flex items-center gap-2"><input type="radio" checked={authMethod === "key"} onChange={() => updateDraft({ authMethod: "key" })} />私钥</label>
               </div>
               {authMethod === "password" ? (
                 <label className="grid gap-1.5 text-sm font-medium">
                   密码
-                  <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" className="h-10 rounded-md border bg-background px-3" />
+                  <input ref={passwordInputRef} type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" className="h-10 rounded-md border bg-background px-3" />
                 </label>
               ) : (
                 <>
                   <label className="grid gap-1.5 text-sm font-medium">
                     OpenSSH 私钥
-                    <textarea value={privateKey} onChange={(event) => setPrivateKey(event.target.value)} required rows={7} spellCheck={false} className="rounded-md border bg-background p-3 font-mono text-xs" />
+                    <textarea ref={privateKeyInputRef} value={privateKey} onChange={(event) => setPrivateKey(event.target.value)} required rows={7} spellCheck={false} className="rounded-md border bg-background p-3 font-mono text-xs" />
                   </label>
                   <label className="grid gap-1.5 text-sm font-medium">
                     私钥口令（可选）
@@ -680,7 +740,11 @@ export function TerminalConsole() {
             </fieldset>
             <label className="grid gap-1.5 text-sm font-medium">
               SHA256 主机指纹
-              <input value={fingerprint} onChange={(event) => setFingerprint(event.target.value)} disabled={busy} placeholder="首次连接后显示，核对再重试" className="h-10 rounded-md border bg-background px-3 font-mono text-xs" />
+              <input value={fingerprint} onChange={(event) => updateDraft({ fingerprint: event.target.value })} disabled={busy} placeholder="首次连接后显示，核对再重试" className="h-10 rounded-md border bg-background px-3 font-mono text-xs" />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input type="checkbox" checked={rememberThisConnection} onChange={(event) => setRememberThisConnection(event.target.checked)} disabled={busy} />
+              连接成功后保存到常用连接（不保存密码和私钥）
             </label>
             <button type="submit" disabled={busy} className="mt-1 h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
               {busy ? "连接中…" : "连接"}
