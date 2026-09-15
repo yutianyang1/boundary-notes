@@ -33,6 +33,21 @@ function defaultWindowRect(): WindowRect {
   };
 }
 
+const TITLE_BAR_HEIGHT = 44;
+/** 标题栏至少留这么宽在视窗里，窗口拖到边外也总能拖回来。 */
+const MIN_VISIBLE_TITLE_WIDTH = 160;
+/** 按下后移动超过这个距离才算拖动；单击、双击标题栏都不应该挪动或还原窗口。 */
+const DRAG_THRESHOLD = 4;
+/** 拖动时指针贴到视窗顶边这么近，松手就最大化。 */
+const SNAP_EDGE = 2;
+
+/** 像系统窗口一样允许部分移出视窗，只保证标题栏可见、可抓。 */
+function keepTitleBarReachable(rect: WindowRect): WindowRect {
+  const x = Math.min(window.innerWidth - MIN_VISIBLE_TITLE_WIDTH, Math.max(MIN_VISIBLE_TITLE_WIDTH - rect.width, rect.x));
+  const y = Math.min(window.innerHeight - TITLE_BAR_HEIGHT, Math.max(0, rect.y));
+  return x === rect.x && y === rect.y ? rect : { ...rect, x, y };
+}
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
@@ -66,6 +81,7 @@ export function TerminalConsole() {
   const [maximized, setMaximized] = useState(true);
   const [windowRect, setWindowRect] = useState<WindowRect>({ x: 24, y: 24, width: 960, height: 640 });
   const [windowInteracting, setWindowInteracting] = useState(false);
+  const [snapPreview, setSnapPreview] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; hasSelection: boolean } | null>(null);
@@ -245,16 +261,10 @@ export function TerminalConsole() {
     if (event.button !== 0 || minimized) return;
     event.preventDefault();
     const startPointer = { x: event.clientX, y: event.clientY };
+    const restoreRect = windowRect;
     let startRect = windowRect;
-    if (maximized) {
-      const restored = defaultWindowRect();
-      const horizontalRatio = Math.min(1, Math.max(0, event.clientX / window.innerWidth));
-      restored.x = Math.min(window.innerWidth - restored.width, Math.max(0, event.clientX - restored.width * horizontalRatio));
-      restored.y = 0;
-      startRect = restored;
-      setWindowRect(restored);
-      setMaximized(false);
-    }
+    let dragging = false;
+    let snapping = false;
     let latestRect = startRect;
     let paintFrame: number | null = null;
     const paintRect = () => {
@@ -270,12 +280,36 @@ export function TerminalConsole() {
       if (paintFrame === null) paintFrame = requestAnimationFrame(paintRect);
     };
     trackPointer("move", (moveEvent) => {
-      const x = Math.min(window.innerWidth - startRect.width, Math.max(0, startRect.x + moveEvent.clientX - startPointer.x));
-      const y = Math.min(window.innerHeight - startRect.height, Math.max(0, startRect.y + moveEvent.clientY - startPointer.y));
-      latestRect = { ...startRect, x, y };
+      const dx = moveEvent.clientX - startPointer.x;
+      const dy = moveEvent.clientY - startPointer.y;
+      if (!dragging) {
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        dragging = true;
+        if (maximized) {
+          // 从最大化拖出来：恢复上次的窗口大小，指针保持在标题栏里相同的横向比例处。
+          const ratio = Math.min(1, Math.max(0, startPointer.x / window.innerWidth));
+          startRect = { ...restoreRect, x: startPointer.x - restoreRect.width * ratio, y: 0 };
+          setWindowRect(startRect);
+          setMaximized(false);
+        }
+      }
+      latestRect = keepTitleBarReachable({ ...startRect, x: startRect.x + dx, y: startRect.y + dy });
+      const nextSnapping = moveEvent.clientY <= SNAP_EDGE;
+      if (nextSnapping !== snapping) {
+        snapping = nextSnapping;
+        setSnapPreview(nextSnapping);
+      }
       schedulePaint();
     }, () => {
       if (paintFrame !== null) cancelAnimationFrame(paintFrame);
+      if (!dragging) return;
+      if (snapping) {
+        // 贴顶松手最大化；还原时回到拖动前的位置，而不是贴在顶边的那个位置。
+        setSnapPreview(false);
+        setWindowRect(keepTitleBarReachable(restoreRect));
+        setMaximized(true);
+        return;
+      }
       paintRect();
       setWindowRect(latestRect);
     });
@@ -307,10 +341,11 @@ export function TerminalConsole() {
       const dx = moveEvent.clientX - startPointer.x;
       const dy = moveEvent.clientY - startPointer.y;
       let { x, y, width, height } = startRect;
-      if (direction.includes("e")) width = Math.min(window.innerWidth - x, Math.max(minWidth, startRect.width + dx));
-      if (direction.includes("s")) height = Math.min(window.innerHeight - y, Math.max(minHeight, startRect.height + dy));
+      // 指针本身出不了视窗，边框自然跟着停在视窗边上；窗口已部分移出视窗时也不强行拉回。
+      if (direction.includes("e")) width = Math.max(minWidth, startRect.width + dx);
+      if (direction.includes("s")) height = Math.max(minHeight, startRect.height + dy);
       if (direction.includes("w")) {
-        x = Math.min(startRect.x + startRect.width - minWidth, Math.max(0, startRect.x + dx));
+        x = Math.min(startRect.x + startRect.width - minWidth, startRect.x + dx);
         width = startRect.width + startRect.x - x;
       }
       if (direction.includes("n")) {
@@ -327,6 +362,13 @@ export function TerminalConsole() {
   }, [maximized, minimized, trackPointer, windowRect]);
 
   useEffect(() => () => { void disconnect(); }, [disconnect]);
+
+  // 浏览器窗口缩小后，把跑到视窗外的终端窗口的标题栏拉回可见范围。
+  useEffect(() => {
+    const onResize = () => setWindowRect((rect) => keepTitleBarReachable(rect));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     if (state !== "connected" || !mountRef.current || !sessionIdRef.current) return;
@@ -688,6 +730,10 @@ export function TerminalConsole() {
           />
         )) : null}
       </section>
+
+      {snapPreview ? (
+        <div aria-hidden="true" className="pointer-events-none fixed inset-1.5 z-[99] rounded-lg border-2 border-indigo-400/70 bg-indigo-400/10 backdrop-blur-[1px] motion-safe:animate-[overlay-in_120ms_ease-out]" />
+      ) : null}
 
       {contextMenu ? (
         <div
