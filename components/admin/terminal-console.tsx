@@ -48,7 +48,7 @@ export function TerminalConsole() {
   const eventsRef = useRef<EventSource | null>(null);
   const inputRef = useRef("");
   const inputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputSendingRef = useRef(false);
+  const inputSequenceRef = useRef(0);
   const resizeFrameRef = useRef<number | null>(null);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastResizeRef = useRef("");
@@ -70,8 +70,8 @@ export function TerminalConsole() {
   const [uploading, setUploading] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; hasSelection: boolean } | null>(null);
 
-  const postAction = useCallback(async (body: object) => {
-    const id = sessionIdRef.current;
+  const postAction = useCallback(async (body: object, sessionId = sessionIdRef.current) => {
+    const id = sessionId;
     if (!id) return;
     const response = await fetch(`/api/admin/terminal/sessions/${encodeURIComponent(id)}`, {
       method: "POST",
@@ -81,21 +81,24 @@ export function TerminalConsole() {
     if (!response.ok) throw new Error("终端操作请求失败。");
   }, []);
 
-  const flushInput = useCallback(function drainInput() {
+  const flushInput = useCallback(() => {
     inputTimerRef.current = null;
-    if (inputSendingRef.current) return;
     const data = inputRef.current;
-    if (!data || !sessionIdRef.current) return;
+    const sessionId = sessionIdRef.current;
+    if (!data || !sessionId) return;
     inputRef.current = "";
-    inputSendingRef.current = true;
-    void postAction({ type: "input", data })
-      .catch(() => setMessage("终端输入发送失败，请检查连接。"))
-      .finally(() => {
-        inputSendingRef.current = false;
-        if (sessionIdRef.current && inputRef.current && !inputTimerRef.current) {
-          inputTimerRef.current = setTimeout(drainInput, 0);
+    const sequence = inputSequenceRef.current++;
+    const send = (attempt: number) => {
+      if (sessionIdRef.current !== sessionId) return;
+      void postAction({ type: "input", data, sequence }, sessionId).catch(() => {
+        if (attempt < 2 && sessionIdRef.current === sessionId) {
+          setTimeout(() => send(attempt + 1), 80 * (attempt + 1));
+          return;
         }
+        if (sessionIdRef.current === sessionId) setMessage("终端输入传输中断，请重新连接。");
       });
+    };
+    send(0);
   }, [postAction]);
 
   const scheduleTerminalResize = useCallback((terminal: Terminal) => {
@@ -118,6 +121,7 @@ export function TerminalConsole() {
     if (inputTimerRef.current) clearTimeout(inputTimerRef.current);
     inputTimerRef.current = null;
     inputRef.current = "";
+    inputSequenceRef.current = 0;
     if (resizeFrameRef.current !== null) cancelAnimationFrame(resizeFrameRef.current);
     resizeFrameRef.current = null;
     if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);

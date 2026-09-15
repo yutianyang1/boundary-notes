@@ -18,6 +18,7 @@ const CLOSED_RETENTION_MS = 60_000;
 const MAX_GLOBAL_SESSIONS = 8;
 const MAX_USER_SESSIONS = 2;
 const MAX_HISTORY_BYTES = 1_000_000;
+const MAX_INPUT_REORDER_WINDOW = 64;
 
 export type TerminalEvent =
   | { type: "data"; data: string }
@@ -49,6 +50,8 @@ type TerminalSession = {
   history: StoredTerminalEvent[];
   historyBytes: number;
   nextEventId: number;
+  nextInputSequence: number;
+  pendingInputs: Map<number, string>;
   closed: boolean;
   uploading: boolean;
   idleTimer: NodeJS.Timeout;
@@ -214,6 +217,8 @@ export async function createTerminalSession(ownerId: string, input: CreateTermin
     history: [],
     historyBytes: 0,
     nextEventId: 1,
+    nextInputSequence: 0,
+    pendingInputs: new Map(),
     closed: false,
     uploading: false,
     idleTimer: placeholder,
@@ -252,12 +257,23 @@ export function subscribeTerminalSession(
   return () => session.events.off("event", listener);
 }
 
-export function writeTerminalSession(id: string, ownerId: string, data: string) {
+export function writeTerminalSession(id: string, ownerId: string, data: string, sequence: number) {
   const session = requireOwnedSession(id, ownerId);
   if (session.closed) throw new WebSshError("SESSION_CLOSED", "SSH 连接已经关闭。", 409);
   if (Buffer.byteLength(data) > 16_384) throw new WebSshError("INPUT_TOO_LARGE", "单次终端输入过长。", 413);
+  if (sequence < session.nextInputSequence) return;
+  if (sequence - session.nextInputSequence > MAX_INPUT_REORDER_WINDOW) {
+    throw new WebSshError("INPUT_SEQUENCE_GAP", "终端输入序列间隔过大，请重新连接。", 409);
+  }
+  if (session.pendingInputs.has(sequence)) return;
+  session.pendingInputs.set(sequence, data);
   touch(session);
-  session.stream.write(data);
+  while (session.pendingInputs.has(session.nextInputSequence)) {
+    const next = session.pendingInputs.get(session.nextInputSequence);
+    if (next) session.stream.write(next);
+    session.pendingInputs.delete(session.nextInputSequence);
+    session.nextInputSequence += 1;
+  }
 }
 
 export function resizeTerminalSession(id: string, ownerId: string, cols: number, rows: number) {

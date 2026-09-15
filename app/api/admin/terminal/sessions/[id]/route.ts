@@ -13,7 +13,11 @@ import {
 } from "@/lib/terminal/sessions";
 
 const actionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("input"), data: z.string().max(16_384) }).strict(),
+  z.object({
+    type: z.literal("input"),
+    data: z.string().max(16_384),
+    sequence: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  }).strict(),
   z.object({
     type: z.literal("resize"),
     cols: z.number().int().min(20).max(500),
@@ -42,7 +46,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!parsed.success) return NextResponse.json({ error: "终端操作参数不合法。" }, { status: 400 });
   const { id } = await params;
   try {
-    if (parsed.data.type === "input") writeTerminalSession(id, session.user.id, parsed.data.data);
+    if (parsed.data.type === "input") {
+      writeTerminalSession(id, session.user.id, parsed.data.data, parsed.data.sequence);
+    }
     else resizeTerminalSession(id, session.user.id, parsed.data.cols, parsed.data.rows);
     return new NextResponse(null, { status: 204 });
   } catch (error) {
