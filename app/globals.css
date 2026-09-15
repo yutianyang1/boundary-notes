@@ -948,3 +948,11 @@ button {
   }
   .home-card:hover { transform: none !important; }
 }
+
+/*
+ * Web 终端：背景（纯色或图片）由外层容器画，xterm 自带样式把视口涂成 #000 会整块盖住它。
+ * 只作用于终端挂载点，选择器比 xterm.css 的 `.xterm .xterm-viewport` 多一层，不靠 !important。
+ */
+.terminal-surface .xterm .xterm-viewport {
+  background-color: transparent;
+}

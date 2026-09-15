@@ -2,8 +2,23 @@
 
 import type { FitAddon } from "@xterm/addon-fit";
 import type { Terminal } from "@xterm/xterm";
-import { ClipboardPaste, Copy, Eraser, Maximize2, Minimize2, Minus, MousePointer2, SquareTerminal, UploadCloud, X } from "lucide-react";
+import { ClipboardPaste, Copy, Eraser, Maximize2, Minimize2, Minus, MousePointer2, Palette, SquareTerminal, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TerminalAppearancePanel } from "@/components/admin/terminal-appearance-panel";
+import {
+  clearBackgroundImage,
+  loadAppearance,
+  loadBackgroundImage,
+  saveAppearance,
+  saveBackgroundImage,
+} from "@/components/admin/terminal-appearance-store";
+import {
+  DEFAULT_APPEARANCE,
+  MAX_BACKGROUND_IMAGE_BYTES,
+  normalizeAppearance,
+  terminalTheme,
+  type TerminalAppearance,
+} from "@/lib/terminal/appearance";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "closed";
 type ServerEvent = { type: "data"; data: string } | { type: "exit"; message: string };
@@ -85,6 +100,14 @@ export function TerminalConsole() {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; hasSelection: boolean } | null>(null);
+  // 背景设置只影响连接后的终端窗口，首屏渲染的是连接表单，所以初始化时直接读本地存储不会造成水合不一致。
+  const [appearance, setAppearance] = useState<TerminalAppearance>(() => (
+    typeof window === "undefined" ? DEFAULT_APPEARANCE : loadAppearance()
+  ));
+  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [appearanceNotice, setAppearanceNotice] = useState("");
+  const themeRef = useRef(terminalTheme(appearance, false));
 
   const postAction = useCallback(async (body: object, sessionId = sessionIdRef.current) => {
     const id = sessionId;
@@ -363,6 +386,62 @@ export function TerminalConsole() {
 
   useEffect(() => () => { void disconnect(); }, [disconnect]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void loadBackgroundImage().then((image) => {
+      if (!cancelled && image) setBackgroundUrl(URL.createObjectURL(image));
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => () => { if (backgroundUrl) URL.revokeObjectURL(backgroundUrl); }, [backgroundUrl]);
+
+  useEffect(() => {
+    const theme = terminalTheme(appearance, Boolean(backgroundUrl));
+    themeRef.current = theme;
+    if (terminalRef.current) terminalRef.current.options.theme = theme;
+  }, [appearance, backgroundUrl]);
+
+  const updateAppearance = useCallback((patch: Partial<TerminalAppearance>) => {
+    setAppearance((current) => {
+      const next = normalizeAppearance({ ...current, ...patch });
+      saveAppearance(next);
+      return next;
+    });
+  }, []);
+
+  const pickBackgroundImage = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setAppearanceNotice("请选择图片文件。");
+      return;
+    }
+    if (file.size > MAX_BACKGROUND_IMAGE_BYTES) {
+      setAppearanceNotice("图片超过 20 MiB，请换一张小一点的。");
+      return;
+    }
+    try {
+      // 先确认浏览器解得开（比如部分浏览器不支持 HEIC），免得存下一张显示不出来的图。
+      (await createImageBitmap(file)).close();
+    } catch {
+      setAppearanceNotice("浏览器无法显示这张图片，请换 JPG、PNG 或 WebP。");
+      return;
+    }
+    setBackgroundUrl(URL.createObjectURL(file));
+    const saved = await saveBackgroundImage(file);
+    setAppearanceNotice(saved ? "" : "浏览器没有允许保存图片，刷新页面后需要重新选择。");
+  }, []);
+
+  const removeBackgroundImage = useCallback(() => {
+    setBackgroundUrl(null);
+    setAppearanceNotice("");
+    void clearBackgroundImage();
+  }, []);
+
+  const closeAppearance = useCallback(() => {
+    setAppearanceOpen(false);
+    terminalRef.current?.focus();
+  }, []);
+
   // 浏览器窗口缩小后，把跑到视窗外的终端窗口的标题栏拉回可见范围。
   useEffect(() => {
     const onResize = () => setWindowRect((rect) => keepTitleBarReachable(rect));
@@ -386,12 +465,9 @@ export function TerminalConsole() {
         fontSize: 14,
         lineHeight: 1.15,
         scrollback: 5_000,
-        theme: {
-          background: "#070b14",
-          foreground: "#e5e7eb",
-          cursor: "#a5b4fc",
-          selectionBackground: "#334155",
-        },
+        // 背景由外层容器画（纯色或图片），终端本身透明。
+        allowTransparency: true,
+        theme: themeRef.current,
       });
       const fitAddon = new fit.FitAddon();
       terminal.loadAddon(fitAddon);
@@ -648,6 +724,20 @@ export function TerminalConsole() {
             </span>
           </div>
           <div className="flex h-full shrink-0 items-stretch" onPointerDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              data-appearance-toggle
+              aria-label="终端背景"
+              title="终端背景"
+              aria-expanded={appearanceOpen}
+              onClick={() => {
+                setMinimized(false);
+                setAppearanceOpen((open) => !open);
+              }}
+              className={`grid w-12 place-items-center hover:bg-white/10 hover:text-white ${appearanceOpen ? "bg-white/10 text-white" : "text-slate-300"}`}
+            >
+              <Palette className="size-4" />
+            </button>
             <button type="button" aria-label="最小化" title="最小化" onClick={() => setMinimized(true)} className="grid w-12 place-items-center text-slate-300 hover:bg-white/10 hover:text-white">
               <Minus className="size-4" />
             </button>
@@ -673,13 +763,14 @@ export function TerminalConsole() {
           </div>
           </header>
           <div
-            className={minimized ? "hidden" : "relative min-h-0 flex-1 bg-[#070b14] p-2"}
+            className={minimized ? "hidden" : "relative min-h-0 flex-1 p-2"}
+            style={{ backgroundColor: appearance.color }}
             onContextMenu={(event) => {
               event.preventDefault();
               terminalRef.current?.focus();
               setContextMenu({
                 x: Math.max(8, Math.min(event.clientX, window.innerWidth - 216)),
-                y: Math.max(8, Math.min(event.clientY, window.innerHeight - 232)),
+                y: Math.max(8, Math.min(event.clientY, window.innerHeight - 272)),
                 hasSelection: terminalRef.current?.hasSelection() ?? false,
               });
             }}
@@ -699,7 +790,41 @@ export function TerminalConsole() {
               void uploadFiles(event.dataTransfer.files);
             }}
           >
-            <div ref={mountRef} className="h-full w-full" />
+            {backgroundUrl ? (
+              <>
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <div
+                    className="absolute"
+                    style={{
+                      // 模糊会把边缘羽化成半透明，往外多铺一圈再由外层裁掉。
+                      inset: -appearance.blur * 2,
+                      backgroundImage: `url("${backgroundUrl}")`,
+                      backgroundPosition: "center",
+                      backgroundRepeat: appearance.fit === "tile" ? "repeat" : "no-repeat",
+                      backgroundSize: appearance.fit === "tile" ? "auto" : appearance.fit,
+                      filter: appearance.blur ? `blur(${appearance.blur}px)` : undefined,
+                    }}
+                  />
+                </div>
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ backgroundColor: `rgb(0 0 0 / ${appearance.dim}%)` }} />
+              </>
+            ) : null}
+            <div ref={mountRef} className="terminal-surface relative h-full w-full" />
+            {appearanceOpen ? (
+              <TerminalAppearancePanel
+                appearance={appearance}
+                hasImage={Boolean(backgroundUrl)}
+                notice={appearanceNotice}
+                onChange={updateAppearance}
+                onPickImage={(file) => void pickBackgroundImage(file)}
+                onRemoveImage={removeBackgroundImage}
+                onReset={() => {
+                  updateAppearance(DEFAULT_APPEARANCE);
+                  removeBackgroundImage();
+                }}
+                onClose={closeAppearance}
+              />
+            ) : null}
             {dragActive ? (
               <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-lg border-2 border-dashed border-indigo-400 bg-indigo-950/90 text-center backdrop-blur-sm">
                 <div>
@@ -755,6 +880,9 @@ export function TerminalConsole() {
           <div className="my-1 border-t border-white/10" />
           <button type="button" role="menuitem" disabled={uploading} onClick={() => { setContextMenu(null); fileInputRef.current?.click(); }} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10 disabled:opacity-40">
             <UploadCloud className="size-4" /><span>上传文件到 ~/</span>
+          </button>
+          <button type="button" role="menuitem" onClick={() => { setContextMenu(null); setAppearanceOpen(true); }} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10">
+            <Palette className="size-4" /><span>终端背景…</span>
           </button>
           <button type="button" role="menuitem" onClick={() => { terminalRef.current?.clear(); setContextMenu(null); terminalRef.current?.focus(); }} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10">
             <Eraser className="size-4" /><span>清屏</span>
