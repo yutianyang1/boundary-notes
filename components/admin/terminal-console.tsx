@@ -4,6 +4,7 @@ import type { FitAddon } from "@xterm/addon-fit";
 import type { Terminal } from "@xterm/xterm";
 import { ClipboardPaste, Copy, Eraser, Maximize2, Minimize2, Minus, MousePointer2, SquareTerminal, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { parseServerTiming, percentile } from "@/lib/terminal/latency";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "closed";
 type ServerEvent = { type: "data"; data: string } | { type: "exit"; message: string };
@@ -11,6 +12,31 @@ type WindowRect = { x: number; y: number; width: number; height: number };
 type ResizeDirection = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
 const MAX_UPLOAD_BYTES = 24 * 1024 * 1024;
+const LATENCY_WINDOW = 200;
+const LATENCY_REPORT_EVERY = 50;
+const MAX_ECHO_SAMPLE_MS = 2_000;
+
+/**
+ * 按键延迟采样（毫秒）。echo：发出输入到收到下一段输出；request：输入请求往返；
+ * auth / server：服务端 Server-Timing 里的鉴权耗时和总耗时。
+ */
+type LatencySamples = { echo: number[]; request: number[]; auth: number[]; server: number[]; inputs: number };
+
+function pushSample(samples: number[], value: number) {
+  if (!Number.isFinite(value)) return;
+  samples.push(value);
+  if (samples.length > LATENCY_WINDOW) samples.shift();
+}
+
+function reportLatency(stats: LatencySamples) {
+  const rows = Object.fromEntries((["echo", "request", "auth", "server"] as const).map((key) => [key, {
+    P50: Math.round(percentile(stats[key], 50) * 10) / 10,
+    P95: Math.round(percentile(stats[key], 95) * 10) / 10,
+    samples: stats[key].length,
+  }]));
+  console.info("[terminal] 按键延迟（毫秒，最近 %d 次）", LATENCY_WINDOW);
+  console.table(rows);
+}
 const MAX_UPLOAD_FILES = 5;
 const RESIZE_HANDLES: Array<{ direction: ResizeDirection; className: string }> = [
   { direction: "n", className: "top-0 left-3 right-3 h-1.5 cursor-n-resize" },
@@ -49,6 +75,8 @@ export function TerminalConsole() {
   const inputRef = useRef("");
   const inputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputSequenceRef = useRef(0);
+  const latencyRef = useRef<LatencySamples>({ echo: [], request: [], auth: [], server: [], inputs: 0 });
+  const echoStartRef = useRef<number | null>(null);
   const resizeFrameRef = useRef<number | null>(null);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastResizeRef = useRef("");
@@ -79,6 +107,7 @@ export function TerminalConsole() {
       body: JSON.stringify(body),
     });
     if (!response.ok) throw new Error("终端操作请求失败。");
+    return response;
   }, []);
 
   const flushInput = useCallback(() => {
@@ -90,7 +119,17 @@ export function TerminalConsole() {
     const sequence = inputSequenceRef.current++;
     const send = (attempt: number) => {
       if (sessionIdRef.current !== sessionId) return;
-      void postAction({ type: "input", data, sequence }, sessionId).catch(() => {
+      const sentAt = performance.now();
+      if (echoStartRef.current === null) echoStartRef.current = sentAt;
+      void postAction({ type: "input", data, sequence }, sessionId).then((response) => {
+        const stats = latencyRef.current;
+        const timing = parseServerTiming(response?.headers.get("server-timing") ?? null);
+        pushSample(stats.request, performance.now() - sentAt);
+        pushSample(stats.auth, timing.auth);
+        pushSample(stats.server, timing.total);
+        stats.inputs += 1;
+        if (stats.inputs % LATENCY_REPORT_EVERY === 0) reportLatency(stats);
+      }).catch(() => {
         if (attempt < 2 && sessionIdRef.current === sessionId) {
           setTimeout(() => send(attempt + 1), 80 * (attempt + 1));
           return;
@@ -122,6 +161,7 @@ export function TerminalConsole() {
     inputTimerRef.current = null;
     inputRef.current = "";
     inputSequenceRef.current = 0;
+    echoStartRef.current = null;
     if (resizeFrameRef.current !== null) cancelAnimationFrame(resizeFrameRef.current);
     resizeFrameRef.current = null;
     if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
@@ -328,6 +368,13 @@ export function TerminalConsole() {
 
   useEffect(() => () => { void disconnect(); }, [disconnect]);
 
+  // 控制台里执行 terminalLatency() 随时打印当前统计，不必凑满 50 次输入。
+  useEffect(() => {
+    const target = window as typeof window & { terminalLatency?: () => void };
+    target.terminalLatency = () => reportLatency(latencyRef.current);
+    return () => { delete target.terminalLatency; };
+  }, []);
+
   useEffect(() => {
     if (state !== "connected" || !mountRef.current || !sessionIdRef.current) return;
 
@@ -398,6 +445,12 @@ export function TerminalConsole() {
       source.onmessage = (item) => {
         const serverEvent = JSON.parse(item.data) as ServerEvent;
         if (serverEvent.type === "data") {
+          if (echoStartRef.current !== null) {
+            const elapsed = performance.now() - echoStartRef.current;
+            echoStartRef.current = null;
+            // 不回显的输入（如密码）会一直挂着起点，隔很久才配上输出，这种样本丢掉。
+            if (elapsed <= MAX_ECHO_SAMPLE_MS) pushSample(latencyRef.current.echo, elapsed);
+          }
           const binary = atob(serverEvent.data);
           const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
           terminal.write(decoderRef.current.decode(bytes, { stream: true }));

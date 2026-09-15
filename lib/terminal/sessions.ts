@@ -169,6 +169,9 @@ export async function createTerminalSession(ownerId: string, input: CreateTermin
 
     client
       .once("ready", () => {
+        // ssh2 默认不关 Nagle：每个按键都是一个小包，会被攒着等上一个包的 ACK，
+        // 碰上远端的延迟确认就是几十毫秒一顿。交互式终端要像 OpenSSH 一样关掉它。
+        client.setNoDelay(true);
         client.shell({ term: "xterm-256color", cols: input.cols, rows: input.rows }, (error, channel) => {
           if (error) return finishError(error);
           if (settled) return channel.end();

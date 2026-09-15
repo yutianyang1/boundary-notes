@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { auditLogs } from "@/lib/db/schema";
 import { isWebSshEnabled } from "@/lib/features";
 import { isSameOriginRequest } from "@/lib/http/same-origin";
+import { formatServerTiming } from "@/lib/terminal/latency";
 import {
   closeTerminalSession,
   resizeTerminalSession,
@@ -40,9 +41,13 @@ function failure(error: unknown) {
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!isSameOriginRequest(request)) return NextResponse.json({ error: "请求来源不合法。" }, { status: 403 });
+  // 每段耗时放进 Server-Timing 头，浏览器端据此统计按键延迟花在哪（见 terminal-console）。
+  const started = performance.now();
   const session = await admin();
+  const authed = performance.now();
   if (!session) return NextResponse.json({ error: "没有访问权限。" }, { status: 403 });
   const parsed = actionSchema.safeParse(await request.json().catch(() => null));
+  const parsedAt = performance.now();
   if (!parsed.success) return NextResponse.json({ error: "终端操作参数不合法。" }, { status: 400 });
   const { id } = await params;
   try {
@@ -50,7 +55,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       writeTerminalSession(id, session.user.id, parsed.data.data, parsed.data.sequence);
     }
     else resizeTerminalSession(id, session.user.id, parsed.data.cols, parsed.data.rows);
-    return new NextResponse(null, { status: 204 });
+    const finished = performance.now();
+    return new NextResponse(null, {
+      status: 204,
+      headers: {
+        "Server-Timing": formatServerTiming([
+          { name: "auth", duration: authed - started },
+          { name: "parse", duration: parsedAt - authed },
+          { name: "write", duration: finished - parsedAt },
+          { name: "total", duration: finished - started },
+        ]),
+      },
+    });
   } catch (error) {
     return failure(error);
   }
