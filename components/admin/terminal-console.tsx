@@ -40,6 +40,7 @@ function formatBytes(bytes: number) {
 }
 
 export function TerminalConsole() {
+  const windowRef = useRef<HTMLElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -47,6 +48,10 @@ export function TerminalConsole() {
   const eventsRef = useRef<EventSource | null>(null);
   const inputRef = useRef("");
   const inputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputSendingRef = useRef(false);
+  const resizeFrameRef = useRef<number | null>(null);
+  const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastResizeRef = useRef("");
   const decoderRef = useRef(new TextDecoder());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<ConnectionState>("idle");
@@ -68,18 +73,41 @@ export function TerminalConsole() {
   const postAction = useCallback(async (body: object) => {
     const id = sessionIdRef.current;
     if (!id) return;
-    await fetch(`/api/admin/terminal/sessions/${encodeURIComponent(id)}`, {
+    const response = await fetch(`/api/admin/terminal/sessions/${encodeURIComponent(id)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!response.ok) throw new Error("终端操作请求失败。");
   }, []);
 
-  const flushInput = useCallback(() => {
+  const flushInput = useCallback(function drainInput() {
     inputTimerRef.current = null;
+    if (inputSendingRef.current) return;
     const data = inputRef.current;
+    if (!data || !sessionIdRef.current) return;
     inputRef.current = "";
-    if (data) void postAction({ type: "input", data });
+    inputSendingRef.current = true;
+    void postAction({ type: "input", data })
+      .catch(() => setMessage("终端输入发送失败，请检查连接。"))
+      .finally(() => {
+        inputSendingRef.current = false;
+        if (sessionIdRef.current && inputRef.current && !inputTimerRef.current) {
+          inputTimerRef.current = setTimeout(drainInput, 0);
+        }
+      });
+  }, [postAction]);
+
+  const scheduleTerminalResize = useCallback((terminal: Terminal) => {
+    if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+    resizeTimerRef.current = setTimeout(() => {
+      resizeTimerRef.current = null;
+      const size = `${terminal.cols}x${terminal.rows}`;
+      if (!sessionIdRef.current || size === lastResizeRef.current) return;
+      lastResizeRef.current = size;
+      void postAction({ type: "resize", cols: terminal.cols, rows: terminal.rows })
+        .catch(() => setMessage("终端尺寸同步失败，连接可能不稳定。"));
+    }, 150);
   }, [postAction]);
 
   const disconnect = useCallback(async (notifyServer = true) => {
@@ -90,6 +118,11 @@ export function TerminalConsole() {
     if (inputTimerRef.current) clearTimeout(inputTimerRef.current);
     inputTimerRef.current = null;
     inputRef.current = "";
+    if (resizeFrameRef.current !== null) cancelAnimationFrame(resizeFrameRef.current);
+    resizeFrameRef.current = null;
+    if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+    resizeTimerRef.current = null;
+    lastResizeRef.current = "";
     if (notifyServer && id) {
       await fetch(`/api/admin/terminal/sessions/${encodeURIComponent(id)}`, {
         method: "DELETE",
@@ -178,7 +211,11 @@ export function TerminalConsole() {
     }
   }, []);
 
-  const trackPointer = useCallback((cursor: string, onMove: (event: PointerEvent) => void) => {
+  const trackPointer = useCallback((
+    cursor: string,
+    onMove: (event: PointerEvent) => void,
+    onEnd?: () => void,
+  ) => {
     setWindowInteracting(true);
     const previousUserSelect = document.body.style.userSelect;
     const previousCursor = document.body.style.cursor;
@@ -191,6 +228,7 @@ export function TerminalConsole() {
       window.removeEventListener("blur", finish);
       document.body.style.userSelect = previousUserSelect;
       document.body.style.cursor = previousCursor;
+      onEnd?.();
       setWindowInteracting(false);
     };
     window.addEventListener("pointermove", onMove);
@@ -213,10 +251,29 @@ export function TerminalConsole() {
       setWindowRect(restored);
       setMaximized(false);
     }
+    let latestRect = startRect;
+    let paintFrame: number | null = null;
+    const paintRect = () => {
+      paintFrame = null;
+      const element = windowRef.current;
+      if (!element) return;
+      element.style.left = `${latestRect.x}px`;
+      element.style.top = `${latestRect.y}px`;
+      element.style.width = `${latestRect.width}px`;
+      element.style.height = `${latestRect.height}px`;
+    };
+    const schedulePaint = () => {
+      if (paintFrame === null) paintFrame = requestAnimationFrame(paintRect);
+    };
     trackPointer("move", (moveEvent) => {
       const x = Math.min(window.innerWidth - startRect.width, Math.max(0, startRect.x + moveEvent.clientX - startPointer.x));
       const y = Math.min(window.innerHeight - startRect.height, Math.max(0, startRect.y + moveEvent.clientY - startPointer.y));
-      setWindowRect({ ...startRect, x, y });
+      latestRect = { ...startRect, x, y };
+      schedulePaint();
+    }, () => {
+      if (paintFrame !== null) cancelAnimationFrame(paintFrame);
+      paintRect();
+      setWindowRect(latestRect);
     });
   }, [maximized, minimized, trackPointer, windowRect]);
 
@@ -228,6 +285,20 @@ export function TerminalConsole() {
     const startRect = windowRect;
     const minWidth = Math.min(480, window.innerWidth);
     const minHeight = Math.min(300, window.innerHeight);
+    let latestRect = startRect;
+    let paintFrame: number | null = null;
+    const paintRect = () => {
+      paintFrame = null;
+      const element = windowRef.current;
+      if (!element) return;
+      element.style.left = `${latestRect.x}px`;
+      element.style.top = `${latestRect.y}px`;
+      element.style.width = `${latestRect.width}px`;
+      element.style.height = `${latestRect.height}px`;
+    };
+    const schedulePaint = () => {
+      if (paintFrame === null) paintFrame = requestAnimationFrame(paintRect);
+    };
     trackPointer(getComputedStyle(event.currentTarget).cursor, (moveEvent) => {
       const dx = moveEvent.clientX - startPointer.x;
       const dy = moveEvent.clientY - startPointer.y;
@@ -242,7 +313,12 @@ export function TerminalConsole() {
         y = Math.min(startRect.y + startRect.height - minHeight, Math.max(0, startRect.y + dy));
         height = startRect.height + startRect.y - y;
       }
-      setWindowRect({ x, y, width, height });
+      latestRect = { x, y, width, height };
+      schedulePaint();
+    }, () => {
+      if (paintFrame !== null) cancelAnimationFrame(paintFrame);
+      paintRect();
+      setWindowRect(latestRect);
     });
   }, [maximized, minimized, trackPointer, windowRect]);
 
@@ -297,13 +373,18 @@ export function TerminalConsole() {
       inputDisposable = terminal.onData((data) => {
         if (!sessionIdRef.current) return;
         inputRef.current += data;
-        if (!inputTimerRef.current) inputTimerRef.current = setTimeout(flushInput, 12);
+        if (!inputTimerRef.current) inputTimerRef.current = setTimeout(flushInput, 0);
       });
 
       resizeObserver = new ResizeObserver(() => {
         if (!mountRef.current || mountRef.current.offsetWidth < 40 || mountRef.current.offsetHeight < 40) return;
-        fitAddon.fit();
-        if (sessionIdRef.current) void postAction({ type: "resize", cols: terminal.cols, rows: terminal.rows });
+        if (resizeFrameRef.current !== null) return;
+        resizeFrameRef.current = requestAnimationFrame(() => {
+          resizeFrameRef.current = null;
+          if (!mountRef.current || mountRef.current.offsetWidth < 40 || mountRef.current.offsetHeight < 40) return;
+          fitAddon.fit();
+          scheduleTerminalResize(terminal);
+        });
       });
       resizeObserver.observe(mountRef.current);
 
@@ -330,6 +411,10 @@ export function TerminalConsole() {
     return () => {
       disposed = true;
       resizeObserver?.disconnect();
+      if (resizeFrameRef.current !== null) cancelAnimationFrame(resizeFrameRef.current);
+      resizeFrameRef.current = null;
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+      resizeTimerRef.current = null;
       inputDisposable?.dispose();
       eventsRef.current?.close();
       eventsRef.current = null;
@@ -337,7 +422,7 @@ export function TerminalConsole() {
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [copySelection, disconnect, flushInput, pasteClipboard, postAction, state]);
+  }, [copySelection, disconnect, flushInput, pasteClipboard, scheduleTerminalResize, state]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -360,10 +445,10 @@ export function TerminalConsole() {
       if (!terminal || !mountRef.current || mountRef.current.offsetWidth < 40) return;
       fitRef.current?.fit();
       terminal.focus();
-      void postAction({ type: "resize", cols: terminal.cols, rows: terminal.rows });
+      scheduleTerminalResize(terminal);
     });
     return () => cancelAnimationFrame(frame);
-  }, [maximized, minimized, postAction, state]);
+  }, [maximized, minimized, scheduleTerminalResize, state]);
 
   async function connect(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -487,6 +572,7 @@ export function TerminalConsole() {
   return (
     <>
       <section
+        ref={windowRef}
         className={`fixed z-[100] flex overflow-hidden border border-slate-700 bg-[#070b14] text-slate-100 shadow-2xl ${windowInteracting ? "transition-none" : "transition-[inset,width,height,border-radius] duration-200"} ${
           minimized
             ? "right-4 bottom-4 h-11 w-[min(26rem,calc(100vw-2rem))] rounded-lg"
