@@ -5,7 +5,7 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  serverExternalPackages: ["pg", "isomorphic-mermaid"],
+  serverExternalPackages: ["pg", "isomorphic-mermaid", "ssh2"],
   outputFileTracingIncludes: {
     "/*": [
       "./node_modules/svgdom/fonts/**/*",

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/noto-sans-sc";
+import "@xterm/xterm/css/xterm.css";
 import "../globals.css";
 
 /**

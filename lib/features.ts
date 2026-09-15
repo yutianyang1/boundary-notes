@@ -6,3 +6,4 @@ export const isPublicRegistrationEnabled = () => enabled("PUBLIC_REGISTRATION_EN
 export const areCommentsEnabled = () => enabled("COMMENTS_ENABLED");
 export const isStaffMfaEnforced = () => enabled("STAFF_MFA_ENFORCED");
 export const isSubscriptionEnabled = () => enabled("SUBSCRIPTIONS_ENABLED");
+export const isWebSshEnabled = () => enabled("WEB_SSH_ENABLED");

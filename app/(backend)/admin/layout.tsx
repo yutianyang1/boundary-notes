@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { auth } from "@/auth";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { isEditorRole } from "@/lib/auth/roles";
-import { areCommentsEnabled } from "@/lib/features";
+import { areCommentsEnabled, isWebSshEnabled } from "@/lib/features";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<AdminSkeleton />}><AdminShell>{children}</AdminShell></Suspense>;
@@ -32,6 +32,7 @@ async function AdminShell({ children }: { children: React.ReactNode }) {
           <Link href="/admin/media" className="text-muted-foreground hover:text-foreground">媒体库</Link>
           {isEditorRole(session.user.role) ? <Link href="/admin/subscribers" className="text-muted-foreground hover:text-foreground">订阅者</Link> : null}
           {isEditorRole(session.user.role) && areCommentsEnabled() ? <Link href="/admin/comments" className="text-muted-foreground hover:text-foreground">评论</Link> : null}
+          {session.user.role === "admin" && isWebSshEnabled() ? <Link href="/admin/terminal" className="text-muted-foreground hover:text-foreground">SSH 终端</Link> : null}
           {session.user.role === "admin" ? <Link href="/admin/settings" className="text-muted-foreground hover:text-foreground">设置</Link> : null}
           <Link href="/" className="text-muted-foreground hover:text-foreground">访问站点</Link>
         </nav>
