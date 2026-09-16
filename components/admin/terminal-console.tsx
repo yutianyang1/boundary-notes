@@ -567,6 +567,7 @@ export function TerminalConsole() {
     let disposed = false;
     let resizeObserver: ResizeObserver | undefined;
     let inputDisposable: { dispose(): void } | undefined;
+    let selectionDisposable: { dispose(): void } | undefined;
     let cleanupSurface: (() => void) | undefined;
 
     void Promise.all([import("@xterm/xterm"), import("@xterm/addon-fit")]).then(([xterm, fit]) => {
@@ -610,12 +611,44 @@ export function TerminalConsole() {
       // 转给远端，等冒泡上来就晚了，右键粘贴会失灵。
       const region = surface.parentElement ?? surface;
       const insidePanel = (event: Event) => (event.target as Element | null)?.closest('[role="dialog"]') !== null;
-      // 选中即复制：松开鼠标时把选区送进电脑剪贴板，不用再按快捷键。
-      const copyOnRelease = () => {
-        setTimeout(() => {
+      // 选中即复制。用 onSelectionChange 而不是 mouseup：捕获阶段的 mouseup 跑在 xterm
+      // 定稿选区之前，那时 getSelection() 还是空的。拖动过程中会连续触发，稍作合并。
+      let copyTimer: ReturnType<typeof setTimeout> | undefined;
+      let lastCopied = "";
+      const copySelectionSoon = () => {
+        if (copyTimer) clearTimeout(copyTimer);
+        copyTimer = setTimeout(() => {
           const selection = terminal.getSelection();
-          if (selection) void navigator.clipboard.writeText(selection).catch(() => undefined);
-        }, 0);
+          // 选区清空后重置：重新选中同一段文字时还要能再复制一次。
+          if (!selection) {
+            lastCopied = "";
+            return;
+          }
+          if (selection === lastCopied) return;
+          lastCopied = selection;
+          navigator.clipboard.writeText(selection).then(
+            () => setMessage(`已复制选中的 ${selection.length} 个字符。`),
+            () => setMessage("浏览器不让写剪贴板，请在地址栏左侧的站点设置里允许剪贴板。"),
+          );
+        }, 120);
+      };
+      selectionDisposable = terminal.onSelectionChange(copySelectionSoon);
+
+      // tmux/应用开着鼠标上报时，直接拖动会被它们收走，浏览器这边什么都没选中。
+      // 这种情况下提示一次该怎么选，免得以为复制坏了。
+      let dragStart: { x: number; y: number } | null = null;
+      const onDragStart = (event: MouseEvent) => {
+        if (event.button !== 0) return;
+        dragStart = event.shiftKey ? null : { x: event.clientX, y: event.clientY };
+      };
+      const onDragEnd = (event: MouseEvent) => {
+        const start = dragStart;
+        dragStart = null;
+        // 列选（Shift+Alt）在松手后不会再发 onSelectionChange，这里补一次。
+        copySelectionSoon();
+        if (!start || terminal.modes.mouseTrackingMode === "none" || terminal.hasSelection()) return;
+        if (Math.hypot(event.clientX - start.x, event.clientY - start.y) < 12) return;
+        setMessage("远端程序接管了鼠标：按住 Shift 拖动可以选中并复制，再按住 Alt 只选当前窗格的那几列。");
       };
       const onMouseDownCapture = (event: MouseEvent) => {
         if (insidePanel(event) || (event.button !== 1 && event.button !== 2)) return;
@@ -656,14 +689,17 @@ export function TerminalConsole() {
         event.preventDefault();
         adjustFontSize(event.deltaY < 0 ? 1 : -1);
       };
-      region.addEventListener("pointerup", copyOnRelease, true);
+      region.addEventListener("mousedown", onDragStart, true);
+      region.addEventListener("mouseup", onDragEnd, true);
       region.addEventListener("mousedown", onMouseDownCapture, true);
       region.addEventListener("mouseup", onMouseUpCapture, true);
       region.addEventListener("contextmenu", onContextMenuCapture, true);
       surface.addEventListener("paste", onNativePaste, true);
       surface.addEventListener("wheel", onWheel, { passive: false });
       cleanupSurface = () => {
-        region.removeEventListener("pointerup", copyOnRelease, true);
+        if (copyTimer) clearTimeout(copyTimer);
+        region.removeEventListener("mousedown", onDragStart, true);
+        region.removeEventListener("mouseup", onDragEnd, true);
         region.removeEventListener("mousedown", onMouseDownCapture, true);
         region.removeEventListener("mouseup", onMouseUpCapture, true);
         region.removeEventListener("contextmenu", onContextMenuCapture, true);
@@ -735,6 +771,7 @@ export function TerminalConsole() {
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
       resizeTimerRef.current = null;
       inputDisposable?.dispose();
+      selectionDisposable?.dispose();
       eventsRef.current?.close();
       eventsRef.current = null;
       terminalRef.current?.dispose();
@@ -1135,7 +1172,7 @@ export function TerminalConsole() {
             <Eraser className="size-4" /><span>清屏</span>
           </button>
           <p className="mt-1 border-t border-white/10 px-3 pt-2 text-[11px] leading-5 text-slate-400">
-            选中即复制，右键粘贴。tmux 开了鼠标模式时，按住 Shift 拖动可以直接选中。
+            选中即复制，右键粘贴。tmux 里按住 Shift 拖动选中，再加 Alt 只选当前窗格的列。
           </p>
         </div>
       ) : null}
