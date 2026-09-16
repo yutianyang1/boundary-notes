@@ -27,6 +27,17 @@ import { connectionKey, type AuthMethod, type SavedConnection } from "@/lib/term
 
 type ConnectionState = "idle" | "connecting" | "connected" | "closed";
 type ServerEvent = { type: "data"; data: string } | { type: "exit"; message: string };
+type ActiveSession = {
+  id: string;
+  host: string;
+  port: number;
+  username: string;
+  fingerprint: string;
+  nextInputSequence: number;
+  createdAt: number;
+  lastActiveAt: number;
+  attached: boolean;
+};
 type WindowRect = { x: number; y: number; width: number; height: number };
 type ResizeDirection = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
@@ -106,6 +117,8 @@ export function TerminalConsole() {
   const [state, setState] = useState<ConnectionState>("idle");
   const [message, setMessage] = useState("填写目标主机后连接。");
   const [connectionTitle, setConnectionTitle] = useState("Linux shell");
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
   const savedConnections = useSavedConnections();
   // 还没动过表单时默认填最近用过的连接；一旦修改或选了别的连接，就以 draftOverride 为准。
   const [draftOverride, setDraftOverride] = useState<ConnectionDraft | null>(null);
@@ -147,6 +160,16 @@ export function TerminalConsole() {
       body: JSON.stringify(body),
     });
     if (!response.ok) throw new Error("终端操作请求失败。");
+  }, []);
+
+  const loadActiveSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    const response = await fetch("/api/admin/terminal/sessions", { cache: "no-store" }).catch(() => null);
+    if (response?.ok) {
+      const payload = await response.json().catch(() => ({})) as { sessions?: ActiveSession[] };
+      setActiveSessions(payload.sessions ?? []);
+    }
+    setSessionsLoading(false);
   }, []);
 
   const flushInput = useCallback(() => {
@@ -213,6 +236,30 @@ export function TerminalConsole() {
     // 服务端主动断开时调用方已经写好了原因，这里只处理用户自己关掉的情况。
     if (notifyServer) setMessage("已断开连接。");
     setState("closed");
+  }, []);
+
+  const resumeSession = useCallback((session: ActiveSession) => {
+    sessionIdRef.current = session.id;
+    inputSequenceRef.current = session.nextInputSequence;
+    decoderRef.current = new TextDecoder();
+    setConnectionTitle(`${session.username}@${session.host}${session.port === 22 ? "" : `:${session.port}`}`);
+    setMinimized(false);
+    setMaximized(false);
+    setWindowRect(defaultWindowRect());
+    setState("connected");
+    setMessage("已恢复现有 SSH 会话，最近的终端输出正在重新载入。");
+  }, []);
+
+  const closeActiveSession = useCallback(async (session: ActiveSession) => {
+    const response = await fetch(`/api/admin/terminal/sessions/${encodeURIComponent(session.id)}`, {
+      method: "DELETE",
+    }).catch(() => null);
+    if (!response?.ok) {
+      setMessage("关闭旧终端失败，请刷新后重试。");
+      return;
+    }
+    setActiveSessions((current) => current.filter((item) => item.id !== session.id));
+    setMessage(`已关闭 ${session.username}@${session.host}。`);
   }, []);
 
   // 浏览器把 Ctrl+T、Ctrl+W、Ctrl+N 这些快捷键留给自己，页面里 preventDefault 也拦不住。
@@ -460,7 +507,11 @@ export function TerminalConsole() {
     });
   }, [maximized, minimized, trackPointer, windowRect]);
 
-  useEffect(() => () => { void disconnect(); }, [disconnect]);
+  useEffect(() => {
+    if (state !== "idle" && state !== "closed") return;
+    const timer = setTimeout(() => void loadActiveSessions(), 0);
+    return () => clearTimeout(timer);
+  }, [loadActiveSessions, state]);
 
   // 退出全屏的方式很多（按住 Esc、F11、系统手势），统一以 fullscreenchange 为准。
   useEffect(() => {
@@ -843,6 +894,7 @@ export function TerminalConsole() {
       if (payload.fingerprint) setDraftOverride({ ...submitted, fingerprint: payload.fingerprint });
       setState("closed");
       setMessage(payload.error ?? "SSH 连接失败。");
+      if (response.status === 429) void loadActiveSessions();
       return;
     }
 
@@ -896,6 +948,39 @@ export function TerminalConsole() {
               </p>
             </div>
           </div>
+          {activeSessions.length > 0 ? (
+            <section className="mb-5 rounded-lg border border-amber-300/70 bg-amber-50/70 p-3.5 dark:border-amber-800 dark:bg-amber-950/25">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold">仍在运行的终端</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  页面意外关闭后可在 60 秒内恢复；持续无人连接的会话会自动关闭。
+                </p>
+              </div>
+              <div className="grid gap-2">
+                {activeSessions.map((session) => (
+                  <div key={session.id} className="flex flex-wrap items-center gap-2 rounded-md border bg-background/80 px-3 py-2.5">
+                    <SquareTerminal className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-xs font-medium">
+                        {session.username}@{session.host}{session.port === 22 ? "" : `:${session.port}`}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {session.attached ? "另一个页面仍连接着" : "等待恢复"}
+                      </p>
+                    </div>
+                    <button type="button" disabled={busy} onClick={() => resumeSession(session)} className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-50">
+                      恢复
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => void closeActiveSession(session)} className="rounded-md border px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50">
+                      关闭
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : sessionsLoading ? (
+            <p className="mb-5 text-xs text-muted-foreground">正在检查现有终端…</p>
+          ) : null}
           <TerminalSavedConnections
             connections={savedConnections}
             selectedKey={selectedConnectionKey}

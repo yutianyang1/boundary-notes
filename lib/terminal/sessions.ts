@@ -19,11 +19,23 @@ const MAX_GLOBAL_SESSIONS = 8;
 const MAX_USER_SESSIONS = 2;
 const MAX_HISTORY_BYTES = 1_000_000;
 const MAX_INPUT_REORDER_WINDOW = 64;
+const ORPHAN_GRACE_MS = 60_000;
 
 export type TerminalEvent =
   | { type: "data"; data: string }
   | { type: "exit"; message: string };
 export type StoredTerminalEvent = { id: number; event: TerminalEvent };
+export type ActiveTerminalSession = {
+  id: string;
+  host: string;
+  port: number;
+  username: string;
+  fingerprint: string;
+  nextInputSequence: number;
+  createdAt: number;
+  lastActiveAt: number;
+  attached: boolean;
+};
 
 export type CreateTerminalInput = {
   host: string;
@@ -52,6 +64,10 @@ type TerminalSession = {
   nextEventId: number;
   nextInputSequence: number;
   pendingInputs: Map<number, string>;
+  createdAt: number;
+  lastActiveAt: number;
+  subscribers: number;
+  orphanTimer: NodeJS.Timeout | null;
   closed: boolean;
   uploading: boolean;
   idleTimer: NodeJS.Timeout;
@@ -90,9 +106,22 @@ function emit(session: TerminalSession, event: TerminalEvent) {
 }
 
 function touch(session: TerminalSession) {
+  session.lastActiveAt = Date.now();
   clearTimeout(session.idleTimer);
   session.idleTimer = setTimeout(() => closeTerminalSession(session.id, session.ownerId, "连接空闲超时。"), IDLE_TIMEOUT_MS);
   session.idleTimer.unref();
+}
+
+function scheduleOrphanClose(session: TerminalSession) {
+  if (session.closed || session.subscribers > 0) return;
+  if (session.orphanTimer) clearTimeout(session.orphanTimer);
+  session.orphanTimer = setTimeout(() => {
+    session.orphanTimer = null;
+    if (!session.closed && session.subscribers === 0) {
+      close(session, "终端页面已关闭，连接已自动回收。");
+    }
+  }, ORPHAN_GRACE_MS);
+  session.orphanTimer.unref();
 }
 
 function close(session: TerminalSession, message: string) {
@@ -100,6 +129,8 @@ function close(session: TerminalSession, message: string) {
   session.closed = true;
   clearTimeout(session.idleTimer);
   clearTimeout(session.lifetimeTimer);
+  if (session.orphanTimer) clearTimeout(session.orphanTimer);
+  session.orphanTimer = null;
   emit(session, { type: "exit", message });
   session.stream.end();
   session.client.end();
@@ -207,6 +238,7 @@ export async function createTerminalSession(ownerId: string, input: CreateTermin
   events.setMaxListeners(5);
   const placeholder = setTimeout(() => undefined, IDLE_TIMEOUT_MS);
   placeholder.unref();
+  const now = Date.now();
   const session: TerminalSession = {
     id,
     ownerId,
@@ -222,6 +254,10 @@ export async function createTerminalSession(ownerId: string, input: CreateTermin
     nextEventId: 1,
     nextInputSequence: 0,
     pendingInputs: new Map(),
+    createdAt: now,
+    lastActiveAt: now,
+    subscribers: 0,
+    orphanTimer: null,
     closed: false,
     uploading: false,
     idleTimer: placeholder,
@@ -243,6 +279,7 @@ export async function createTerminalSession(ownerId: string, input: CreateTermin
   stream.once("close", () => close(session, "SSH 连接已关闭。"));
   client.once("error", (error) => close(session, `SSH 错误：${error.message}`));
   client.once("close", () => close(session, "SSH 连接已断开。"));
+  scheduleOrphanClose(session);
 
   return { id, fingerprint: session.fingerprint, host: session.host, port: session.port, username: session.username };
 }
@@ -254,10 +291,38 @@ export function subscribeTerminalSession(
   listener: (event: StoredTerminalEvent) => void,
 ) {
   const session = requireOwnedSession(id, ownerId);
+  if (session.closed) throw new WebSshError("SESSION_CLOSED", "SSH 连接已经关闭。", 409);
+  if (session.orphanTimer) clearTimeout(session.orphanTimer);
+  session.orphanTimer = null;
+  session.subscribers += 1;
   for (const event of session.history) if (event.id > afterEventId) listener(event);
   session.events.on("event", listener);
   touch(session);
-  return () => session.events.off("event", listener);
+  let subscribed = true;
+  return () => {
+    if (!subscribed) return;
+    subscribed = false;
+    session.events.off("event", listener);
+    session.subscribers = Math.max(0, session.subscribers - 1);
+    scheduleOrphanClose(session);
+  };
+}
+
+export function listTerminalSessions(ownerId: string): ActiveTerminalSession[] {
+  return [...sessions.values()]
+    .filter((session) => session.ownerId === ownerId && !session.closed)
+    .sort((left, right) => right.lastActiveAt - left.lastActiveAt)
+    .map((session) => ({
+      id: session.id,
+      host: session.host,
+      port: session.port,
+      username: session.username,
+      fingerprint: session.fingerprint,
+      nextInputSequence: session.nextInputSequence,
+      createdAt: session.createdAt,
+      lastActiveAt: session.lastActiveAt,
+      attached: session.subscribers > 0,
+    }));
 }
 
 export function writeTerminalSession(id: string, ownerId: string, data: string, sequence: number) {

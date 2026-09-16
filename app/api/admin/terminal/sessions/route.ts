@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { auditLogs } from "@/lib/db/schema";
 import { isWebSshEnabled } from "@/lib/features";
 import { isSameOriginRequest } from "@/lib/http/same-origin";
-import { createTerminalSession, WebSshError } from "@/lib/terminal/sessions";
+import { createTerminalSession, listTerminalSessions, WebSshError } from "@/lib/terminal/sessions";
 
 const requestSchema = z.object({
   host: z.string().trim().min(1).max(253).regex(/^[a-zA-Z0-9.:_-]+$/),
@@ -30,6 +30,18 @@ function errorResponse(error: unknown) {
     }, { status: error.status });
   }
   return NextResponse.json({ error: "无法创建 SSH 连接。", code: "INTERNAL_ERROR" }, { status: 500 });
+}
+
+export async function GET() {
+  if (!isWebSshEnabled()) return NextResponse.json({ error: "Web SSH 未启用。" }, { status: 404 });
+  const session = await auth();
+  if (!session?.user || session.authState !== "full" || session.user.role !== "admin") {
+    return NextResponse.json({ error: "只有管理员可以使用 Web SSH。" }, { status: 403 });
+  }
+  return NextResponse.json(
+    { sessions: listTerminalSessions(session.user.id) },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
 
 export async function POST(request: Request) {
