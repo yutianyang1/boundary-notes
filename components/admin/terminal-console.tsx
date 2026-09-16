@@ -606,12 +606,43 @@ export function TerminalConsole() {
       });
 
       const surface = mountRef.current;
+      // 鼠标事件一律在捕获阶段处理：tmux 开了鼠标模式时，xterm 会把中键、右键当成鼠标上报
+      // 转给远端，等冒泡上来就晚了，右键粘贴会失灵。
+      const region = surface.parentElement ?? surface;
+      const insidePanel = (event: Event) => (event.target as Element | null)?.closest('[role="dialog"]') !== null;
       // 选中即复制：松开鼠标时把选区送进电脑剪贴板，不用再按快捷键。
       const copyOnRelease = () => {
         setTimeout(() => {
           const selection = terminal.getSelection();
           if (selection) void navigator.clipboard.writeText(selection).catch(() => undefined);
         }, 0);
+      };
+      const onMouseDownCapture = (event: MouseEvent) => {
+        if (insidePanel(event) || (event.button !== 1 && event.button !== 2)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.button === 1) void pasteClipboard();
+      };
+      const onMouseUpCapture = (event: MouseEvent) => {
+        if (insidePanel(event) || (event.button !== 1 && event.button !== 2)) return;
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      const onContextMenuCapture = (event: MouseEvent) => {
+        if (insidePanel(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        terminal.focus();
+        // 右键直接粘贴；按住 Shift 再右键才出菜单。
+        if (!event.shiftKey) {
+          void pasteClipboard();
+          return;
+        }
+        setContextMenu({
+          x: Math.max(8, Math.min(event.clientX, window.innerWidth - 216)),
+          y: Math.max(8, Math.min(event.clientY, window.innerHeight - 272)),
+          hasSelection: terminal.hasSelection(),
+        });
       };
       // 浏览器自己的粘贴事件也收归一处，避免 xterm 再插一遍。
       const onNativePaste = (event: ClipboardEvent) => {
@@ -625,11 +656,17 @@ export function TerminalConsole() {
         event.preventDefault();
         adjustFontSize(event.deltaY < 0 ? 1 : -1);
       };
-      surface.addEventListener("pointerup", copyOnRelease);
+      region.addEventListener("pointerup", copyOnRelease, true);
+      region.addEventListener("mousedown", onMouseDownCapture, true);
+      region.addEventListener("mouseup", onMouseUpCapture, true);
+      region.addEventListener("contextmenu", onContextMenuCapture, true);
       surface.addEventListener("paste", onNativePaste, true);
       surface.addEventListener("wheel", onWheel, { passive: false });
       cleanupSurface = () => {
-        surface.removeEventListener("pointerup", copyOnRelease);
+        region.removeEventListener("pointerup", copyOnRelease, true);
+        region.removeEventListener("mousedown", onMouseDownCapture, true);
+        region.removeEventListener("mouseup", onMouseUpCapture, true);
+        region.removeEventListener("contextmenu", onContextMenuCapture, true);
         surface.removeEventListener("paste", onNativePaste, true);
         surface.removeEventListener("wheel", onWheel);
       };
@@ -712,11 +749,12 @@ export function TerminalConsole() {
     const closeOnKey = (event: KeyboardEvent) => { if (event.key === "Escape") closeMenu(); };
     window.addEventListener("pointerdown", closeMenu);
     window.addEventListener("resize", closeMenu);
-    window.addEventListener("keydown", closeOnKey);
+    // 捕获阶段：xterm 会拦下键盘事件不让它冒泡，冒泡阶段收不到 Esc。
+    window.addEventListener("keydown", closeOnKey, true);
     return () => {
       window.removeEventListener("pointerdown", closeMenu);
       window.removeEventListener("resize", closeMenu);
-      window.removeEventListener("keydown", closeOnKey);
+      window.removeEventListener("keydown", closeOnKey, true);
     };
   }, [contextMenu]);
 
@@ -974,26 +1012,6 @@ export function TerminalConsole() {
           <div
             className={minimized ? "hidden" : "relative min-h-0 flex-1 p-2"}
             style={{ backgroundColor: appearance.color }}
-            onMouseDown={(event) => {
-              // 中键粘贴（X11 习惯），顺便挡掉浏览器的中键自动滚动。
-              if (event.button !== 1) return;
-              event.preventDefault();
-              void pasteClipboard();
-            }}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              terminalRef.current?.focus();
-              // 右键直接粘贴；按住 Shift 再右键才出菜单。
-              if (!event.shiftKey) {
-                void pasteClipboard();
-                return;
-              }
-              setContextMenu({
-                x: Math.max(8, Math.min(event.clientX, window.innerWidth - 216)),
-                y: Math.max(8, Math.min(event.clientY, window.innerHeight - 272)),
-                hasSelection: terminalRef.current?.hasSelection() ?? false,
-              });
-            }}
             onDragEnter={(event) => {
               event.preventDefault();
               if (event.dataTransfer.types.includes("Files")) setDragActive(true);
