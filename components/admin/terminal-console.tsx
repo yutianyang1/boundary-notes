@@ -2,7 +2,7 @@
 
 import type { FitAddon } from "@xterm/addon-fit";
 import type { Terminal } from "@xterm/xterm";
-import { ClipboardPaste, Copy, Eraser, Maximize2, Minimize2, Minus, MousePointer2, Palette, SquareTerminal, UploadCloud, X } from "lucide-react";
+import { ClipboardPaste, Copy, Eraser, Keyboard, KeyboardOff, Maximize2, Minimize2, Minus, MousePointer2, Palette, SquareTerminal, UploadCloud, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TerminalAppearancePanel } from "@/components/admin/terminal-appearance-panel";
 import {
@@ -120,6 +120,8 @@ export function TerminalConsole() {
   const [windowRect, setWindowRect] = useState<WindowRect>({ x: 24, y: 24, width: 960, height: 640 });
   const [windowInteracting, setWindowInteracting] = useState(false);
   const [snapPreview, setSnapPreview] = useState(false);
+  const [keyboardLocked, setKeyboardLocked] = useState(false);
+  const keyboardLockedRef = useRef(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; hasSelection: boolean } | null>(null);
@@ -199,9 +201,37 @@ export function TerminalConsole() {
     setMaximized(false);
     setDragActive(false);
     setContextMenu(null);
+    navigator.keyboard?.unlock();
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
     // 服务端主动断开时调用方已经写好了原因，这里只处理用户自己关掉的情况。
     if (notifyServer) setMessage("已断开连接。");
     setState("closed");
+  }, []);
+
+  // 浏览器把 Ctrl+T、Ctrl+W、Ctrl+N 这些快捷键留给自己，页面里 preventDefault 也拦不住。
+  // 只有全屏 + Keyboard Lock 时才会把它们交给页面，再由 xterm 发给远端。
+  const enterKeyboardLock = useCallback(async () => {
+    const element = windowRef.current;
+    if (!element) return;
+    if (!navigator.keyboard?.lock) {
+      setMessage("这个浏览器不支持独占键盘，换 Chrome 或 Edge 桌面版可以。");
+      return;
+    }
+    try {
+      await element.requestFullscreen();
+      await navigator.keyboard.lock();
+      setMinimized(false);
+      setMaximized(true);
+      setMessage("已独占键盘：Ctrl+T、Ctrl+W 等快捷键都会发给远端；按住 Esc 一秒退出全屏。");
+      terminalRef.current?.focus();
+    } catch {
+      setMessage("进入全屏失败，无法独占键盘。");
+    }
+  }, []);
+
+  const exitKeyboardLock = useCallback(() => {
+    navigator.keyboard?.unlock();
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
   }, []);
 
   const copySelection = useCallback(async () => {
@@ -410,6 +440,22 @@ export function TerminalConsole() {
   }, [maximized, minimized, trackPointer, windowRect]);
 
   useEffect(() => () => { void disconnect(); }, [disconnect]);
+
+  // 退出全屏的方式很多（按住 Esc、F11、系统手势），统一以 fullscreenchange 为准。
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      const active = document.fullscreenElement !== null && document.fullscreenElement === windowRef.current;
+      if (keyboardLockedRef.current && !active) setMessage("已退出独占键盘。");
+      keyboardLockedRef.current = active;
+      setKeyboardLocked(active);
+      if (!active) navigator.keyboard?.unlock();
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      navigator.keyboard?.unlock();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -790,6 +836,16 @@ export function TerminalConsole() {
           <div className="flex h-full shrink-0 items-stretch" onPointerDown={(event) => event.stopPropagation()} onDoubleClick={(event) => event.stopPropagation()}>
             <button
               type="button"
+              aria-label={keyboardLocked ? "退出独占键盘" : "独占键盘（全屏）"}
+              title={keyboardLocked ? "退出独占键盘" : "独占键盘：全屏后 Ctrl+T、Ctrl+W 等发给远端"}
+              aria-pressed={keyboardLocked}
+              onClick={() => { if (keyboardLocked) exitKeyboardLock(); else void enterKeyboardLock(); }}
+              className={`grid w-12 place-items-center hover:bg-white/10 hover:text-white ${keyboardLocked ? "bg-indigo-500/80 text-white" : "text-slate-300"}`}
+            >
+              {keyboardLocked ? <KeyboardOff className="size-4" /> : <Keyboard className="size-4" />}
+            </button>
+            <button
+              type="button"
               data-appearance-toggle
               aria-label="终端背景"
               title="终端背景"
@@ -944,6 +1000,15 @@ export function TerminalConsole() {
           <div className="my-1 border-t border-white/10" />
           <button type="button" role="menuitem" disabled={uploading} onClick={() => { setContextMenu(null); fileInputRef.current?.click(); }} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10 disabled:opacity-40">
             <UploadCloud className="size-4" /><span>上传文件到 ~/</span>
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setContextMenu(null); if (keyboardLocked) exitKeyboardLock(); else void enterKeyboardLock(); }}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10"
+          >
+            {keyboardLocked ? <KeyboardOff className="size-4" /> : <Keyboard className="size-4" />}
+            <span>{keyboardLocked ? "退出独占键盘" : "独占键盘（全屏）"}</span>
           </button>
           <button type="button" role="menuitem" onClick={() => { setContextMenu(null); setAppearanceOpen(true); }} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10">
             <Palette className="size-4" /><span>终端背景…</span>
