@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   DEFAULT_APPEARANCE,
+  MAX_FONT_SIZE,
+  MIN_FONT_SIZE,
   isLightBackground,
   MAX_BLUR,
   MAX_DIM,
@@ -22,10 +24,17 @@ test("stored appearance falls back per field when invalid", () => {
 test("stored appearance keeps valid values and clamps ranges", () => {
   assert.deepEqual(
     normalizeAppearance({ color: "#ABCDEF", dim: 200, blur: -3, fit: "tile" }),
-    { color: "#abcdef", dim: MAX_DIM, blur: 0, fit: "tile" },
+    { color: "#abcdef", dim: MAX_DIM, blur: 0, fit: "tile", fontSize: DEFAULT_APPEARANCE.fontSize },
   );
   assert.equal(normalizeAppearance({ blur: 7.6 }).blur, 8);
   assert.equal(normalizeAppearance({ blur: 99 }).blur, MAX_BLUR);
+});
+
+test("font size is clamped to a readable range", () => {
+  assert.equal(normalizeAppearance({ fontSize: 3 }).fontSize, MIN_FONT_SIZE);
+  assert.equal(normalizeAppearance({ fontSize: 400 }).fontSize, MAX_FONT_SIZE);
+  assert.equal(normalizeAppearance({ fontSize: 18 }).fontSize, 18);
+  assert.equal(normalizeAppearance({}).fontSize, DEFAULT_APPEARANCE.fontSize);
 });
 
 test("luminance separates dark presets from paper white", () => {

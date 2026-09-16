@@ -6,6 +6,8 @@ import {
   BACKGROUND_PRESETS,
   MAX_BLUR,
   MAX_DIM,
+  MAX_FONT_SIZE,
+  MIN_FONT_SIZE,
   type BackgroundFit,
   type TerminalAppearance,
 } from "@/lib/terminal/appearance";
@@ -108,6 +110,7 @@ export function TerminalAppearancePanel({
         </label>
       </div>
 
+      <Slider label="字号" unit="px" value={appearance.fontSize} min={MIN_FONT_SIZE} max={MAX_FONT_SIZE} onChange={(fontSize) => onChange({ fontSize })} />
       <p className="mt-5 text-xs font-medium text-slate-400">图片</p>
       <div className="mt-2 flex gap-2">
         <button type="button" onClick={() => fileRef.current?.click()} className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md border border-white/15 hover:bg-white/10">
@@ -160,7 +163,7 @@ export function TerminalAppearancePanel({
   );
 }
 
-function Slider({ label, unit, value, max, onChange }: { label: string; unit: string; value: number; max: number; onChange: (value: number) => void }) {
+function Slider({ label, unit, value, min = 0, max, onChange }: { label: string; unit: string; value: number; min?: number; max: number; onChange: (value: number) => void }) {
   return (
     <label className="mt-4 block">
       <span className="flex justify-between text-xs text-slate-400">
@@ -169,7 +172,7 @@ function Slider({ label, unit, value, max, onChange }: { label: string; unit: st
       </span>
       <input
         type="range"
-        min={0}
+        min={min}
         max={max}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}

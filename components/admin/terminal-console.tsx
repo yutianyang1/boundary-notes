@@ -21,6 +21,8 @@ import {
   terminalTheme,
   type TerminalAppearance,
 } from "@/lib/terminal/appearance";
+import { splitTerminalInput } from "@/lib/terminal/input-chunks";
+import { shouldBlockBrowserDefault, terminalKeyAction } from "@/lib/terminal/key-policy";
 import { connectionKey, type AuthMethod, type SavedConnection } from "@/lib/terminal/saved-connections";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "closed";
@@ -133,6 +135,8 @@ export function TerminalConsole() {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [appearanceNotice, setAppearanceNotice] = useState("");
   const themeRef = useRef(terminalTheme(appearance, false));
+  const appearanceRef = useRef(appearance);
+  const lastPasteRef = useRef({ text: "", at: 0 });
 
   const postAction = useCallback(async (body: object, sessionId = sessionIdRef.current) => {
     const id = sessionId;
@@ -147,22 +151,25 @@ export function TerminalConsole() {
 
   const flushInput = useCallback(() => {
     inputTimerRef.current = null;
-    const data = inputRef.current;
+    const pending = inputRef.current;
     const sessionId = sessionIdRef.current;
-    if (!data || !sessionId) return;
+    if (!pending || !sessionId) return;
     inputRef.current = "";
-    const sequence = inputSequenceRef.current++;
-    const send = (attempt: number) => {
-      if (sessionIdRef.current !== sessionId) return;
-      void postAction({ type: "input", data, sequence }, sessionId).catch(() => {
-        if (attempt < 2 && sessionIdRef.current === sessionId) {
-          setTimeout(() => send(attempt + 1), 80 * (attempt + 1));
-          return;
-        }
-        if (sessionIdRef.current === sessionId) setMessage("终端输入传输中断，请重新连接。");
-      });
-    };
-    send(0);
+    // 粘贴一大段文本会超过服务端单次 16 KiB 的上限，切开分批发；序号保证顺序。
+    for (const data of splitTerminalInput(pending)) {
+      const sequence = inputSequenceRef.current++;
+      const send = (attempt: number) => {
+        if (sessionIdRef.current !== sessionId) return;
+        void postAction({ type: "input", data, sequence }, sessionId).catch(() => {
+          if (attempt < 2 && sessionIdRef.current === sessionId) {
+            setTimeout(() => send(attempt + 1), 80 * (attempt + 1));
+            return;
+          }
+          if (sessionIdRef.current === sessionId) setMessage("终端输入传输中断，请重新连接。");
+        });
+      };
+      send(0);
+    }
   }, [postAction]);
 
   const scheduleTerminalResize = useCallback((terminal: Terminal) => {
@@ -252,6 +259,20 @@ export function TerminalConsole() {
     terminal?.focus();
   }, []);
 
+  /**
+   * 所有粘贴都从这里进终端。source 为 "native" 的是浏览器自己的 paste 事件：
+   * 我们按下 Ctrl+V 时已经 preventDefault，正常不会再触发；万一哪天拦不住，
+   * 紧跟在自己粘贴之后的这一次就忽略掉，不会粘两遍。用户连按两次粘贴不受影响。
+   */
+  const insertPaste = useCallback((text: string, source: "own" | "native" = "own") => {
+    const terminal = terminalRef.current;
+    if (!terminal || !text) return;
+    const now = performance.now();
+    if (source === "native" && now - lastPasteRef.current.at < 300) return;
+    lastPasteRef.current = { text, at: now };
+    terminal.paste(text);
+  }, []);
+
   const pasteClipboard = useCallback(async () => {
     const terminal = terminalRef.current;
     setContextMenu(null);
@@ -259,14 +280,14 @@ export function TerminalConsole() {
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
-        terminal.paste(text);
+        insertPaste(text);
         setMessage("已将电脑剪贴板内容粘贴到终端。");
       }
     } catch {
       setMessage("浏览器未允许读取剪贴板，请检查站点权限。");
     }
     terminal.focus();
-  }, []);
+  }, [insertPaste]);
 
   const uploadFiles = useCallback(async (items: FileList | File[]) => {
     const id = sessionIdRef.current;
@@ -470,7 +491,15 @@ export function TerminalConsole() {
   useEffect(() => {
     const theme = terminalTheme(appearance, Boolean(backgroundUrl));
     themeRef.current = theme;
-    if (terminalRef.current) terminalRef.current.options.theme = theme;
+    appearanceRef.current = appearance;
+    const terminal = terminalRef.current;
+    if (terminal) {
+      terminal.options.theme = theme;
+      if (terminal.options.fontSize !== appearance.fontSize) {
+        terminal.options.fontSize = appearance.fontSize;
+        fitRef.current?.fit();
+      }
+    }
   }, [appearance, backgroundUrl]);
 
   const updateAppearance = useCallback((patch: Partial<TerminalAppearance>) => {
@@ -502,6 +531,18 @@ export function TerminalConsole() {
     setAppearanceNotice(saved ? "" : "浏览器没有允许保存图片，刷新页面后需要重新选择。");
   }, []);
 
+  /** delta 为 0 表示恢复默认字号。 */
+  const adjustFontSize = useCallback((delta: number) => {
+    const current = appearanceRef.current.fontSize;
+    const next = delta === 0 ? DEFAULT_APPEARANCE.fontSize : current + delta;
+    if (next === current) return;
+    setAppearance((value) => {
+      const updated = normalizeAppearance({ ...value, fontSize: delta === 0 ? DEFAULT_APPEARANCE.fontSize : value.fontSize + delta });
+      saveAppearance(updated);
+      return updated;
+    });
+  }, []);
+
   const removeBackgroundImage = useCallback(() => {
     setBackgroundUrl(null);
     setAppearanceNotice("");
@@ -526,6 +567,7 @@ export function TerminalConsole() {
     let disposed = false;
     let resizeObserver: ResizeObserver | undefined;
     let inputDisposable: { dispose(): void } | undefined;
+    let cleanupSurface: (() => void) | undefined;
 
     void Promise.all([import("@xterm/xterm"), import("@xterm/addon-fit")]).then(([xterm, fit]) => {
       if (disposed || !mountRef.current || !sessionIdRef.current) return;
@@ -533,7 +575,7 @@ export function TerminalConsole() {
         cursorBlink: true,
         convertEol: false,
         fontFamily: "var(--font-mono), ui-monospace, monospace",
-        fontSize: 14,
+        fontSize: appearanceRef.current.fontSize,
         lineHeight: 1.15,
         scrollback: 5_000,
         // 背景由外层容器画（纯色或图片），终端本身透明。
@@ -548,20 +590,49 @@ export function TerminalConsole() {
       fitRef.current = fitAddon;
       terminal.focus();
 
+      const apple = /mac|iphone|ipad/i.test(navigator.userAgent);
       terminal.attachCustomKeyEventHandler((event) => {
         if (event.type !== "keydown") return true;
-        const modified = event.ctrlKey || event.metaKey;
-        const key = event.key.toLowerCase();
-        if (modified && key === "v") {
-          void pasteClipboard();
-          return false;
+        // 终端有焦点时，浏览器的默认动作一律拦掉（拦得住的那些），由终端自己决定怎么处理。
+        if (shouldBlockBrowserDefault(event)) event.preventDefault();
+        switch (terminalKeyAction(event, apple)) {
+          case "copy": void copySelection(); return false;
+          case "paste": void pasteClipboard(); return false;
+          case "font-in": adjustFontSize(1); return false;
+          case "font-out": adjustFontSize(-1); return false;
+          case "font-reset": adjustFontSize(0); return false;
+          default: return true;
         }
-        if (modified && key === "c" && terminal.hasSelection()) {
-          void copySelection();
-          return false;
-        }
-        return true;
       });
+
+      const surface = mountRef.current;
+      // 选中即复制：松开鼠标时把选区送进电脑剪贴板，不用再按快捷键。
+      const copyOnRelease = () => {
+        setTimeout(() => {
+          const selection = terminal.getSelection();
+          if (selection) void navigator.clipboard.writeText(selection).catch(() => undefined);
+        }, 0);
+      };
+      // 浏览器自己的粘贴事件也收归一处，避免 xterm 再插一遍。
+      const onNativePaste = (event: ClipboardEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        insertPaste(event.clipboardData?.getData("text") ?? "", "native");
+      };
+      // Ctrl+滚轮本来是缩放整个网页，改成调终端字号。
+      const onWheel = (event: WheelEvent) => {
+        if (!event.ctrlKey) return;
+        event.preventDefault();
+        adjustFontSize(event.deltaY < 0 ? 1 : -1);
+      };
+      surface.addEventListener("pointerup", copyOnRelease);
+      surface.addEventListener("paste", onNativePaste, true);
+      surface.addEventListener("wheel", onWheel, { passive: false });
+      cleanupSurface = () => {
+        surface.removeEventListener("pointerup", copyOnRelease);
+        surface.removeEventListener("paste", onNativePaste, true);
+        surface.removeEventListener("wheel", onWheel);
+      };
 
       inputDisposable = terminal.onData((data) => {
         if (!sessionIdRef.current) return;
@@ -580,6 +651,23 @@ export function TerminalConsole() {
         });
       });
       resizeObserver.observe(mountRef.current);
+
+      // OSC 52：tmux（需要 set -g set-clipboard on）、vim 在远端复制时，把内容同步到电脑剪贴板。
+      // 只接受写入，远端读取剪贴板的请求一律忽略，免得把本机剪贴板泄露出去。
+      terminal.parser.registerOscHandler(52, (data) => {
+        const payload = data.slice(data.indexOf(";") + 1);
+        if (!payload || payload === "?" || payload.length > 4_000_000) return true;
+        try {
+          const text = new TextDecoder().decode(Uint8Array.from(atob(payload), (character) => character.charCodeAt(0)));
+          if (text) {
+            void navigator.clipboard.writeText(text).catch(() => undefined);
+            setMessage("远端复制的内容已同步到电脑剪贴板。");
+          }
+        } catch {
+          // 不是合法 base64，忽略。
+        }
+        return true;
+      });
 
       const id = sessionIdRef.current;
       const source = new EventSource(`/api/admin/terminal/sessions/${encodeURIComponent(id)}/events`);
@@ -603,6 +691,7 @@ export function TerminalConsole() {
 
     return () => {
       disposed = true;
+      cleanupSurface?.();
       resizeObserver?.disconnect();
       if (resizeFrameRef.current !== null) cancelAnimationFrame(resizeFrameRef.current);
       resizeFrameRef.current = null;
@@ -615,7 +704,7 @@ export function TerminalConsole() {
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [copySelection, disconnect, flushInput, pasteClipboard, scheduleTerminalResize, state]);
+  }, [adjustFontSize, copySelection, disconnect, flushInput, insertPaste, pasteClipboard, scheduleTerminalResize, state]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -885,9 +974,20 @@ export function TerminalConsole() {
           <div
             className={minimized ? "hidden" : "relative min-h-0 flex-1 p-2"}
             style={{ backgroundColor: appearance.color }}
+            onMouseDown={(event) => {
+              // 中键粘贴（X11 习惯），顺便挡掉浏览器的中键自动滚动。
+              if (event.button !== 1) return;
+              event.preventDefault();
+              void pasteClipboard();
+            }}
             onContextMenu={(event) => {
               event.preventDefault();
               terminalRef.current?.focus();
+              // 右键直接粘贴；按住 Shift 再右键才出菜单。
+              if (!event.shiftKey) {
+                void pasteClipboard();
+                return;
+              }
               setContextMenu({
                 x: Math.max(8, Math.min(event.clientX, window.innerWidth - 216)),
                 y: Math.max(8, Math.min(event.clientY, window.innerHeight - 272)),
@@ -989,10 +1089,10 @@ export function TerminalConsole() {
           onPointerDown={(event) => event.stopPropagation()}
         >
           <button type="button" role="menuitem" disabled={!contextMenu.hasSelection} onClick={() => void copySelection()} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10 disabled:opacity-40">
-            <Copy className="size-4" /><span className="flex-1">复制</span><kbd className="text-[10px] text-slate-400">Ctrl+C</kbd>
+            <Copy className="size-4" /><span className="flex-1">复制</span><kbd className="text-[10px] text-slate-400">Ctrl+Shift+C</kbd>
           </button>
           <button type="button" role="menuitem" onClick={() => void pasteClipboard()} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10">
-            <ClipboardPaste className="size-4" /><span className="flex-1">粘贴</span><kbd className="text-[10px] text-slate-400">Ctrl+V</kbd>
+            <ClipboardPaste className="size-4" /><span className="flex-1">粘贴</span><kbd className="text-[10px] text-slate-400">Ctrl+Shift+V</kbd>
           </button>
           <button type="button" role="menuitem" onClick={() => { terminalRef.current?.selectAll(); setContextMenu(null); terminalRef.current?.focus(); }} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10">
             <MousePointer2 className="size-4" /><span>全选终端内容</span>
@@ -1016,6 +1116,9 @@ export function TerminalConsole() {
           <button type="button" role="menuitem" onClick={() => { terminalRef.current?.clear(); setContextMenu(null); terminalRef.current?.focus(); }} className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/10">
             <Eraser className="size-4" /><span>清屏</span>
           </button>
+          <p className="mt-1 border-t border-white/10 px-3 pt-2 text-[11px] leading-5 text-slate-400">
+            选中即复制，右键粘贴。tmux 开了鼠标模式时，按住 Shift 拖动可以直接选中。
+          </p>
         </div>
       ) : null}
     </>

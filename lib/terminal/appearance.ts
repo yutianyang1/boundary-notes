@@ -10,9 +10,11 @@ export type TerminalAppearance = {
   /** 图片模糊半径，px。 */
   blur: number;
   fit: BackgroundFit;
+  /** 终端字号，px。接管了浏览器缩放快捷键后由它来控制大小。 */
+  fontSize: number;
 };
 
-export const DEFAULT_APPEARANCE: TerminalAppearance = { color: "#070b14", dim: 55, blur: 0, fit: "cover" };
+export const DEFAULT_APPEARANCE: TerminalAppearance = { color: "#070b14", dim: 55, blur: 0, fit: "cover", fontSize: 14 };
 
 export const BACKGROUND_PRESETS = [
   { name: "深夜蓝", color: "#070b14" },
@@ -25,6 +27,8 @@ export const BACKGROUND_PRESETS = [
 
 export const MAX_DIM = 90;
 export const MAX_BLUR = 20;
+export const MIN_FONT_SIZE = 10;
+export const MAX_FONT_SIZE = 28;
 export const MAX_BACKGROUND_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -41,6 +45,7 @@ export function normalizeAppearance(value: unknown): TerminalAppearance {
     dim: clampNumber(input.dim, 0, MAX_DIM, DEFAULT_APPEARANCE.dim),
     blur: clampNumber(input.blur, 0, MAX_BLUR, DEFAULT_APPEARANCE.blur),
     fit: input.fit === "contain" || input.fit === "tile" ? input.fit : "cover",
+    fontSize: clampNumber(input.fontSize, MIN_FONT_SIZE, MAX_FONT_SIZE, DEFAULT_APPEARANCE.fontSize),
   };
 }
 
