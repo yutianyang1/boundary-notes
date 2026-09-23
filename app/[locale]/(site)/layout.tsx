@@ -1,6 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
+import { Suspense } from "react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { SocialChatWidgetServer } from "@/components/social/social-chat-widget-server";
 import type { Locale } from "@/i18n/routing";
 
 /**
@@ -22,6 +24,7 @@ export default async function SiteLayout({
       <SiteHeader locale={locale} />
       <main className="flex flex-1 flex-col">{children}</main>
       <SiteFooter locale={locale} />
+      <Suspense fallback={null}><SocialChatWidgetServer /></Suspense>
     </div>
   );
 }

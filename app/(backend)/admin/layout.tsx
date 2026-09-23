@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { isEditorRole } from "@/lib/auth/roles";
 import { areCommentsEnabled, isWebSshEnabled } from "@/lib/features";
+import { SocialChatWidget } from "@/components/social/social-chat-widget";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<AdminSkeleton />}><AdminShell>{children}</AdminShell></Suspense>;
@@ -42,6 +43,12 @@ async function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       {children}
+      <SocialChatWidget
+        userId={session.user.id}
+        userName={session.user.name ?? "管理员"}
+        userImage={session.user.image ?? null}
+        isAdmin={session.user.role === "admin"}
+      />
     </div>
   );
 }

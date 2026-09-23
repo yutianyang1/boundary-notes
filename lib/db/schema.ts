@@ -27,6 +27,7 @@ export const jobStatus = pgEnum("job_status", ["running", "succeeded", "failed",
 export const userActionTokenType = pgEnum("user_action_token_type", ["verify_email", "reset_password", "change_email"]);
 export const mailOutboxStatus = pgEnum("mail_outbox_status", ["pending", "sending", "sent", "failed"]);
 export const subscriberStatus = pgEnum("subscriber_status", ["pending", "confirmed", "unsubscribed"]);
+export const friendshipStatus = pgEnum("friendship_status", ["pending", "accepted"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -115,6 +116,64 @@ export const userSessions = pgTable("user_sessions", {
 }, (table) => [
   index("user_sessions_user_id_idx").on(table.userId),
   index("user_sessions_expires_at_idx").on(table.expiresAt),
+]);
+
+export const friendships = pgTable("friendships", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userAId: uuid("user_a_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userBId: uuid("user_b_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requestedBy: uuid("requested_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: friendshipStatus("status").notNull().default("pending"),
+  ...timestamps,
+}, (table) => [
+  uniqueIndex("friendships_pair_unique").on(table.userAId, table.userBId),
+  index("friendships_user_a_status_idx").on(table.userAId, table.status, table.updatedAt),
+  index("friendships_user_b_status_idx").on(table.userBId, table.status, table.updatedAt),
+  check("friendships_pair_order_check", sql`${table.userAId} < ${table.userBId}`),
+  check("friendships_requester_pair_check", sql`${table.requestedBy} in (${table.userAId}, ${table.userBId})`),
+]);
+
+export const conversations = pgTable("conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userAId: uuid("user_a_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userBId: uuid("user_b_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userAReadAt: timestamp("user_a_read_at", { withTimezone: true }),
+  userBReadAt: timestamp("user_b_read_at", { withTimezone: true }),
+  lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("conversations_pair_unique").on(table.userAId, table.userBId),
+  index("conversations_user_a_recent_idx").on(table.userAId, table.lastMessageAt),
+  index("conversations_user_b_recent_idx").on(table.userBId, table.lastMessageAt),
+  check("conversations_pair_order_check", sql`${table.userAId} < ${table.userBId}`),
+]);
+
+export const directMessages = pgTable("direct_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  senderId: uuid("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: varchar("content", { length: 4000 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("direct_messages_conversation_created_idx").on(table.conversationId, table.createdAt, table.id),
+]);
+
+export const socialAnnouncements = pgTable("social_announcements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  adminId: uuid("admin_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  content: varchar("content", { length: 4000 }).notNull(),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("social_announcements_created_idx").on(table.createdAt)]);
+
+export const socialAnnouncementRecipients = pgTable("social_announcement_recipients", {
+  announcementId: uuid("announcement_id").notNull().references(() => socialAnnouncements.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  readAt: timestamp("read_at", { withTimezone: true }),
+}, (table) => [
+  primaryKey({ columns: [table.announcementId, table.userId] }),
+  index("social_announcement_recipients_user_read_idx").on(table.userId, table.readAt, table.announcementId),
 ]);
 
 export const mfaCredentials = pgTable("mfa_credentials", {
