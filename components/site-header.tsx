@@ -26,7 +26,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
         <div className="flex min-w-0 items-center gap-3 lg:gap-8">
           <MobileNav />
           <BrandMark />
-          <nav aria-label={t("primary")} className="hidden items-center gap-5 lg:flex">
+          <nav aria-label={t("primary")} className="hidden items-center gap-3 lg:flex xl:gap-5">
             {navigation.map((item) => (
               <Link
                 key={item.href}
@@ -45,7 +45,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           压了 7px）。现在右组 152px，360px 下两组之间还留约 20px。
         */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <form action={searchAction} className="relative hidden sm:block">
+          <form action={searchAction} className="relative hidden sm:block lg:hidden xl:block">
             <label>
               <span className="sr-only">{t("searchPosts")}</span>
               <Search
@@ -64,7 +64,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           <Link
             href={localePath("/search", locale)}
             aria-label={t("search")}
-            className="grid size-9 place-items-center rounded-md border text-muted-foreground hover:bg-muted hover:text-foreground sm:hidden"
+            className="grid size-9 place-items-center rounded-md border text-muted-foreground hover:bg-muted hover:text-foreground sm:hidden lg:grid xl:hidden"
           >
             <Search className="size-4" />
           </Link>

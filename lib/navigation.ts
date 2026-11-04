@@ -7,6 +7,7 @@ export const navigation = [
   { href: "/tags", key: "tags" },
   { href: "/series", key: "series" },
   { href: "/about", key: "about" },
+  { href: "/downloads", key: "downloads" },
 ] as const;
 
 export type NavKey = (typeof navigation)[number]["key"];
