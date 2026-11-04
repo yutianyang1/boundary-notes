@@ -112,7 +112,8 @@ try {
   execFileSync(`${runtime}/psql`, ['-X', '-q', '-v', 'ON_ERROR_STOP=1'], { input: schema, env: { ...pgEnv, PGDATABASE: dbName }, maxBuffer: 1024 * 1024 });
   pool = new Pool({ connectionString: testUrl.toString(), max: 2 });
   pool.on('error',error=>console.error('Test pool:',error.message));
-  await pool.query(fs.readFileSync(new URL('../../drizzle/0018_friend_groups.sql',import.meta.url),'utf8'));
+  if(!(await pool.query("SELECT to_regclass('public.friend_groups') AS name")).rows[0].name)
+    await pool.query(fs.readFileSync(new URL('../../drizzle/0018_friend_groups.sql',import.meta.url),'utf8'));
   process.env.MAIL_OUTBOX_KEY = randomBytes(32).toString('base64');
   redis = spawn(`${runtime}/redis-server`, ['--bind', '127.0.0.1', '--port', String(redisPort), '--save', '', '--appendonly', 'no'], { stdio: 'ignore' });
   port = await freePort(); await startWeb(true);
@@ -199,6 +200,33 @@ try {
   const account = await request('/account', undefined, { session: true });
   assert.equal(account.status, 200);
   assert(!/<input[^>]+name="(?:currentPassword|newPassword|confirmPassword)"/.test(account.text), 'account has no direct password-change form');
+  if(process.env.ACCOUNT_BROWSER === '1') {
+    const {chromium}=require('@playwright/test');const browser=await chromium.launch();
+    try {
+      const context=await browser.newContext();
+      await context.addCookies([...cookies].map(([name,value])=>({name,value,url:'https://xiudou.site',secure:true})));
+      await context.route('https://xiudou.site/**',async route=>{
+        const url=new URL(route.request().url());
+        const response=await route.fetch({url:`http://localhost:${port}${url.pathname}${url.search}`,headers:{...route.request().headers(),Host:'xiudou.site','X-Forwarded-Host':'xiudou.site','X-Forwarded-Proto':'https'}});
+        await route.fulfill({response});
+      });
+      const page=await context.newPage();
+      for(const locale of ['zh','en']) for(const width of [360,390,780,1024,1440]){
+        await page.setViewportSize({width,height:1000});
+        await page.goto(`https://xiudou.site${locale==='en'?'/en':''}/account`,{waitUntil:'networkidle'});
+        const avatar=page.locator('form').filter({has:page.locator('input[name="avatar"]')});
+        const profile=page.locator('form').filter({has:page.locator('input[name="name"]')});
+        await profile.waitFor();
+        const left=await avatar.boundingBox(),right=await profile.boundingBox();
+        assert(left&&right);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`account overflow ${locale}/${width}`);
+        if(width>=780){assert(right.x>left.x+left.width,'nickname occupies right column');assert(Math.abs(left.y-right.y)<2,'forms align at top');assert(right.width>left.width*0.8,'balanced columns');}
+        else assert(right.y>left.y+left.height,'mobile stacked forms');
+        assert.equal(await page.locator('input[name="currentPassword"]').count(),0);
+        await page.screenshot({path:`/tmp/account-layout-${locale}-${width}.png`,fullPage:true});
+      }
+      await context.close();console.log('PASS authenticated account layout: zh/en, 360/390/780/1024/1440, balanced desktop columns, mobile stack, no overflow');
+    } finally {await browser.close();}
+  }
   assert.equal((await request('/forgot-password')).status, 200, 'email password recovery remains available');
   await submitWebsiteForm('/forgot-password', 'email', { email });
   const { rows: resetMails } = await pool.query("SELECT payload_enc FROM mail_outbox WHERE template='password_reset' AND recipient=$1", [email]);

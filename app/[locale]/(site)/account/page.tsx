@@ -118,9 +118,11 @@ async function AccountContent({ params }: PageProps) {
         <section className="rounded-[var(--radius-card)] border bg-card p-6 [box-shadow:var(--shadow)]">
           <h2 className="headline-sm text-xl">{t("profile")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{t("profileHint")}</p>
-          <div className="mt-6 max-w-2xl space-y-8">
-            <AvatarForm image={profile.image} name={profile.name} />
-            <div className="border-t pt-6">
+          <div className="mt-6 grid min-w-0 gap-6 min-[780px]:grid-cols-2 min-[780px]:gap-8">
+            <div className="min-w-0">
+              <AvatarForm image={profile.image} name={profile.name} />
+            </div>
+            <div className="min-w-0 border-t pt-6 min-[780px]:border-l min-[780px]:border-t-0 min-[780px]:pl-8 min-[780px]:pt-0">
               <ProfileForm name={profile.name} />
             </div>
           </div>
