@@ -133,6 +133,18 @@ export const friendships = pgTable("friendships", {
   check("friendships_requester_pair_check", sql`${table.requestedBy} in (${table.userAId}, ${table.userBId})`),
 ]);
 
+export const friendGroups = pgTable("friend_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 40 }).notNull(),
+}, table => [uniqueIndex("friend_groups_owner_name_unique").on(table.userId, table.name)]);
+
+export const friendGroupMembers = pgTable("friend_group_members", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  friendshipId: uuid("friendship_id").notNull().references(() => friendships.id, { onDelete: "cascade" }),
+  groupId: uuid("group_id").notNull().references(() => friendGroups.id, { onDelete: "cascade" }),
+}, table => [primaryKey({ columns: [table.userId, table.friendshipId] })]);
+
 export const conversations = pgTable("conversations", {
   id: uuid("id").primaryKey().defaultRandom(),
   userAId: uuid("user_a_id").notNull().references(() => users.id, { onDelete: "cascade" }),

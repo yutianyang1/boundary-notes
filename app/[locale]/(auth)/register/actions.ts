@@ -58,7 +58,7 @@ export type RegisterMessageKey =
   | "errors.nameRequired"
   | "errors.nameTooLong";
 
-export type CompleteRegistrationState = { errorKey?: RegisterMessageKey };
+export type CompleteRegistrationState = { errorKey?: RegisterMessageKey; success?: true };
 
 const emailSchema = z.email().transform((value) => value.trim().toLowerCase());
 
@@ -171,8 +171,14 @@ export async function completeRegistrationAction(
   _state: CompleteRegistrationState,
   formData: FormData,
 ): Promise<CompleteRegistrationState> {
+  const result = await completeRegistrationResult(formData);
+  if (result.success) redirect(localePath("/login?registered=success", normalizeLocale(formData.get("locale"))));
+  return result;
+}
+
+/** Shared completion path for the website and the native client. */
+export async function completeRegistrationResult(formData: FormData): Promise<CompleteRegistrationState> {
   if (!isPublicRegistrationEnabled()) return { errorKey: "errors.registrationClosed" };
-  const locale = normalizeLocale(formData.get("locale"));
   const token = String(formData.get("token") ?? "");
   if (token.length < 20) return { errorKey: "errors.registrationLinkInvalid" };
   const tokenDigest = digestActionToken(token);
@@ -231,5 +237,5 @@ export async function completeRegistrationAction(
     )) return { errorKey: "errors.registrationAlreadyDone" };
     throw error;
   }
-  redirect(localePath("/login?registered=success", locale));
+  return { success: true };
 }

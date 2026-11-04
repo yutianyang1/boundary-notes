@@ -16,12 +16,12 @@ const copy = {
     features: [
       { title: "专注阅读", body: "原生文章列表、搜索与 Markdown 阅读，让内容回到眼前。" },
       { title: "好友常联系", body: "查找好友、收发私信、查看站内未读消息，与网页端保持同步。" },
-      { title: "一个账号", body: "使用已有邮箱账号登录，支持验证器与恢复码二次验证。" },
+      { title: "一个账号", body: "在 App 中注册邮箱账号，或使用已有账号登录，支持验证器与恢复码二次验证。" },
     ],
     stepsTitle: "三步，开始使用", steps: [
       { title: "下载安装包", body: "在 Android 手机上打开本页，点击上方下载按钮。" },
       { title: "完成安装", body: "打开下载的 APK 文件，按手机的系统提示完成安装。" },
-      { title: "登录博客账号", body: "输入已有邮箱和密码；已绑定验证器的账号继续完成二次验证。" },
+      { title: "注册或登录", body: "新用户可在 App 内完成邮箱验证和注册；已有账号直接登录。" },
     ],
   },
   en: {
@@ -33,12 +33,12 @@ const copy = {
     features: [
       { title: "Room to read", body: "Native post browsing, search, and Markdown reading that keeps the focus on the content." },
       { title: "Keep in touch", body: "Find friends, exchange private messages, and see unread messages synced with the website." },
-      { title: "One account", body: "Sign in with your existing email account, including authenticator and recovery-code verification." },
+      { title: "One account", body: "Register an email account in the app or sign in with your existing account, including two-factor verification." },
     ],
     stepsTitle: "Get started in three steps", steps: [
       { title: "Download the APK", body: "Open this page on your Android phone and use the download button above." },
       { title: "Install the app", body: "Open the downloaded APK and follow your phone’s installation prompts." },
-      { title: "Sign in", body: "Use your existing email and password, then complete two-factor verification if enabled." },
+      { title: "Register or sign in", body: "New readers can verify their email and register in the app. Existing readers can sign in directly." },
     ],
   },
 } as const;

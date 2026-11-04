@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -60,6 +61,8 @@ class BlogModel(application: Application) : AndroidViewModel(application) {
     var messages by mutableStateOf(emptyList<JSONObject>()); private set
     var chat by mutableStateOf<JSONObject?>(null); private set
     var error by mutableStateOf<String?>(null)
+    val registration = RegistrationController(api, viewModelScope) { error = it }
+    var loginEmailHint by mutableStateOf("")
     var busy by mutableStateOf(false); private set
     var hasMore by mutableStateOf(false); private set
     var foundUsers by mutableStateOf(emptyList<JSONObject>()); private set
@@ -94,10 +97,21 @@ class BlogModel(application: Application) : AndroidViewModel(application) {
         val path = BuildConfig.SITE_URL.toHttpUrl().newBuilder().addPathSegments("api/mobile/posts").addPathSegment(post.getString("slug")).build().encodedPath
         article = api.request(path).getJSONObject("post")
     }
-    fun back() { article = null; chat = null; messages = emptyList() }
+    fun back() { if (registration.isOpen) registration.close() else { article = null; chat = null; messages = emptyList() } }
+    fun receiveRegistrationLink(uri: Uri?) {
+        if (uri == null) return
+        val token = RegistrationLinks.tokenFromUrl(uri.toString(), BuildConfig.SITE_URL)
+        if (token == null) { error = "邮箱验证链接无效"; return }
+        if (session != null || pendingMfa) { error = "请先退出当前账号再注册"; return }
+        registration.open(token)
+    }
     private fun acceptSession(value: JSONObject) {
         pendingMfa = value.has("user") && value.optString("authState") == "mfa_pending"
         session = value.takeIf { it.has("user") && it.optString("authState") == "full" }
+        if ((session != null || pendingMfa) && registration.isOpen) {
+            registration.close()
+            error = "请先退出当前账号再注册"
+        }
     }
     fun login(email: String, password: String) = task { acceptSession(api.login(email, password)) }
     fun verifyMfa(code: String) = task {
@@ -119,7 +133,6 @@ class BlogModel(application: Application) : AndroidViewModel(application) {
             val updatedMessages = api.request("/api/social/conversations/$id/messages").getJSONArray("messages").rows()
             if (chat?.text("id") == id && session === currentSession) {
                 messages = updatedMessages
-                api.post("/api/social/conversations/$id/read", JSONObject())
             }
         }
     }
@@ -128,7 +141,6 @@ class BlogModel(application: Application) : AndroidViewModel(application) {
         val id = conversation.getString("id")
         val loaded = api.request("/api/social/conversations/$id/messages").getJSONArray("messages").rows()
         chat = JSONObject().put("id", id).put("peerName", item.getString("peerName")); messages = loaded
-        api.post("/api/social/conversations/$id/read", JSONObject())
     }
     fun send(content: String, done: () -> Unit) = task {
         val id = chat?.getString("id") ?: return@task
@@ -144,6 +156,12 @@ class BlogModel(application: Application) : AndroidViewModel(application) {
         foundUsers = emptyList(); refreshSocial()
     }
     fun readNotice(id: String) = task { api.post("/api/social/announcements/$id/read", JSONObject()); refreshSocial() }
+    suspend fun readVisibleMessage(conversationId: String, messageId: String) {
+        if(chat?.text("id") != conversationId || session == null) return
+        api.post("/api/social/conversations/$conversationId/read", JSONObject().put("messageId",messageId))
+        refreshSocial(includeMessages = false)
+    }
+    fun changeGroup(body: JSONObject) = task { api.post("/api/social/groups", body); refreshSocial(includeMessages = false) }
     fun broadcast(content: String, done: (Int) -> Unit) = task {
         val result = api.post("/api/admin/social/announcements", JSONObject().put("content", content.trim()))
         done(result.optInt("recipientCount"))
@@ -151,10 +169,14 @@ class BlogModel(application: Application) : AndroidViewModel(application) {
 }
 
 class MainActivity : ComponentActivity() {
+    private val blogModel by lazy { ViewModelProvider(this)[BlogModel::class.java] }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState); enableEdgeToEdge()
-        setContent { MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) { BlogApp() } }
+        handleRegistrationIntent(intent)
+        setContent { MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) { BlogApp(blogModel) } }
     }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); handleRegistrationIntent(intent) }
+    private fun handleRegistrationIntent(intent: Intent) { blogModel.receiveRegistrationLink(intent.data); intent.data = null }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -170,10 +192,10 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    BackHandler(model.article != null || model.chat != null) { model.back() }
+    BackHandler(model.article != null || model.chat != null || model.registration.isOpen) { model.back() }
     Scaffold(topBar = {
-        TopAppBar(title = { Text(model.article?.text("title") ?: model.chat?.text("peerName") ?: "边界笔记") },
-            navigationIcon = { if (model.article != null || model.chat != null) TextButton(onClick = { model.back() }) { Text("返回") } },
+        TopAppBar(title = { Text(if (model.registration.isOpen) "注册账号" else model.article?.text("title") ?: model.chat?.text("peerName") ?: "边界笔记") },
+            navigationIcon = { if (model.article != null || model.chat != null || model.registration.isOpen) TextButton(onClick = { model.back() }, enabled = !model.registration.busy) { Text("返回") } },
             actions = {
                 model.article?.let { post ->
                     TextButton(onClick = {
@@ -182,7 +204,7 @@ class MainActivity : ComponentActivity() {
                     }) { Text("分享") }
                 }
             })
-    }, bottomBar = { if (model.article == null && model.chat == null) NavigationBar {
+    }, bottomBar = { if (model.article == null && model.chat == null && !model.registration.isOpen) NavigationBar {
         listOf("阅读", "消息", "我的").forEachIndexed { index, title ->
             NavigationBarItem(selected = tab == index, onClick = { tab = index }, icon = {
                 BadgedBox(badge = { val unread = model.social?.optInt("unread") ?: 0; if (index == 1 && unread > 0) Badge { Text(if (unread > 99) "99+" else "$unread") } }) {
@@ -192,11 +214,13 @@ class MainActivity : ComponentActivity() {
         }
     } }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            if (model.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (model.busy || model.registration.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             model.error?.let { text -> Surface(color = MaterialTheme.colorScheme.errorContainer) {
                 Row(Modifier.fillMaxWidth().padding(12.dp)) { Text(text, Modifier.weight(1f)); TextButton(onClick = { model.error = null }) { Text("关闭") } }
             } }
             when {
+                model.registration.isOpen && !model.restoringSession -> RegistrationScreen(model) { model.loginEmailHint = model.registration.email; model.registration.close(); tab = 2 }
+                model.registration.isOpen -> AccountScreen(model)
                 model.article != null -> ArticleScreen(model.article!!)
                 model.chat != null -> ChatScreen(model)
                 tab == 0 -> PostsScreen(model)
@@ -286,9 +310,7 @@ class MainActivity : ComponentActivity() {
                 trailingContent = { if (conversation.optInt("unreadCount") > 0) Badge { Text("${conversation.optInt("unreadCount")}") } }, modifier = Modifier.clickable { model.openChat(conversation, false) })
         }
         item { Text("好友", style = MaterialTheme.typography.titleMedium) }
-        items(data?.optJSONArray("friends")?.rows().orEmpty(), key = { "friend:" + it.getString("id") }) { friend ->
-            ListItem(headlineContent = { Text(friend.text("peerName")) }, supportingContent = { Text("点击发消息") }, modifier = Modifier.clickable { model.openChat(friend, true) })
-        }
+        item { FriendGroupsPanel(model) }
     }
 }
 
@@ -296,7 +318,28 @@ class MainActivity : ComponentActivity() {
     var input by rememberSaveable(model.chat?.text("id")) { mutableStateOf("") }
     val selfId = model.session?.optJSONObject("user")?.text("id")
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-    LaunchedEffect(model.messages.lastOrNull()?.text("id")) { if (model.messages.isNotEmpty()) listState.animateScrollToItem(model.messages.lastIndex) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val chatId = model.chat?.text("id") ?: ""
+    var followEnd by remember(chatId) { mutableStateOf(true) }
+    LaunchedEffect(model.messages.lastOrNull()?.text("id")) {
+        if (followEnd && model.messages.isNotEmpty()) listState.scrollToItem(model.messages.lastIndex)
+    }
+    LaunchedEffect(chatId, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            var acknowledged = ""
+            while(true) {
+                val last = model.messages.lastOrNull()?.text("id")
+                val info = listState.layoutInfo
+                val latestVisible = info.visibleItemsInfo.lastOrNull()?.let { it.key == last && it.offset + it.size <= info.viewportEndOffset } == true
+                followEnd = !listState.canScrollForward
+                if(latestVisible && last != null && last != acknowledged) {
+                    try { model.readVisibleMessage(chatId,last); acknowledged = last }
+                    catch(e: CancellationException) { throw e } catch(e: Exception) { model.error = e.message }
+                }
+                delay(500)
+            }
+        }
+    }
     Column(Modifier.fillMaxSize().imePadding()) {
         LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(model.messages, key = { it.getString("id") }) { message ->
@@ -316,7 +359,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable fun AccountScreen(model: BlogModel) {
-    var email by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable(model.loginEmailHint) { mutableStateOf(model.loginEmailHint) }
     var password by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
     var announcement by rememberSaveable { mutableStateOf("") }
@@ -354,6 +397,7 @@ class MainActivity : ComponentActivity() {
             OutlinedTextField(email, { email = it }, label = { Text("邮箱") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth())
             OutlinedTextField(password, { password = it }, label = { Text("密码") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = Modifier.fillMaxWidth())
             Button(onClick = { val submitted = password; password = ""; model.login(email, submitted) }, enabled = email.isNotBlank() && password.isNotEmpty() && !model.busy) { Text("登录") }
+            TextButton(onClick = { model.registration.open() }, enabled = !model.busy) { Text("没有账号？注册") }
             TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.SITE_URL + "/forgot-password"))) }) { Text("忘记密码") }
         }
     }

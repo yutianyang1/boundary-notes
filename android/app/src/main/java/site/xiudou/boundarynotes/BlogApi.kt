@@ -19,6 +19,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 class LoginRequired : java.io.IOException("登录已失效，请重新登录")
+class ApiFailure(message: String, val status: Int, val cooldownSeconds: Int = 0) : java.io.IOException(message)
 
 class SecureCookies(context: Context) : CookieJar {
     private val preferences = context.getSharedPreferences("session", Context.MODE_PRIVATE)
@@ -61,13 +62,13 @@ class BlogApi(context: Context) {
         val url = origin.resolve(path) ?: error("地址无效")
         require(url.host == origin.host && url.scheme == "https")
         val builder = Request.Builder().url(url).header("Accept", "application/json").header("Origin", BuildConfig.SITE_URL).header("X-Auth-Return-Redirect", "1")
-            .header("User-Agent", "BoundaryNotes-Android/0.1")
+            .header("User-Agent", "BoundaryNotes-Android/${BuildConfig.VERSION_NAME}")
         if (body != null) builder.post(body)
         client.newCall(builder.build()).execute().use { response ->
             if (response.code == 401) throw LoginRequired()
             val raw = response.body?.string().orEmpty()
             val json = runCatching { JSONObject(raw) }.getOrElse { error("服务返回了无法识别的内容（${response.code}）") }
-            if (!response.isSuccessful) error(json.optString("error", "请求失败（${response.code}）"))
+            if (!response.isSuccessful) throw ApiFailure(json.optString("error", "请求失败（${response.code}）"), response.code, json.optInt("cooldownSeconds").coerceIn(0, 3600))
             json
         }
     }

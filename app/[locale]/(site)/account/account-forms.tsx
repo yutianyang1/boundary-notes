@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useActionState, useRef, useState } from "react";
 import {
-  changePasswordAction,
   revokeDeviceAction,
   revokeOtherDevicesAction,
   updateProfileAction,
@@ -114,32 +113,6 @@ export function AvatarForm({ image, name }: { image: string | null; name: string
       <ActionMessage state={message} />
       <button disabled={pending} className={secondaryButtonClass}>
         {pending ? t("uploading") : t("uploadAvatar")}
-      </button>
-    </form>
-  );
-}
-
-export function PasswordForm() {
-  const t = useTranslations("account");
-  const [state, action, pending] = useActionState(changePasswordAction, initialState);
-  return (
-    <form action={action} className="space-y-4">
-      <label className="block text-sm font-semibold">
-        {t("currentPassword")}
-        <input name="currentPassword" type="password" required autoComplete="current-password" className={inputClass} />
-      </label>
-      <label className="block text-sm font-semibold">
-        {t("newPassword")}
-        <input name="newPassword" type="password" required minLength={8} autoComplete="new-password" className={inputClass} />
-        <span className="mt-2 block font-normal text-muted-foreground">{t("passwordHint")}</span>
-      </label>
-      <label className="block text-sm font-semibold">
-        {t("confirmNewPassword")}
-        <input name="confirmPassword" type="password" required minLength={8} autoComplete="new-password" className={inputClass} />
-      </label>
-      <ActionMessage state={state} />
-      <button disabled={pending} className={primaryButtonClass}>
-        {pending ? t("updating") : t("changePassword")}
       </button>
     </form>
   );

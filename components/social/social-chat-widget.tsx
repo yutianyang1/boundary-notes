@@ -2,13 +2,14 @@
 
 import { Check, MessageCircle, MessageSquare, Send, X } from "lucide-react";
 import Image from "next/image";
+import {FriendGroups} from "./friend-groups";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 type SocialUser = { id: string; name: string; image: string | null };
-type Relationship = { id: string; status: "pending" | "accepted"; requestedBy: string; peerId: string; peerName: string; peerImage: string | null; direction?: "incoming" | "outgoing" };
+type Relationship = { groupId?:string|null; id: string; status: "pending" | "accepted"; requestedBy: string; peerId: string; peerName: string; peerImage: string | null; direction?: "incoming" | "outgoing" };
 type Conversation = { id: string; peerId: string; peerName: string; peerImage: string | null; lastMessageAt: string | null; latestContent: string | null; unreadCount: number };
 type Announcement = { id: string; content: string; createdAt: string; readAt: string | null };
-type Summary = { friends: Relationship[]; requests: Relationship[]; conversations: Conversation[]; announcements: Announcement[]; unread: number };
+type Summary = { groups?:{id:string;name:string}[];unreadCounts?:{messages:number;requests:number;announcements:number};friends: Relationship[]; requests: Relationship[]; conversations: Conversation[]; announcements: Announcement[]; unread: number };
 type ChatMessage = { id: string; senderId: string; content: string; createdAt: string };
 type Tab = "conversations" | "friends" | "announcements" | "broadcast";
 
@@ -28,6 +29,22 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
   const [broadcastDraft, setBroadcastDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const followEnd = useRef(true);
+  const acknowledged = useRef(new Map<string,string>());
+  const readableChat = useRef<string|null>(null);
+  const [pageVisible,setPageVisible] = useState(true);
+  const counts = summary.unreadCounts ?? {messages:summary.conversations.reduce((n,c)=>n+c.unreadCount,0),requests:summary.requests.filter(r=>r.direction==="incoming").length,announcements:summary.announcements.filter(a=>!a.readAt).length};
+  useEffect(()=>{
+    readableChat.current = open && tab === "conversations" && pageVisible ? activeChat?.id??null : null;
+    return()=>{readableChat.current=null;};
+  },[open,tab,pageVisible,activeChat]);
+  useEffect(()=>{
+    const update=()=>{setPageVisible(document.visibilityState!=="hidden");if(document.visibilityState==="hidden")readableChat.current=null;};
+    update();document.addEventListener("visibilitychange",update);return()=>document.removeEventListener("visibilitychange",update);
+  },[]);
+  function closeWidget(){readableChat.current=null;setOpen(false);setActiveChat(null);setMessages([]);}
+  function selectChat(chat:Conversation){readableChat.current=null;setMessages([]);followEnd.current=true;setActiveChat(chat);}
 
   const refresh = useCallback(async () => {
     const response = await fetch("/api/social", { cache: "no-store" }).catch(() => null);
@@ -41,9 +58,9 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
   }, []);
 
   useEffect(() => {
-    void refresh();
+    const initial=window.setTimeout(()=>void refresh(),0);
     const timer = window.setInterval(() => void refresh(), 8_000);
-    return () => window.clearInterval(timer);
+    return () => {window.clearTimeout(initial);window.clearInterval(timer);};
   }, [refresh]);
 
   useEffect(() => {
@@ -63,26 +80,33 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
   }, [query]);
 
   const refreshMessages = useCallback(async (conversationId: string) => {
-    const [response] = await Promise.all([
-      fetch(`/api/social/conversations/${encodeURIComponent(conversationId)}/messages`, { cache: "no-store" }).catch(() => null),
-      fetch(`/api/social/conversations/${encodeURIComponent(conversationId)}/read`, { method: "POST" }).catch(() => null),
-    ]);
+    const response = await fetch(`/api/social/conversations/${encodeURIComponent(conversationId)}/messages`, { cache: "no-store" }).catch(() => null);
     if (!response?.ok) return;
     const value = await response.json() as { messages: ChatMessage[] };
+    if(readableChat.current!==conversationId)return;
     setMessages(value.messages);
-    void refresh();
-  }, [refresh]);
+  }, []);
 
   useEffect(() => {
-    if (!activeChat) return;
-    void refreshMessages(activeChat.id);
+    if (!activeChat || !open || tab!=="conversations" || !pageVisible) return;
+    const initial=window.setTimeout(()=>void refreshMessages(activeChat.id),0);
     const timer = window.setInterval(() => void refreshMessages(activeChat.id), 3_000);
-    return () => window.clearInterval(timer);
-  }, [activeChat, refreshMessages]);
+    return () => {window.clearTimeout(initial);window.clearInterval(timer);};
+  }, [activeChat, open, tab, pageVisible, refreshMessages]);
+
+  const acknowledgeVisible = useCallback(async()=>{
+    const id=readableChat.current,last=messages.at(-1);
+    const box=scrollRef.current;
+    if(!id||!last||!box||document.visibilityState==="hidden"||box.scrollHeight-box.scrollTop-box.clientHeight>32||acknowledged.current.get(id)===last.id)return;
+    acknowledged.current.set(id,last.id);
+    const response=await fetch(`/api/social/conversations/${id}/read`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messageId:last.id})}).catch(()=>null);
+    if(response?.ok)void refresh();else acknowledged.current.delete(id);
+  },[messages,refresh]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "nearest" });
-  }, [messages]);
+    if(followEnd.current)endRef.current?.scrollIntoView({ block: "nearest" });
+    void acknowledgeVisible();
+  }, [messages, pageVisible, acknowledgeVisible]);
 
   async function post<T>(url: string, body: unknown): Promise<T> {
     const response = await fetch(url, {
@@ -118,7 +142,7 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
     try {
       const conversation = await post<{ id: string }>("/api/social/conversations", { friendId: friend.peerId });
       const existing = summary.conversations.find((item) => item.id === conversation.id);
-      setActiveChat(existing ?? {
+      selectChat(existing ?? {
         id: conversation.id,
         peerId: friend.peerId,
         peerName: friend.peerName,
@@ -159,9 +183,16 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
 
   async function openAnnouncement(item: Announcement) {
     if (!item.readAt) {
-      await fetch(`/api/social/announcements/${encodeURIComponent(item.id)}/read`, { method: "POST" }).catch(() => null);
-      await refresh();
+      const response=await fetch(`/api/social/announcements/${encodeURIComponent(item.id)}/read`, { method: "POST" }).catch(() => null);
+      if(response?.ok)await refresh();else setNotice("通知读取失败，请重试。");
     }
+  }
+
+  async function changeGroup(body:unknown){
+    setBusy(true);setNotice("");
+    try{await post("/api/social/groups",body);await refresh();}
+    catch(error){setNotice(error instanceof Error?error.message:"分组操作失败。");}
+    finally{setBusy(false);}
   }
 
   async function sendBroadcast(event: FormEvent) {
@@ -192,12 +223,12 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
           <header className="flex items-center gap-3 border-b px-4 py-3">
             <div className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground"><MessageCircle className="size-5" /></div>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">好友与消息</p><p className="truncate text-xs text-muted-foreground">{userName}</p></div>
-            <button type="button" aria-label="关闭聊天" className="rounded-md p-2 hover:bg-muted" onClick={() => setOpen(false)}><X className="size-4" /></button>
+            <button type="button" aria-label="关闭聊天" className="rounded-md p-2 hover:bg-muted" onClick={closeWidget}><X className="size-4" /></button>
           </header>
           <nav className="flex border-b px-2" aria-label="消息分类">
-            <WidgetTab selected={tab === "conversations"} onClick={() => { setTab("conversations"); setActiveChat(null); }}>会话</WidgetTab>
-            <WidgetTab selected={tab === "friends"} onClick={() => { setTab("friends"); setActiveChat(null); }}>好友{summary.requests.some((item) => item.direction === "incoming") ? " ·" : ""}</WidgetTab>
-            <WidgetTab selected={tab === "announcements"} onClick={() => { setTab("announcements"); setActiveChat(null); }}>公告</WidgetTab>
+            <WidgetTab selected={tab === "conversations"} onClick={() => { readableChat.current=null;setTab("conversations"); setActiveChat(null); }}>会话 <Unread count={counts.messages}/></WidgetTab>
+            <WidgetTab selected={tab === "friends"} onClick={() => { readableChat.current=null;setTab("friends"); setActiveChat(null); }}>好友 <Unread count={counts.requests}/></WidgetTab>
+            <WidgetTab selected={tab === "announcements"} onClick={() => { readableChat.current=null;setTab("announcements"); setActiveChat(null); }}>公告 <Unread count={counts.announcements}/></WidgetTab>
             {isAdmin ? <WidgetTab selected={tab === "broadcast"} onClick={() => { setTab("broadcast"); setActiveChat(null); }}>群发</WidgetTab> : null}
           </nav>
           {notice ? <p role="status" className="border-b bg-muted/60 px-4 py-2 text-xs">{notice}</p> : null}
@@ -207,7 +238,7 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
                 <button type="button" className="text-sm text-primary" onClick={() => setActiveChat(null)}>← 会话</button>
                 <Person user={{ id: activeChat.peerId, name: activeChat.peerName, image: activeChat.peerImage }} />
               </div>
-              <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto bg-muted/25 p-3">
+              <div ref={scrollRef} onScroll={()=>{const box=scrollRef.current;if(box){followEnd.current=box.scrollHeight-box.scrollTop-box.clientHeight<32;if(followEnd.current)void acknowledgeVisible();}}} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto bg-muted/25 p-3">
                 {messages.map((message) => <div key={message.id} className={`max-w-[85%] whitespace-pre-wrap break-words rounded-xl px-3 py-2 text-sm ${message.senderId === userId ? "self-end bg-primary text-primary-foreground" : "self-start bg-card shadow-sm"}`}>
                   <p>{message.content}</p><time className="mt-1 block text-right text-[10px] opacity-65">{formatTime(message.createdAt)}</time>
                 </div>)}
@@ -221,7 +252,7 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
             </div>
           ) : tab === "conversations" ? (
             <div className="min-h-0 flex-1 overflow-y-auto p-2">
-              {summary.conversations.length ? summary.conversations.map((conversation) => <button key={conversation.id} type="button" onClick={() => setActiveChat(conversation)} className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted">
+              {summary.conversations.length ? summary.conversations.map((conversation) => <button key={conversation.id} type="button" onClick={() => selectChat(conversation)} className="flex w-full items-center gap-3 rounded-xl p-3 text-left hover:bg-muted">
                 <Avatar user={{ id: conversation.peerId, name: conversation.peerName, image: conversation.peerImage }} />
                 <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{conversation.peerName}</span><span className="block truncate text-xs text-muted-foreground">{conversation.latestContent ?? "开始聊天"}</span></span>
                 {conversation.unreadCount > 0 ? <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">{conversation.unreadCount}</span> : null}
@@ -238,13 +269,14 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
               {summary.requests.filter((item) => item.direction === "incoming").map((request) => <div key={request.id} className="flex items-center gap-2 border-b py-2"><Person user={{ id: request.peerId, name: request.peerName, image: request.peerImage }} /><button disabled={busy} onClick={() => void actFriend("accept", request)} className="rounded-lg bg-primary px-2.5 py-1.5 text-xs text-primary-foreground"><Check className="inline size-3.5" /> 接受</button><button disabled={busy} onClick={() => void actFriend("reject", request)} className="rounded-lg border px-2.5 py-1.5 text-xs">忽略</button></div>)}
               {summary.requests.filter((item) => item.direction === "outgoing").map((request) => <p key={request.id} className="py-1 text-xs text-muted-foreground">已向 {request.peerName} 发送申请</p>)}
               <h3 className="mt-4 text-xs font-semibold">好友 · {summary.friends.length}</h3>
-              {summary.friends.map((friend) => <div key={friend.id} className="flex items-center gap-2 border-b py-2"><Person user={{ id: friend.peerId, name: friend.peerName, image: friend.peerImage }} /><button onClick={() => void startChat(friend)} className="rounded-lg bg-primary px-2.5 py-1.5 text-xs text-primary-foreground">聊天</button><button disabled={busy} onClick={() => void actFriend("remove", friend)} className="rounded-lg border px-2.5 py-1.5 text-xs">移除</button></div>)}
+              <FriendGroups friends={summary.friends} groups={summary.groups??[]} busy={busy} change={changeGroup} render={friend=><div className="flex items-center gap-2"><Person user={{id:friend.peerId,name:friend.peerName,image:friend.peerImage}}/><button onClick={()=>void startChat(friend)} className="rounded-lg bg-primary px-2 py-1 text-xs text-primary-foreground">聊天</button><button disabled={busy} onClick={()=>void actFriend("remove",friend)} className="text-xs">移除</button></div>}/>
               {summary.friends.length === 0 ? <Empty>添加好友后，可以在这里发起私聊。</Empty> : null}
             </div>
           ) : tab === "announcements" ? (
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              {summary.announcements.map((item) => <article key={item.id} onClick={() => void openAnnouncement(item)} className={`mb-2 rounded-xl border p-3 ${item.readAt ? "bg-card" : "border-primary/40 bg-primary/5"}`}>
+              {summary.announcements.map((item) => <article key={item.id} className={`mb-2 rounded-xl border p-3 ${item.readAt ? "bg-card" : "border-primary/40 bg-primary/5"}`}>
                 <div className="mb-1 flex items-center justify-between text-xs"><strong>{item.readAt ? "站内公告" : "新公告"}</strong><time className="text-muted-foreground">{formatTime(item.createdAt)}</time></div><p className="whitespace-pre-wrap break-words text-sm">{item.content}</p>
+                {!item.readAt?<button type="button" onClick={()=>void openAnnouncement(item)} className="mt-2 text-xs text-primary">查看并标记已读</button>:null}
               </article>)}
               {summary.announcements.length === 0 ? <Empty>目前没有公告。</Empty> : null}
             </div>
@@ -257,9 +289,9 @@ export function SocialChatWidget({ userId, userName, userImage, isAdmin }: { use
           )}
         </section>
       ) : null}
-      <button type="button" aria-label="打开好友与消息" aria-expanded={open} onClick={() => { setOpen((value) => !value); if (!open) void refresh(); }} className="relative ml-auto grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40">
+      <button type="button" aria-label="打开好友与消息" aria-expanded={open} onClick={() => { if(open)closeWidget();else{setOpen(true);void refresh();} }} className="relative ml-auto grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/40">
         {open ? <X className="size-6" /> : <MessageSquare className="size-6" />}
-        {summary.unread > 0 && !open ? <span aria-label={`${summary.unread} 条未读`} className="absolute -right-1 -top-1 grid min-w-6 place-items-center rounded-full border-2 border-background bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{summary.unread > 99 ? "99+" : summary.unread}</span> : null}
+        {summary.unread > 0 ? <span aria-label={`${summary.unread} 条未读`} className="absolute -right-1 -top-1 grid min-w-6 place-items-center rounded-full border-2 border-background bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{summary.unread > 99 ? "99+" : summary.unread}</span> : null}
       </button>
     </div>
   );
@@ -276,6 +308,8 @@ function Avatar({ user }: { user: SocialUser }) {
 function Person({ user }: { user: SocialUser }) {
   return <span className="flex min-w-0 flex-1 items-center gap-2"><Avatar user={user} /><span className="truncate text-sm font-medium">{user.name}</span></span>;
 }
+
+function Unread({count}:{count:number}){return count>0?<span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">{count>99?"99+":count}</span>:null;}
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="px-3 py-8 text-center text-xs leading-5 text-muted-foreground">{children}</p>;

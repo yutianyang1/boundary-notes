@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
 import {
@@ -6,6 +6,8 @@ import {
   conversations,
   directMessages,
   friendships,
+  friendGroups,
+  friendGroupMembers,
   socialAnnouncementRecipients,
   socialAnnouncements,
   users,
@@ -37,6 +39,9 @@ export function consumeSocialRateLimit(key: string, max: number, windowMs: numbe
 }
 
 export async function getSocialSummary(userId: string) {
+  const groups = await db.select({id:friendGroups.id,name:friendGroups.name}).from(friendGroups).where(eq(friendGroups.userId,userId)).orderBy(asc(friendGroups.name));
+  const memberships = await db.select().from(friendGroupMembers).where(eq(friendGroupMembers.userId,userId));
+  const groupByFriend = new Map(memberships.map(item=>[item.friendshipId,item.groupId]));
   const peer = alias(users, "social_peer");
   const peerId = sql<string>`case when ${friendships.userAId} = ${userId} then ${friendships.userBId} else ${friendships.userAId} end`;
   const relationshipRows = await db
@@ -90,7 +95,7 @@ export async function getSocialSummary(userId: string) {
     .from(socialAnnouncementRecipients)
     .innerJoin(socialAnnouncements, eq(socialAnnouncements.id, socialAnnouncementRecipients.announcementId))
     .where(eq(socialAnnouncementRecipients.userId, userId))
-    .orderBy(desc(socialAnnouncements.createdAt))
+    .orderBy(sql`${socialAnnouncementRecipients.readAt} is null desc`, desc(socialAnnouncements.createdAt))
     .limit(20);
 
   const [incoming] = await db
@@ -113,12 +118,14 @@ export async function getSocialSummary(userId: string) {
   const requests = relationshipRows
     .filter((item) => item.status === "pending")
     .map((item) => ({ ...item, direction: item.requestedBy === userId ? "outgoing" as const : "incoming" as const }));
-  const friends = relationshipRows.filter((item) => item.status === "accepted");
+  const friends = relationshipRows.filter((item) => item.status === "accepted").map(item=>({...item,groupId:groupByFriend.get(item.id)??null}));
   const conversationsView = conversationRows.map((item) => ({ ...item, unreadCount: Number(item.unreadCount) }));
   const unreadMessages = conversationsView.reduce((total, item) => total + item.unreadCount, 0);
   const unreadBroadcasts = Number(unreadAnnouncements?.value ?? 0);
 
   return {
+    groups,
+    unreadCounts: {requests:Number(incoming?.value??0),messages:unreadMessages,announcements:unreadBroadcasts},
     friends,
     requests,
     conversations: conversationsView,
@@ -212,16 +219,21 @@ export async function listConversationMessages(userId: string, conversationId: s
   return rows.reverse();
 }
 
-export async function markConversationRead(userId: string, conversationId: string) {
+export async function markConversationRead(userId: string, conversationId: string, messageId?: string) {
   const [conversation] = await db.select({ id: conversations.id, userAId: conversations.userAId, userBId: conversations.userBId })
     .from(conversations).where(and(
       eq(conversations.id, conversationId),
       or(eq(conversations.userAId, userId), eq(conversations.userBId, userId)),
     )).limit(1);
   if (!conversation) throw new Error("会话不存在。");
+  const [message] = await db.select({createdAt:directMessages.createdAt}).from(directMessages).where(and(
+    eq(directMessages.conversationId,conversationId), messageId ? eq(directMessages.id,messageId) : undefined,
+  )).orderBy(desc(directMessages.createdAt)).limit(1);
+  if (!message) { if(messageId) throw new Error("消息不存在。"); return; }
+  const readAt = message.createdAt;
   await db.update(conversations).set(conversation.userAId === userId
-    ? { userAReadAt: new Date(), updatedAt: new Date() }
-    : { userBReadAt: new Date(), updatedAt: new Date() },
+    ? { userAReadAt: sql`greatest(${conversations.userAReadAt}, ${readAt})` }
+    : { userBReadAt: sql`greatest(${conversations.userBReadAt}, ${readAt})` },
   ).where(eq(conversations.id, conversationId));
 }
 
@@ -247,7 +259,6 @@ export async function sendDirectMessage(userId: string, conversationId: string, 
     await tx.update(conversations).set({
       lastMessageAt: now,
       updatedAt: now,
-      ...(conversation.userAId === userId ? { userAReadAt: now } : { userBReadAt: now }),
     }).where(eq(conversations.id, conversationId));
     return message;
   });

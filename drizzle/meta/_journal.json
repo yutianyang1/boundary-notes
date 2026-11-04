@@ -99,6 +99,13 @@
       "when": 1790132928765,
       "tag": "0013_social_messaging",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793779200000,
+      "tag": "0018_friend_groups",
+      "breakpoints": true
     }
   ]
 }

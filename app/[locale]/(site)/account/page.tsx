@@ -13,7 +13,6 @@ import { auth } from "@/auth";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import {
   AvatarForm,
-  PasswordForm,
   ProfileForm,
   RevokeDeviceForm,
   RevokeOthersForm,
@@ -115,11 +114,11 @@ async function AccountContent({ params }: PageProps) {
         </div>
       </header>
 
-      <div className="mx-auto mt-8 grid max-w-[72rem] gap-6 min-[780px]:grid-cols-2">
+      <div className="mx-auto mt-8 max-w-[72rem]">
         <section className="rounded-[var(--radius-card)] border bg-card p-6 [box-shadow:var(--shadow)]">
           <h2 className="headline-sm text-xl">{t("profile")}</h2>
           <p className="mt-2 text-sm text-muted-foreground">{t("profileHint")}</p>
-          <div className="mt-6 space-y-8">
+          <div className="mt-6 max-w-2xl space-y-8">
             <AvatarForm image={profile.image} name={profile.name} />
             <div className="border-t pt-6">
               <ProfileForm name={profile.name} />
@@ -127,15 +126,6 @@ async function AccountContent({ params }: PageProps) {
           </div>
         </section>
 
-        <section className="rounded-[var(--radius-card)] border bg-card p-6 [box-shadow:var(--shadow)]">
-          <h2 className="headline-sm text-xl">{t("changePassword")}</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {t("passwordSectionHint")}
-          </p>
-          <div className="mt-6">
-            <PasswordForm />
-          </div>
-        </section>
       </div>
 
       <section className="mx-auto mt-6 max-w-[72rem] overflow-hidden rounded-[var(--radius-card)] border bg-card [box-shadow:var(--shadow)]">
@@ -186,8 +176,7 @@ function AccountSkeleton() {
   return (
     <div className="shell py-12">
       <div className="mx-auto h-20 max-w-[72rem] animate-pulse rounded-[var(--radius-card)] bg-muted" />
-      <div className="mx-auto mt-8 grid max-w-[72rem] gap-6 min-[780px]:grid-cols-2">
-        <div className="h-96 animate-pulse rounded-[var(--radius-card)] bg-muted" />
+      <div className="mx-auto mt-8 max-w-[72rem]">
         <div className="h-96 animate-pulse rounded-[var(--radius-card)] bg-muted" />
       </div>
     </div>

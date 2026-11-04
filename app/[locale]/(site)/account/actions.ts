@@ -1,23 +1,16 @@
 "use server";
 
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { z } from "zod";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { passwordSchema } from "@/lib/auth/password-input";
-import { isBlockedPassword } from "@/lib/auth/password-policy";
 import { requireFullSession } from "@/lib/auth/permissions";
-import { securityAlertPayload } from "@/lib/auth/security-alert";
 import {
-  clearRegisteredSessionCache,
   invalidateUserSessionCache,
   revokeOtherUserSessions,
   revokeUserSession,
 } from "@/lib/auth/session-registry";
 import { db } from "@/lib/db";
-import { auditLogs, mailOutbox, userSessions, users } from "@/lib/db/schema";
-import { encryptOutboxPayload } from "@/lib/mail/outbox";
+import { auditLogs, users } from "@/lib/db/schema";
 
 /** 返回字典 key 而非文案，翻译交给 UI。 */
 export type AccountErrorKey =
@@ -85,84 +78,6 @@ export async function updateProfileAction(
   await invalidateUserSessionCache(session.user.id);
   revalidatePath("/account");
   return { successKey: "profileUpdated" };
-}
-
-export async function changePasswordAction(
-  _state: AccountActionState,
-  formData: FormData,
-): Promise<AccountActionState> {
-  const session = await requireFullSession();
-  const currentPassword = z.string().min(1).max(1_024).safeParse(formData.get("currentPassword"));
-  const newPassword = passwordSchema.safeParse(formData.get("newPassword"));
-  const confirmation = z.string().safeParse(formData.get("confirmPassword"));
-  if (!currentPassword.success) return { errorKey: "errors.currentPasswordRequired" };
-  if (!newPassword.success) return { errorKey: "errors.passwordTooShort" };
-  if (!confirmation.success || confirmation.data !== newPassword.data) {
-    return { errorKey: "errors.passwordMismatch" };
-  }
-
-  const [user] = await db
-    .select({
-      name: users.name,
-      email: users.email,
-      passwordHash: users.passwordHash,
-    })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
-  if (!user?.passwordHash) return { errorKey: "errors.noPasswordCredential" };
-
-  const currentResult = await verifyPassword(currentPassword.data, user.passwordHash);
-  if (!currentResult.valid) return { errorKey: "errors.currentPasswordWrong" };
-  if ((await verifyPassword(newPassword.data, user.passwordHash)).valid) {
-    return { errorKey: "errors.passwordSameAsCurrent" };
-  }
-  if (isBlockedPassword(newPassword.data, { name: user.name, email: user.email })) {
-    return { errorKey: "errors.passwordTooCommon" };
-  }
-
-  const passwordHash = await hashPassword(newPassword.data);
-  const changedAt = new Date();
-  const requestHeaders = await headers();
-  // 安全提醒邮件是中文模板，动作名跟着保持中文。
-  const payloadEnc = encryptOutboxPayload(securityAlertPayload(requestHeaders, "密码已修改", changedAt));
-  const revokedJtis = await db.transaction(async (tx) => {
-    await tx.update(users).set({
-      passwordHash,
-      passwordChangedAt: changedAt,
-      updatedAt: changedAt,
-    }).where(eq(users.id, session.user.id));
-    const revoked = await tx
-      .update(userSessions)
-      .set({ revokedAt: new Date() })
-      .where(and(
-        eq(userSessions.userId, session.user.id),
-        ne(userSessions.jti, session.sessionId),
-        isNull(userSessions.revokedAt),
-      ))
-      .returning({ jti: userSessions.jti });
-    await tx.insert(auditLogs).values({
-      actorId: session.user.id,
-      action: "account.password.change",
-      targetType: "user",
-      targetId: session.user.id,
-      after: { revokedOtherSessions: revoked.length },
-    });
-    await tx.insert(mailOutbox).values({
-      template: "security_alert",
-      recipient: user.email,
-      payloadEnc,
-      encryptionKeyVersion: 1,
-    });
-    return revoked.map((row) => row.jti);
-  });
-  await clearRegisteredSessionCache(revokedJtis);
-
-  revalidatePath("/account");
-  return {
-    successKey: "passwordUpdated",
-    count: revokedJtis.length,
-  };
 }
 
 export async function revokeDeviceAction(

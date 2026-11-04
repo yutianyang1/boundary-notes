@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "site.xiudou.boundarynotes",
+      "sha256_cert_fingerprints": ["E1:97:04:7E:85:1B:DD:56:BF:05:DF:41:B0:29:A8:34:7D:BE:07:DB:4E:16:76:05:E6:1F:FA:74:B1:78:74:8D"]
+    }
+  }
+]

@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 const require = createRequire(new URL('../../package.json', import.meta.url));
 const base = process.env.BASE_URL ?? 'http://localhost:3002';
+const apkName = process.env.APK_FILENAME ?? 'boundary-notes-0.2.0.apk';
 const { chromium } = require('@playwright/test');
 const browser = await chromium.launch();
 try {
@@ -32,13 +33,13 @@ try {
         assert.equal(await link.getAttribute('href'), path);
       }
       const button = page.getByRole('link', { name: locale === 'zh' ? '下载 Android APK' : 'Download Android APK', exact: true });
-      assert.equal(await button.getAttribute('href'), '/downloads/boundary-notes-0.1.0.apk');
+      assert.equal(await button.getAttribute('href'), '/downloads/' + apkName);
       if (locale === 'zh' && width === 360) {
         const event = page.waitForEvent('download');
         await button.click();
         const download = await event;
         assert.equal(await download.failure(), null);
-        assert.equal(download.suggestedFilename(), 'boundary-notes-0.1.0.apk');
+        assert.equal(download.suggestedFilename(), apkName);
       }
       assert.equal(await page.locator('details').count(), 0);
       assert.equal(await page.getByText(/首版暂未接入|This first release does not include|SHA-256/).count(), 0);
