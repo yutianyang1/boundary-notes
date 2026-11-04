@@ -23,8 +23,6 @@ const copy = {
       { title: "完成安装", body: "打开下载的 APK 文件，按手机的系统提示完成安装。" },
       { title: "登录博客账号", body: "输入已有邮箱和密码；已绑定验证器的账号继续完成二次验证。" },
     ],
-    note: "首版暂未接入 GitHub 登录、后台系统推送和离线文章下载。消息页在前台刷新站内未读消息。",
-    details: "安装包信息与完整性校验", checksum: "下载 SHA-256 校验文件", version: "版本", size: "安装包", platform: "适用系统",
   },
   en: {
     title: "Download App", description: "Download the native Boundary Notes Android app to read posts and chat with friends.",
@@ -42,8 +40,6 @@ const copy = {
       { title: "Install the app", body: "Open the downloaded APK and follow your phone’s installation prompts." },
       { title: "Sign in", body: "Use your existing email and password, then complete two-factor verification if enabled." },
     ],
-    note: "This first release does not include GitHub sign-in, background push notifications, or offline article downloads. Unread messages refresh while the app is in the foreground.",
-    details: "Package details and integrity", checksum: "Download SHA-256 checksum", version: "Version", size: "Package", platform: "System",
   },
 } as const;
 type Props = { params: Promise<{ locale: string }> };
@@ -89,13 +85,6 @@ export default async function DownloadsPage({ params }: Props) {
         <h2 className="text-xl font-bold">{c.stepsTitle}</h2>
         <ol className="mt-7 grid gap-7 md:grid-cols-3">{c.steps.map((step, index) => <li key={step.title}><span className="font-mono text-sm font-semibold text-primary">0{index + 1}</span><h3 className="mt-3 font-semibold">{step.title}</h3><p className="mt-2 text-sm leading-7 text-muted-foreground">{step.body}</p></li>)}</ol>
       </section>
-      <p className="mt-7 max-w-4xl text-sm leading-7 text-muted-foreground">{c.note}</p>
-      <details className="mt-8 rounded-2xl border bg-card p-5 sm:p-6">
-        <summary className="cursor-pointer text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{c.details}</summary>
-        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-3">{[[c.version, `v${release.version}`], [c.size, release.size], [c.platform, c.minimum]].map(([label, value]) => <div key={label}><dt className="text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>)}</dl>
-        <p className="mt-6 text-xs font-semibold text-muted-foreground">SHA-256</p><code className="mt-2 block break-all text-xs leading-6">{release.sha256}</code>
-        <a href={release.checksumFile} className="mt-4 inline-block text-sm text-primary underline underline-offset-4">{c.checksum}</a>
-      </details>
     </div>
   );
 }

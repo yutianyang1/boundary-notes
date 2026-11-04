@@ -40,14 +40,14 @@ try {
         assert.equal(await download.failure(), null);
         assert.equal(download.suggestedFilename(), 'boundary-notes-0.1.0.apk');
       }
-      await page.getByText(locale === 'zh' ? '安装包信息与完整性校验' : 'Package details and integrity', { exact: true }).click();
-      assert(await page.getByRole('link', { name: locale === 'zh' ? '下载 SHA-256 校验文件' : 'Download SHA-256 checksum', exact: true }).isVisible());
+      assert.equal(await page.locator('details').count(), 0);
+      assert.equal(await page.getByText(/首版暂未接入|This first release does not include|SHA-256/).count(), 0);
       assert.deepEqual(errors, []);
       if (locale === 'zh' && (width === 390 || width === 1440)) {
         await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
         await page.screenshot({ path: `/tmp/downloads-${width}.png`, fullPage: true });
       }
-      console.log(`PASS downloads ${locale} ${width}px: layout, navigation, package links, checksum`);
+      console.log(`PASS downloads ${locale} ${width}px: layout, navigation, package links, simplified content`);
       await context.close();
     }
   }
