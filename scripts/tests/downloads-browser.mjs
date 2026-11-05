@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
 const require = createRequire(new URL('../../package.json', import.meta.url));
 const base = process.env.BASE_URL ?? 'http://localhost:3002';
-const apkName = process.env.APK_FILENAME ?? 'boundary-notes-0.2.0.apk';
+const apkName = process.env.APK_FILENAME ?? 'boundary-notes-0.3.0.apk';
 const { chromium } = require('@playwright/test');
 const browser = await chromium.launch();
 try {

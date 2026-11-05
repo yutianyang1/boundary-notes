@@ -66,6 +66,7 @@ class BlogApi(context: Context) {
         if (body != null) builder.post(body)
         client.newCall(builder.build()).execute().use { response ->
             if (response.code == 401) throw LoginRequired()
+            if (response.isSuccessful && response.code == 204) return@use JSONObject()
             val raw = response.body?.string().orEmpty()
             val json = runCatching { JSONObject(raw) }.getOrElse { error("服务返回了无法识别的内容（${response.code}）") }
             if (!response.isSuccessful) throw ApiFailure(json.optString("error", "请求失败（${response.code}）"), response.code, json.optInt("cooldownSeconds").coerceIn(0, 3600))

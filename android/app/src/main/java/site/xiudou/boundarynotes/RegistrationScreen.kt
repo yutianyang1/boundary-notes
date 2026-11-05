@@ -15,6 +15,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 
 @Composable
 fun RegistrationScreen(model: BlogModel, onLogin: () -> Unit) {
@@ -32,28 +36,30 @@ fun RegistrationScreen(model: BlogModel, onLogin: () -> Unit) {
             if (remaining > 0) delay(1000)
         } while (remaining > 0)
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    AuthFrame("注册账号", "验证邮箱，开启你的阅读与交流。") {
+        RegistrationSteps(state.stage)
+        HorizontalDivider(color=MaterialTheme.colorScheme.outlineVariant)
         when {
             state.loading -> { CircularProgressIndicator(); Text("正在加载注册服务…") }
-            state.enabled == null -> { Text("暂时无法连接注册服务"); Button(onClick = { state.refreshConfig() }) { Text("重试") } }
+            state.enabled == null -> { Text("暂时无法连接注册服务"); SiteButton(onClick = { state.refreshConfig() }) { Text("重试") } }
             state.enabled == false -> { Text("当前暂不开放注册", style = MaterialTheme.typography.titleLarge); Text("已有账号可以直接登录。"); TextButton(onClick = onLogin) { Text("返回登录") } }
             state.stage == 0 -> {
-                Text("创建你的账号", style = MaterialTheme.typography.headlineMedium)
+                Text("创建你的账号", style = MaterialTheme.typography.titleLarge)
                 Text("先验证邮箱，再设置昵称和密码。")
-                OutlinedTextField(email, { email = it }, label = { Text("邮箱") }, singleLine = true,
+                SiteField(email, { email = it }, label = { Text("邮箱") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), enabled = !state.busy, modifier = Modifier.fillMaxWidth())
-                Button(onClick = { state.requestEmail(email) }, enabled = email.isNotBlank() && !state.busy && remaining == 0) {
+                SiteButton(onClick = { state.requestEmail(email) }, enabled = email.isNotBlank() && !state.busy && remaining == 0) {
                     Text(if (state.busy) "正在发送…" else if (remaining > 0) "${remaining} 秒后重试" else "发送验证邮件")
                 }
                 TextButton(onClick = onLogin, enabled = !state.busy) { Text("已有账号？去登录") }
             }
             state.stage == 1 -> {
-                Text("检查你的邮箱", style = MaterialTheme.typography.headlineMedium)
+                Text("检查你的邮箱", style = MaterialTheme.typography.titleLarge)
                 if (state.emailHint.isNotBlank()) Text(state.emailHint)
                 Text("打开邮件中的验证链接，或将链接复制到下方，在 App 中继续注册。")
                 if (state.tokenReady) Text("已收到验证链接，点击下方按钮继续。", color = MaterialTheme.colorScheme.primary)
-                else OutlinedTextField(link, { link = it }, label = { Text("粘贴邮箱验证链接") }, maxLines = 4, enabled = !state.busy, modifier = Modifier.fillMaxWidth())
-                Button(onClick = { state.verifyLink(if (state.tokenReady) "" else link) }, enabled = !state.busy && (state.tokenReady || link.isNotBlank())) { Text("验证邮箱并继续") }
+                else SiteField(link, { link = it }, label = { Text("粘贴邮箱验证链接") }, maxLines = 4, enabled = !state.busy, modifier = Modifier.fillMaxWidth())
+                SiteButton(onClick = { state.verifyLink(if (state.tokenReady) "" else link) }, enabled = !state.busy && (state.tokenReady || link.isNotBlank())) { Text("验证邮箱并继续") }
                 if (state.notice.isNotBlank()) Text(state.notice)
                 TextButton(onClick = {
                     runCatching { context.startActivity(Intent.createChooser(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_EMAIL), "打开邮箱")) }
@@ -66,20 +72,29 @@ fun RegistrationScreen(model: BlogModel, onLogin: () -> Unit) {
                 TextButton(onClick = onLogin, enabled = !state.busy) { Text("已在网页完成注册？去登录") }
             }
             state.stage == 2 -> {
-                Text("设置账号", style = MaterialTheme.typography.headlineMedium)
+                Text("设置账号", style = MaterialTheme.typography.titleLarge)
                 Text("邮箱已验证：${state.email}")
-                OutlinedTextField(name, { if (it.length <= 120) name = it }, label = { Text("昵称") }, singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(password, { if (it.length <= 1024) password = it }, label = { Text("密码（至少 8 个字符）") }, singleLine = true,
+                SiteField(name, { if (it.length <= 120) name = it }, label = { Text("昵称") }, singleLine = true, enabled = !state.busy, modifier = Modifier.fillMaxWidth())
+                SiteField(password, { if (it.length <= 1024) password = it }, label = { Text("密码（至少 8 个字符）") }, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), enabled = !state.busy, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(confirm, { if (it.length <= 1024) confirm = it }, label = { Text("确认密码") }, singleLine = true,
+                SiteField(confirm, { if (it.length <= 1024) confirm = it }, label = { Text("确认密码") }, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), enabled = !state.busy, modifier = Modifier.fillMaxWidth())
-                Button(onClick = { state.complete(name, password, confirm) { password = ""; confirm = "" } }, enabled = name.isNotBlank() && password.isNotEmpty() && confirm.isNotEmpty() && !state.busy) { Text(if (state.busy) "正在创建…" else "完成注册") }
+                SiteButton(onClick = { state.complete(name, password, confirm) { password = ""; confirm = "" } }, enabled = name.isNotBlank() && password.isNotEmpty() && confirm.isNotEmpty() && !state.busy) { Text(if (state.busy) "正在创建…" else "完成注册") }
             }
             else -> {
-                Text(if (state.existingAccount) "邮箱验证完成" else "注册成功", style = MaterialTheme.typography.headlineMedium)
+                Text(if (state.existingAccount) "邮箱验证完成" else "注册成功", style = MaterialTheme.typography.titleLarge)
                 Text("现在可以使用邮箱和密码登录边界笔记了。")
-                Button(onClick = onLogin, enabled = !state.busy) { Text("去登录") }
+                SiteButton(onClick = onLogin, enabled = !state.busy) { Text("去登录") }
             }
         }
+    }
+}
+
+@Composable fun RegistrationSteps(stage:Int) {
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        listOf("邮箱","验证","账号").forEachIndexed{index,title->Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(8.dp)){
+            Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(3.dp)).background(if(index<=stage)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant))
+            Text("${index+1}  $title",style=MaterialTheme.typography.labelMedium,color=if(index<=stage)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        }}
     }
 }

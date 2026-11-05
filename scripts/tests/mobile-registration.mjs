@@ -19,6 +19,7 @@ const release = process.argv[2];
 assert(release && fs.existsSync(`${release}/server.js`), 'Pass a built standalone release');
 assert(process.env.DATABASE_URL, 'DATABASE_URL is required');
 const runtime = '/home/yty/blog/runtime/bin';
+const testUploads=fs.mkdtempSync('/tmp/blog-mobile-profile-uploads-');
 const dbName = `blog_mobile_reg_test_${Date.now()}`;
 assert(/^blog_mobile_reg_test_\d+$/.test(dbName));
 const sourceUrl = new URL(process.env.DATABASE_URL);
@@ -89,7 +90,7 @@ async function waitReady() {
 async function startWeb(enabled) {
   web = spawn(process.execPath, [`${release}/server.js`], { cwd: release, env: {
     ...process.env, DATABASE_URL: testUrl.toString(), REDIS_URL: `redis://127.0.0.1:${redisPort}`,
-    AUTH_SECRET: randomBytes(32).toString('base64url'), PUBLIC_REGISTRATION_ENABLED: String(enabled),
+    AUTH_SECRET: randomBytes(32).toString('base64url'), PUBLIC_REGISTRATION_ENABLED: String(enabled), UPLOADS_DIR:testUploads,
     PORT: String(port), HOSTNAME: 'localhost', NODE_ENV: 'production', NEXT_TELEMETRY_DISABLED: '1',
   }, stdio: ['ignore', 'pipe', 'pipe'] });
   web.stdout.on('data', chunk => { serverLog = (serverLog + chunk).slice(-12000); });
@@ -200,6 +201,24 @@ try {
   const account = await request('/account', undefined, { session: true });
   assert.equal(account.status, 200);
   assert(!/<input[^>]+name="(?:currentPassword|newPassword|confirmPassword)"/.test(account.text), 'account has no direct password-change form');
+  assert.equal((await request('/api/mobile/profile')).status,401);
+  assert.equal((await request('/api/mobile/profile',{name:'不能更改'},{session:true,origin:'https://evil.example'})).status,403);
+  for(const body of [{name:' '},{name:'x'.repeat(121)},{name:'Test',role:'admin'},{name:'Test',userId:peer.id}])
+    assert.equal((await request('/api/mobile/profile',body,{session:true})).status,400);
+  const renamed=await request('/api/mobile/profile',{name:'新昵称'},{session:true});assert.equal(renamed.status,200);assert.equal(renamed.json().user.name,'新昵称');
+  assert.equal((await pool.query('SELECT name FROM users WHERE id=$1',[user.id])).rows[0].name,'新昵称');
+  assert.equal((await pool.query('SELECT name FROM users WHERE id=$1',[peer.id])).rows[0].name,'Native Test');
+  const avatarBytes=await require('sharp')({create:{width:64,height:64,channels:3,background:'#2d60e7'}}).png().toBuffer();
+  const avatarData=new FormData();avatarData.set('avatar',new Blob([avatarBytes],{type:'image/png'}),'avatar.png');
+  const avatarEncoded=new Request('https://fixture.invalid',{method:'POST',body:avatarData});
+  const avatarResult=await request('/api/mobile/avatar',Buffer.from(await avatarEncoded.arrayBuffer()),{session:true,rawType:avatarEncoded.headers.get('content-type')});
+  assert.equal(avatarResult.status,200);const avatarUrl=avatarResult.json().url;
+  assert.match(avatarUrl,/^\/media\/avatars\/[0-9a-f-]+\.png$/);
+  assert.equal((await request('/api/mobile/profile',undefined,{session:true})).json().user.image,avatarUrl);
+  assert.equal((await request(avatarUrl)).status,200,'uploaded avatar can be displayed');
+  const syncedAccount=await request('/account',undefined,{session:true});
+  assert(syncedAccount.text.includes('新昵称')&&syncedAccount.text.includes(avatarUrl),'website reflects native profile changes');
+  console.log('PASS native profile: validated nickname, owner-only update, origin/auth checks, avatar upload and profile sync in temporary storage');
   if(process.env.ACCOUNT_BROWSER === '1') {
     const {chromium}=require('@playwright/test');const browser=await chromium.launch();
     try {
@@ -252,4 +271,5 @@ try {
   if (pool) await pool.end();
   if (created) await admin.query(`DROP DATABASE "${dbName}" WITH (FORCE)`);
   await admin.end();
+  fs.rmSync(testUploads,{recursive:true,force:true});
 }
