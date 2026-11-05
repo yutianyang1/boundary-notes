@@ -1,0 +1,52 @@
+{
+  "verifiedAt": "2026-11-05",
+  "series": {
+    "slug": "kimi-k31-pro-engineering",
+    "name": "Kimi K3.1 Pro 技术拆解",
+    "nameEn": "Kimi K3.1 Pro: Architecture and Agent Engineering",
+    "description": "基于官方模型卡、配置、技术博客与 API 文档，拆解 Gated DSA、联合强化学习、长上下文接入、可验证 3D 任务与事实核验。资料核验于 2026-11-05。",
+    "descriptionEn": "Five source-grounded articles on Gated DSA, joint reinforcement learning, long-context integration, verifiable CAD workflows, and factual verification. Sources checked on 2026-11-05."
+  },
+  "articles": [
+    {
+      "slug": "kimi-k31-pro-gated-dsa",
+      "title": "Kimi K3.1 Pro 的 Gated DSA：百万上下文怎样少读历史",
+      "summary": "从官方模型卡和配置出发，分析 69 层 KDA 与 24 层 Gated DSA 如何协作，解释索引、Top-k、缓存驻留与长上下文成本，并区分候选缩减和整模型加速。",
+      "category": {"slug": "model-architecture", "name": "模型架构", "nameEn": "Model Architecture"},
+      "tags": ["Kimi", "Kimi K3.1 Pro", "DSA", "稀疏注意力", "长上下文"],
+      "file": "gated-dsa.md"
+    },
+    {
+      "slug": "kimi-k31-pro-joint-rl-agent",
+      "title": "Kimi K3.1 Pro 的联合强化学习：把长程任务变成可靠的训练信号",
+      "summary": "围绕 K3.1 Pro 披露的大规模联合 RL 方向，分析任务混合、环境有效率、验收器、状态恢复与样本新鲜度，说明怎样把长程交互转成可学习的反馈。",
+      "category": {"slug": "agent-engineering", "name": "智能体工程", "nameEn": "Agent Engineering"},
+      "tags": ["Kimi", "Kimi K3.1 Pro", "强化学习", "Agent", "工程验证"],
+      "file": "joint-rl-agent.md"
+    },
+    {
+      "slug": "kimi-k31-pro-context-api",
+      "title": "接入 Kimi K3.1 Pro：长上下文、思考消息与 Highspeed 的工程边界",
+      "summary": "梳理推理强度、输出预算、完整 assistant 消息、工具调用与视觉输入协议，再用工作流时间分解说明 Highspeed 输出提速如何影响整体交付。",
+      "category": {"slug": "inference-optimization", "name": "推理优化", "nameEn": "Inference Optimization"},
+      "tags": ["Kimi", "Kimi K3.1 Pro", "长上下文", "工具调用", "API"],
+      "file": "context-api.md"
+    },
+    {
+      "slug": "kimi-k31-pro-cad-tool-loop",
+      "title": "Kimi K3.1 Pro 的 3D 能力：让建模结果接受程序验收",
+      "summary": "从 BenchCAD 的执行与几何评分出发，拆解视觉理解、参数化程序、工具执行和独立验收；用自造垫圈案例说明尺寸、体积、拓扑与可编辑性的检查。",
+      "category": {"slug": "agent-engineering", "name": "智能体工程", "nameEn": "Agent Engineering"},
+      "tags": ["Kimi", "Kimi K3.1 Pro", "3D", "CAD", "工程验证"],
+      "file": "cad-tool-loop.md"
+    },
+    {
+      "slug": "kimi-k31-pro-evidence-verification",
+      "title": "Kimi K3.1 Pro 的事实准确性：从回答分数走到证据账本",
+      "summary": "解释 Hallu Bench Hard 的指标边界，区分单项陈述与回答级错误率，再构造可追溯的证据账本、口径检查与确定性计算流程。",
+      "category": {"slug": "agent-engineering", "name": "智能体工程", "nameEn": "Agent Engineering"},
+      "tags": ["Kimi", "Kimi K3.1 Pro", "事实核验", "Agent", "可靠性"],
+      "file": "evidence-verification.md"
+    }
+  ]
+}
